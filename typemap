@@ -1,0 +1,2 @@
+TYPEMAP
+Cache_Memcached1 *      T_PTROBJ
