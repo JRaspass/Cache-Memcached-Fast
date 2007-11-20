@@ -25,12 +25,35 @@ struct client
 
 
 extern
-void
+int
 client_init(struct client *c);
 
 extern
 void
 client_destroy(struct client *c);
+
+extern
+int
+client_add_server(struct client *c, const char *host, size_t host_len,
+                  const char *port, size_t port_len);
+
+extern
+int
+client_set_namespace(struct client *c, const char *ns, size_t ns_len);
+
+static inline
+void
+client_set_connect_timeout(struct client *c, int to)
+{
+  c->connect_timeout = to;
+}
+
+static inline
+void
+client_set_io_timeout(struct client *c, int to)
+{
+  c->io_timeout = to;
+}
 
 
 #endif // ! CLIENT_H
