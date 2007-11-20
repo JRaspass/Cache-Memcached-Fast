@@ -55,5 +55,10 @@ client_set_io_timeout(struct client *c, int to)
   c->io_timeout = to;
 }
 
+extern
+int
+client_set(struct client *c, const char *key, size_t key_len,
+           const void *buf, size_t buf_size);
+
 
 #endif // ! CLIENT_H

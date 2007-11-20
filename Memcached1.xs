@@ -39,6 +39,7 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
           ps = av_fetch(a, i, 0);
           if (! ps)
             continue;
+          /* TODO: parse [host, weight].  */
           host = SvPV(*ps, len);
           port = strrchr(host, delim);
           if (! port)

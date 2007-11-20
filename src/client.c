@@ -1,4 +1,5 @@
 #include "client.h"
+#include "connect.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -18,6 +19,8 @@ server_init(struct server *s, const char *host, size_t host_len,
   s->host[host_len] = '\0';
   memcpy(s->port, port, port_len);
   s->port[port_len] = '\0';
+
+  s->fd = -1;
 
   return 0;
 }
@@ -106,7 +109,7 @@ client_set_namespace(struct client *c, const char *ns, size_t ns_len)
 }
 
 
-#if 0
+static
 int
 client_get_sock(struct client *c, const char *key, size_t key_len)
 {
@@ -123,9 +126,23 @@ client_get_sock(struct client *c, const char *key, size_t key_len)
       assert(0 && "NOT IMPLEMENTED");
     }
 
-  if (s->fd >= 0)
-    return s->fd;
+  if (s->fd == -1)
+    s->fd = client_connect_inet(s->host, s->port, 1, c->connect_timeout);
 
+#if 0
+  if (s->fd == -1)
+    {
+      remove the server.
+    }
+#endif
+
+  return s->fd;
+}
+
+
+int
+client_set(struct client *c, const char *key, size_t key_len,
+           const void *buf, size_t buf_size)
+{
 
 }
-#endif
