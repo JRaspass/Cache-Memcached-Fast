@@ -5,30 +5,39 @@ use strict;
 
 use FindBin;
 
+@ARGV == 3
+  or die "Usage: $FindBin::Script KEYWORD_FILE FILE_C FILE_H\n";
 
-my %C = (
-    parse_func_name => 'parse_reply',
-    str_ptr => 'str_ptr',
-    str_match_ptr => 'str_match_ptr',
-    str_end_ptr => 'str_end_ptr',
-);
+my ($keyword_file, $file_c, $file_h) = @ARGV;
 
 
-my @keywords = (
-    'CLIENT_ERROR\r\n',
-    'DELETED\r\n',
-    'END\r\n',
-    'ERROR\r\n',
-    'EXISTS\r\n',
-    'NOT_FOUND\r\n',
-    'NOT_STORED\r\n',
-    'OK\r\n',
-    'SERVER_ERROR ',
-    'STAT ',
-    'STORED\r\n',
-    'VALUE ',
-    'VERSION ',
-);
+my %C;
+my @keywords;
+
+open(my $kw, '<', $keyword_file)
+  or die "open(< $keyword_file): $!";
+
+my $section = 0;
+while (my $line = <$kw>) {
+    chomp $line;
+
+    if ($line =~ /^\s*(?:#.*)?$/) {
+        next;
+    } elsif ($line =~ /^\s*%%\s*$/) {
+        ++$section;
+        next;
+    }
+
+    if ($section == 0 and $line =~ /^\s*(\S+)\s*=\s*(\S+)\s*$/) {
+        $C{$1} = $2;
+    } elsif ($section == 1) {
+        push @keywords, $line;
+    } else {
+        die "Can't parse line: $line";
+    }
+}
+
+close($kw);
 
 
 sub dispatch_keywords {
@@ -80,20 +89,23 @@ sub create_switch {
     if ($common) {
         push @internal_labels, $prefix;
         $res .= <<"EOF";
-$I  $C{str_match_ptr} = "$common";
+$I  state->match_pos = "$common";
 
 $I  do
 $I    {
-$I      if ($C{str_ptr} == $C{str_end_ptr})
-$I        return phase;
+$I      if (state->buf == state->buf_end)
+$I        return 0;
 
 $I    LABEL_$prefix:
-$I      if (*$C{str_ptr}++ != *$C{str_match_ptr}++)
-$I        return NO_MATCH;
+$I      if (*state->buf++ != *state->match_pos++)
+$I        {
+$I          state->phase = NO_MATCH;
+$I          return -1;
+$I        }
 $I    }
-$I  while (*$C{str_match_ptr});
+$I  while (*state->match_pos);
 
-$I  phase = $phase;
+$I  state->phase = $phase;
 
 EOF
     }
@@ -101,15 +113,15 @@ EOF
         if (@keys) {
             push @internal_labels, $phase;
             $res .= <<"EOF";
-$I  if ($C{str_ptr} == $C{str_end_ptr})
-$I    return phase;
+$I  if (state->buf == state->buf_end)
+$I    return 0;
 
 ${I}LABEL_$phase:
 EOF
         } else {
             push @external_enum, $phase;
             $res .= <<"EOF";
-$I  return phase;
+$I  return 1;
 
 EOF
             return $res;
@@ -117,7 +129,7 @@ EOF
     }
 
     $res .= <<"EOF";
-$I  switch (*$C{str_ptr})
+$I  switch (*state->buf)
 $I    {
 EOF
 
@@ -125,7 +137,7 @@ EOF
         my $subphase = $phase . $key;
         $res .= <<"EOF";
 $I    case '$key':
-$I      phase = $subphase;
+$I      state->phase = $subphase;
 
 EOF
         $res .= create_switch($depth + 1, $subphase, @{$$hash{$key}});
@@ -133,7 +145,8 @@ EOF
 
     $res .= <<"EOF";
 $I    default:
-$I      return NO_MATCH;
+$I      state->phase = NO_MATCH;
+$I      return -1;
 $I    }
 EOF
 
@@ -144,24 +157,40 @@ EOF
 my $switch = create_switch(0, 'PHASE_', @$tree);
 
 
-my $i = 0;
-print <<"EOF";
+my $gen_comment = <<"EOF";
 /*
-  This file was generated with $FindBin::Script.  Do not edit.
+  This file was generated with $FindBin::Script from
+  $keyword_file.
+
+  Instead of editing this file edit the keyword file and regenerate.
 */
+EOF
+
+my $func_comment = <<"EOF";
+/*
+   $C{parser_func}() returns
+     -1 when no match.
+      0 when parsing is not finished yet.
+      1 when matched.
+*/
+EOF
 
 
-enum $C{parse_func_name}_e {
-  @{[ join ",\n  ", @external_enum ]}
-};
+open(my $fc, '>', $file_c)
+  or die "open(> $file_c): $!";
+
+my $i = 0;
+print $fc <<"EOF";
+$gen_comment
+#include "$file_h"
 
 
-int
-$C{parse_func_name}(int phase)
+${func_comment}int
+$C{parser_func}(struct genparser_state *state)
 {
   /*
     Use negative values to avoid collision with elements
-    of $C{parse_func_name}_e.
+    of $C{parser_func}_e defined in $file_h.
   */
   enum {
     @{[ join ",\n    ", map { "$_ = " . --$i } @internal_labels ]}
@@ -170,24 +199,54 @@ $C{parse_func_name}(int phase)
   /*
     Jump table to bring us to the place we stopped last time.
   */
-  switch (phase)
+  switch (state->phase)
     {
 EOF
 foreach my $label (@internal_labels) {
-    print <<"EOF";
+    print $fc <<"EOF";
     case $label:
       goto LABEL_$label;
 EOF
 }
-print <<"EOF";
+print $fc <<"EOF";
     default:
       break;
     }
 
-EOF
-
-print $switch;
-
-print <<"EOF";
+$switch
 }
 EOF
+
+close($fc)
+  or die "close($file_c): $!";
+
+
+my $guard = uc $file_h;
+$guard =~ s/[^[:alnum:]_]/_/g;
+
+open(my $fh, '>', $file_h)
+  or die "open(> $file_h): $!";
+
+print $fh <<"EOF";
+$gen_comment
+#ifndef $guard
+#define $guard 1
+
+#include "${FindBin::Dir}genparser.h"
+
+
+enum $C{parser_func}_e {
+  @{[ join ",\n  ", @external_enum ]}
+};
+
+
+${func_comment}extern
+int
+$C{parser_func}(struct genparser_state *state);
+
+
+#endif /* ! $guard */
+EOF
+
+close($fh)
+  or die "close($file_h): $!";

@@ -1,0 +1,23 @@
+# Input file for getparser.pl script.
+
+# Name of the parser function.
+parser_func = parse_reply
+
+
+%%
+
+# List keywords below (in any order).
+
+CLIENT_ERROR
+DELETED
+END
+ERROR
+EXISTS
+NOT_FOUND
+NOT_STORED
+OK
+SERVER_ERROR
+STAT
+STORED
+VALUE
+VERSION
