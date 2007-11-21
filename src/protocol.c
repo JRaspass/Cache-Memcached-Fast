@@ -134,7 +134,7 @@ read_reply(int fd, struct command_state *state)
         case MATCH_NOT_STORED:
           {
             int res = swallow_eol(fd, state, buf, 0);
-            return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILED : res);
+            return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
           }
 
         case MATCH_STORED:
