@@ -10,7 +10,7 @@ WriteMakefile(
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
-    OBJECT            => '$(O_FILES) parse_reply$(OBJ_EXT)',
+    OBJECT            => 'parse_reply$(OBJ_EXT) $(O_FILES)',
 );
 
 sub MY::top_targets {

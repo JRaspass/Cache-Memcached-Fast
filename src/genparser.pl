@@ -214,6 +214,7 @@ print $fc <<"EOF";
     }
 
 $switch
+  /* Never reach here.  */
 }
 EOF
 

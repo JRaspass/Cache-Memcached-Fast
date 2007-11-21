@@ -1,14 +1,11 @@
 #ifndef CLIENT_H
 #define CLIENT_H 1
 
-#include "genparser.h"
 #include <stddef.h>
 
 
 struct server
 {
-  struct genparser_state reply_parser_state;
-
   char *host;
   char *port;
   int fd;

@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "parse_reply.h"
 #include <sys/uio.h>
 #include <stddef.h>
 #include <errno.h>
@@ -8,47 +9,11 @@ static const char sp[1] = " ";
 static const char eol[2] = "\r\n";
 
 
-enum reply_code_enum {
-  REPLY_CONN_CLOSED, REPLY_UNKNOWN,
-  REPLY_ERROR, REPLY_SERVER_ERROR, REPLY_CLIENT_ERROR,
-  REPLY_STORED, REPLY_NOT_STORED, REPLY_EXISTS, REPLY_OK,
-  REPLY_END, REPLY_NOT_FOUND, REPLY_DELETED, REPLY_VALUE,
-  REPLY_VERSION, REPLY_STAT
-};
-
-
-struct reply_msg
-{
-  const char *str;
-  enum reply_code_enum code;
-};
-
-
-static const struct reply_msg ordered_replies[] = {
-  { "",                       REPLY_UNKNOWN },
-  { "CLIENT_ERROR ",          REPLY_CLIENT_ERROR },
-  { "DELETED\r\n",            REPLY_DELETED },
-  { "END\r\n",                REPLY_END },
-  { "ERROR\r\n",              REPLY_ERROR },
-  { "EXISTS\r\n",             REPLY_EXISTS },
-  { "NOT_FOUND\r\n",          REPLY_NOT_FOUND },
-  { "NOT_STORED\r\n",         REPLY_NOT_STORED },
-  { "OK\r\n",                 REPLY_OK },
-  { "SERVER_ERROR ",          REPLY_SERVER_ERROR },
-  { "STAT ",                  REPLY_STAT },
-  { "STORED\r\n",             REPLY_STORED },
-  { "VALUE ",                 REPLY_VALUE },
-  { "VERSION ",               REPLY_VERSION },
-};
-
-
 struct command_state
 {
   struct iovec *request_iov;
   size_t request_iov_count;
-
-  const struct reply_msg *reply;
-  size_t reply_str_offset;
+  struct genparser_state reply_parser_state;
 };
 
 
@@ -56,15 +21,16 @@ static
 int
 read_set_reply(int fd, struct command_state *state)
 {
-  char buf[64];
+  char buf[2048];
   ssize_t res;
 
-  state->reply = &ordered_replies[0];
+  genparser_init(&state->reply_parser_state);
 
   do
     {
       while ((res = read(fd, buf, sizeof(buf))) > 0)
         {
+#if 0
           size_t offset = 0;
 
           while (offset < res)
@@ -80,11 +46,12 @@ read_set_reply(int fd, struct command_state *state)
 
           if (state->reply->str[state->reply_str_offset] != '\0')
             state->reply = &ordered_replies[0];
+#endif
         }
     }
   while (res == -1 && errno == EINTR);
 
-  return REPLY_CONN_CLOSED;
+  return -1;
 }
 
 

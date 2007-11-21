@@ -11,8 +11,6 @@ int
 server_init(struct server *s, const char *host, size_t host_len,
             const char *port, size_t port_len)
 {
-  genparser_init(&s->reply_parser_state);
-
   s->host = (char *) malloc(host_len + 1 + port_len + 1);
   if (! s->host)
     return -1;
