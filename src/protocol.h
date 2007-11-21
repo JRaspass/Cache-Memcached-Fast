@@ -15,9 +15,9 @@ enum {
 
 extern
 int
-client_set(int fd, const char *key, size_t key_len,
-           unsigned int flags, unsigned int exptime, size_t val_size,
-           const void *val);
+protocol_set(int fd, const char *key, size_t key_len,
+             unsigned int flags, unsigned int exptime, size_t val_size,
+             const void *val);
 
 
 #endif /* ! PROTOCOL_H */

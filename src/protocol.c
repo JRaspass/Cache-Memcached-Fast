@@ -128,6 +128,9 @@ read_reply(int fd, struct command_state *state)
           }
 
         default:
+        case MATCH_STAT:
+        case MATCH_VALUE:
+        case MATCH_VERSION:
           return MEMCACHED_UNKNOWN;
 
         case MATCH_EXISTS:
@@ -152,8 +155,8 @@ read_reply(int fd, struct command_state *state)
 
 static
 int
-client_process_command(int fd, struct command_state *state,
-                       int (*read_reply)(int fd, struct command_state *state))
+process_command(int fd, struct command_state *state,
+                int (*read_reply)(int fd, struct command_state *state))
 {
   while (state->request_iov_count > 0)
     {
@@ -182,9 +185,9 @@ client_process_command(int fd, struct command_state *state,
 
 
 int
-client_set(int fd, const char *key, size_t key_len,
-           unsigned int flags, unsigned int exptime, size_t val_size,
-           const void *val)
+protocol_set(int fd, const char *key, size_t key_len,
+             unsigned int flags, unsigned int exptime, size_t val_size,
+             const void *val)
 {
   struct iovec iov[5];
   struct command_state state;
@@ -206,5 +209,5 @@ client_set(int fd, const char *key, size_t key_len,
   genparser_init(&state.reply_parser_state);
   state.eol_state = 0;
 
-  return client_process_command(fd, &state, read_reply);
+  return process_command(fd, &state, read_reply);
 }
