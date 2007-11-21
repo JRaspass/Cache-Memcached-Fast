@@ -1,11 +1,14 @@
 #ifndef CLIENT_H
 #define CLIENT_H 1
 
+#include "genparser.h"
 #include <stddef.h>
 
 
 struct server
 {
+  struct genparser_state reply_parser_state;
+
   char *host;
   char *port;
   int fd;
@@ -15,12 +18,12 @@ struct server
 struct client
 {
   struct server *servers;
+  char *namespace_prefix;
+  size_t namespace_prefix_len;
   size_t server_count;
   size_t server_capacity;
   int connect_timeout;          /* 1/1000 sec.  */
   int io_timeout;               /* 1/1000 sec.  */
-  char *namespace_prefix;
-  size_t namespace_prefix_len;
 };
 
 

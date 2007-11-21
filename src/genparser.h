@@ -13,6 +13,14 @@ struct genparser_state
 
 static inline
 void
+genparser_init(struct genparser_state *state)
+{
+  state->phase = 0;  /* Maps to NO_MATCH in every generated parser.  */
+}
+
+
+static inline
+void
 genparser_set_buf(struct genparser_state *state, char *buf, char *buf_end)
 {
   state->buf = buf;

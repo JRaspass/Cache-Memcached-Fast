@@ -74,7 +74,7 @@ sub dispatch_keywords {
 my $tree = dispatch_keywords(\@keywords);
 
 
-my @external_enum = qw(INITIAL NO_MATCH);
+my @external_enum = qw(NO_MATCH);
 my @internal_labels;
 
 sub create_switch {
