@@ -1,6 +1,7 @@
 #include "client.h"
 #include "connect.h"
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <assert.h>
 
@@ -30,6 +31,9 @@ static inline
 void
 server_destroy(struct server *s)
 {
+  if (s->fd != -1)
+    close(s->fd);
+
   free(s->host);
 }
 

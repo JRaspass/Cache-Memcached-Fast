@@ -7,7 +7,7 @@ README
 t/Cache-Memcached1.t
 lib/Cache/Memcached1.pm
 src/Makefile.PL
-src/genparse.pl
+src/genparser.pl
 src/client.h
 src/client.c
 src/connect.h
