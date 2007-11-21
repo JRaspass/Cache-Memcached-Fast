@@ -103,10 +103,12 @@ read_reply(int fd, struct command_state *state)
 {
   char buf[REPLY_BUF_SIZE];
   ssize_t res;
-  int parse_res;
 
   while ((res = read_restart(fd, buf, REPLY_BUF_SIZE)) > 0)
     {
+      int parse_res;
+      int match;
+
       genparser_set_buf(&state->reply_parser_state, buf, buf + res);
       parse_res = parse_reply(&state->reply_parser_state);
       if (parse_res == 0)
@@ -114,20 +116,19 @@ read_reply(int fd, struct command_state *state)
       if (parse_res == -1)
         return MEMCACHED_UNKNOWN;
 
-      switch (genparser_get_match(&state->reply_parser_state))
+      match = genparser_get_match(&state->reply_parser_state);
+      switch (match)
         {
         case MATCH_CLIENT_ERROR:
         case MATCH_SERVER_ERROR:
+        case MATCH_ERROR:
           {
-            int res = swallow_eol(fd, state, buf, 1);
+            int res = swallow_eol(fd, state, buf, (match != MATCH_ERROR));
             return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
           }
 
-        case MATCH_ERROR:
-          {
-            int res = swallow_eol(fd, state, buf, 0);
-            return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
-          }
+        default:
+          return MEMCACHED_UNKNOWN;
 
         case MATCH_EXISTS:
         case MATCH_NOT_FOUND:
@@ -142,9 +143,6 @@ read_reply(int fd, struct command_state *state)
         case MATCH_OK:
         case MATCH_END:
           return swallow_eol(fd, state, buf, 0);
-
-        default:
-          break;
         }
     }
 
