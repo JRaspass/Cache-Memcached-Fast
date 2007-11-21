@@ -83,6 +83,7 @@ void
 new(class, conf)
         const char *  class
         SV *          conf
+    PROTOTYPE: $$
     PREINIT:
         Cache_Memcached1 *memd;
     PPCODE:
@@ -100,6 +101,7 @@ new(class, conf)
 void
 DESTROY(memd)
         Cache_Memcached1 *  memd
+    PROTOTYPE: $
     CODE:
         client_destroy(memd);
         Safefree(memd);
