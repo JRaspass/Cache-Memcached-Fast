@@ -30,7 +30,7 @@ genparser_set_buf(struct genparser_state *state, char *buf, char *buf_end)
 
 static inline
 int
-genparser_get_phase(const struct genparser_state *state)
+genparser_get_match(const struct genparser_state *state)
 {
   return state->phase;
 }
@@ -41,6 +41,14 @@ char *
 genparser_get_buf(const struct genparser_state *state)
 {
   return state->buf;
+}
+
+
+static inline
+char *
+genparser_get_buf_end(const struct genparser_state *state)
+{
+  return state->buf_end;
 }
 
 

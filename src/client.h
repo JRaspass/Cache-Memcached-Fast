@@ -61,4 +61,4 @@ client_set(struct client *c, const char *key, size_t key_len,
            const void *buf, size_t buf_size);
 
 
-#endif // ! CLIENT_H
+#endif /* ! CLIENT_H */

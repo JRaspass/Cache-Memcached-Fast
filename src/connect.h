@@ -8,4 +8,4 @@ client_connect_inet(const char *host, const char *port, int stream,
                     int timeout);
 
 
-#endif // ! CONNECT_H
+#endif /* ! CONNECT_H */

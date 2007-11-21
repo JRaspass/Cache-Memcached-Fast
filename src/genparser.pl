@@ -154,7 +154,7 @@ EOF
 }
 
 
-my $switch = create_switch(0, 'PHASE_', @$tree);
+my $switch = create_switch(0, 'MATCH_', @$tree);
 
 
 my $gen_comment = <<"EOF";
