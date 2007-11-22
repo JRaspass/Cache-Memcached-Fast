@@ -22,6 +22,7 @@ struct client
   size_t server_capacity;
   int connect_timeout;          /* 1/1000 sec.  */
   int io_timeout;               /* 1/1000 sec.  */
+  int close_on_error;
 };
 
 
@@ -54,6 +55,13 @@ void
 client_set_io_timeout(struct client *c, int to)
 {
   c->io_timeout = to;
+}
+
+static inline
+void
+client_set_close_on_error(struct client *c, int enable)
+{
+  c->close_on_error = enable;
 }
 
 extern

@@ -52,6 +52,7 @@ client_init(struct client *c)
   c->io_timeout = 1000;
   c->namespace_prefix = NULL;
   c->namespace_prefix_len = 0;
+  c->close_on_error = 1;
 
   return 0;
 }
@@ -177,7 +178,8 @@ client_set(struct client *c, const char *key, size_t key_len,
   fd = c->servers[server_index].fd;
   res = protocol_set(fd, key, key_len, flags, exptime, buf, buf_size);
 
-  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED)
+  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
+      || (c->close_on_error && res == MEMCACHED_ERROR))
     client_mark_failed(c, server_index);
 
   return res;

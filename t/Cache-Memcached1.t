@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 5;
+use Test::More tests => 7;
 BEGIN { use_ok('Cache::Memcached1') };
 
 #########################
@@ -18,9 +18,10 @@ use Cache::Memcached1;
 
 my $memd = Cache::Memcached1->new({
     servers => ['localhost:11211'], #['localhost:11211', 'moonlight:50000'],
-    namespace => 'Cache::Memcached1::',
-    connect_timeout => 0.26,
-    select_timeout => 1.01,
+#    namespace => 'Cache::Memcached1::',
+#    connect_timeout => 0.26,
+#    select_timeout => 1.01,
+    close_on_error => 0,
 });
 
 isa_ok($memd, 'Cache::Memcached1');
@@ -28,5 +29,7 @@ isa_ok($memd, 'Cache::Memcached1');
 ok($memd->set("key1", "val1"));
 ok($memd->set("key2", "val2", 1));
 ok($memd->set("key3", "val3", 1, 10));
+ok(not $memd->set("key4", "x" x 2_000_000));
+ok($memd->set("key4", "x" x 1_000_000));
 
 undef $memd;

@@ -73,6 +73,12 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
     {
       client_set_io_timeout(memd, SvNV(*ps) * 1000.0);
     }
+
+  ps = hv_fetch(conf, "close_on_error", 14, 0);
+  if (ps)
+    {
+      client_set_close_on_error(memd, SvTRUE(*ps));
+    }
 }
 
 
