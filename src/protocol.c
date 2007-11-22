@@ -18,7 +18,7 @@ static const char eol[2] = "\r\n";
 
 
 typedef void * (*alloc_value_func)(const char *key, size_t key_len,
-                                   size_t value_size);
+                                   unsigned int flags, size_t value_size);
 
 
 typedef unsigned long long protocol_unum;
@@ -31,6 +31,29 @@ struct get_result_state
   alloc_value_func alloc_value;
   void *value;
 };
+
+
+static inline
+void
+get_result_state_reset(struct get_result_state *state)
+{
+  state->flags = 0;
+  state->value_size = 0;
+}
+
+
+static inline
+void
+get_result_state_init(struct get_result_state *state,
+                      alloc_value_func alloc_value)
+{
+  get_result_state_reset(state);
+  state->alloc_value = alloc_value;
+
+#if 0 /* No need to initialize the following.  */
+  state->value = NULL;
+#endif
+}
 
 
 struct command_state;
@@ -403,6 +426,7 @@ parse_get_reply(struct command_state *state, char *buf)
       state->get_result.value =
         state->get_result.alloc_value((char *) state->key->iov_base,
                                       state->key->iov_len, 
+                                      state->get_result.flags,
                                       state->get_result.value_size);
 
       res = read_value(state, buf, state->get_result.value_size);
@@ -412,6 +436,8 @@ parse_get_reply(struct command_state *state, char *buf)
       res = swallow_eol(state, buf, 0);
       if (res != MEMCACHED_SUCCESS)
         return res;
+
+      get_result_state_reset(&state->get_result);
 
       /* Proceed with the next key.  */
       res = parse_keyword(state, buf);
@@ -560,6 +586,27 @@ protocol_set(int fd, const char *key, size_t key_len,
 
   command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
                      &iov[1], 1, parse_set_reply);
+
+  return process_command(&state);
+}
+
+
+int
+protocol_get(int fd, const char *key, size_t key_len,
+             alloc_value_func alloc_value)
+{
+  struct iovec iov[3];
+  struct command_state state;
+
+  iov[0].iov_base = "get ";
+  iov[0].iov_len = 4;
+  iov[1].iov_base = (void *) key;
+  iov[1].iov_len = key_len;
+  iov[2].iov_base = (void *) eol;
+  iov[2].iov_len = sizeof(eol);
+
+  command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
+                     &iov[1], 1, parse_get_reply);
 
   return process_command(&state);
 }
