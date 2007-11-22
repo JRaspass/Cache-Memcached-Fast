@@ -10,7 +10,7 @@ src/Makefile.PL
 src/genparser.pl
 src/genparser.h
 src/reply.kw
-src/status.h
+src/server.h
 src/client.h
 src/client.c
 src/connect.h

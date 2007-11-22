@@ -1,7 +1,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H 1
 
-#include "status.h"
+#include "server.h"
 #include <stddef.h>
 
 
@@ -59,7 +59,7 @@ client_set_io_timeout(struct client *c, int to)
 extern
 int
 client_set(struct client *c, const char *key, size_t key_len,
-           unsigned int flags, unsigned int exptime,
+           flags_type flags, exptime_type exptime,
            const void *buf, size_t buf_size);
 
 

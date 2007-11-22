@@ -117,7 +117,7 @@ set(memd, skey, sval, ...)
         const char *key;
         STRLEN key_len;
         unsigned int flags = 0;
-        unsigned int exptime = 0;
+        int exptime = 0;
         const void *buf;
         STRLEN buf_len;
         int res;
@@ -125,7 +125,7 @@ set(memd, skey, sval, ...)
         if (items > 3)
           flags = SvUV(ST(3));
         if (items > 4)
-          exptime = SvUV(ST(4));
+          exptime = SvIV(ST(4));
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
         res = client_set(memd, key, key_len, flags, exptime, buf, buf_len);

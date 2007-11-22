@@ -1,6 +1,5 @@
 #include "protocol.h"
 #include "parse_reply.h"
-#include "status.h"
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
@@ -19,7 +18,7 @@ static const char eol[2] = "\r\n";
 
 
 typedef void * (*alloc_value_func)(const char *key, size_t key_len,
-                                   unsigned int flags, size_t value_size);
+                                   flags_type flags, size_t value_size);
 
 
 typedef unsigned long long protocol_unum;
@@ -569,7 +568,7 @@ process_command(struct command_state *state)
 
 int
 protocol_set(int fd, const char *key, size_t key_len,
-             unsigned int flags, unsigned int exptime,
+             flags_type flags, exptime_type exptime,
              const void *val, size_t val_size)
 {
   struct iovec iov[5];
@@ -581,7 +580,8 @@ protocol_set(int fd, const char *key, size_t key_len,
   iov[1].iov_base = (void *) key;
   iov[1].iov_len = key_len;
   iov[2].iov_base = buf;
-  iov[2].iov_len = sprintf(buf, " %u %u %zu\r\n", flags, exptime, val_size);
+  iov[2].iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu\r\n",
+                           flags, exptime, val_size);
   iov[3].iov_base = (void *) val;
   iov[3].iov_len = val_size;
   iov[4].iov_base = (void *) eol;
