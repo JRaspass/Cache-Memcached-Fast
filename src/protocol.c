@@ -1,5 +1,6 @@
 #include "protocol.h"
 #include "parse_reply.h"
+#include "status.h"
 #include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
@@ -85,17 +86,17 @@ static inline
 void
 command_state_init(struct command_state *state, int fd,
                    struct iovec *iov, size_t count,
-                   struct iovec *key, size_t key_count,
+                   int first_key_index, size_t key_count,
                    parse_reply_func parse_reply)
 {
   state->fd = fd;
   state->request_iov = iov;
   state->request_iov_count = count;
-  state->key = key;
+  state->key = &iov[first_key_index];
   state->key_count = key_count;
   genparser_init(&state->reply_parser_state);
   state->eol_state = 0;
-  state->key_pos = (char *) key->iov_base;
+  state->key_pos = (char *) state->key->iov_base;
   state->parse_reply = parse_reply;
 }
 
@@ -566,8 +567,8 @@ process_command(struct command_state *state)
 
 int
 protocol_set(int fd, const char *key, size_t key_len,
-             unsigned int flags, unsigned int exptime, size_t val_size,
-             const void *val)
+             unsigned int flags, unsigned int exptime,
+             const void *val, size_t val_size)
 {
   struct iovec iov[5];
   struct command_state state;
@@ -585,7 +586,7 @@ protocol_set(int fd, const char *key, size_t key_len,
   iov[4].iov_len = sizeof(eol);
 
   command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
-                     &iov[1], 1, parse_set_reply);
+                     1, 1, parse_set_reply);
 
   return process_command(&state);
 }
@@ -606,7 +607,7 @@ protocol_get(int fd, const char *key, size_t key_len,
   iov[2].iov_len = sizeof(eol);
 
   command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
-                     &iov[1], 1, parse_get_reply);
+                     1, 1, parse_get_reply);
 
   return process_command(&state);
 }

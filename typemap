@@ -1,2 +1,18 @@
 TYPEMAP
-Cache_Memcached1 *      T_PTROBJ
+Cache_Memcached1 *      T_CACHE_MEMCACHED
+
+
+INPUT
+T_CACHE_MEMCACHED
+        if (sv_derived_from($arg, \"Cache::Memcached1\"))
+          {
+            IV tmp = SvIV((SV*) SvRV($arg));
+            $var = INT2PTR(Cache_Memcached1 *, tmp);
+          }
+        else
+          croak(\"memd is not of type Cache::Memcached1\");
+
+
+OUTPUT
+T_CACHE_MEMCACHED
+        sv_setref_pv($arg, class, (void*) $var);

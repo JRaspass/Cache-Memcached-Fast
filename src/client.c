@@ -1,5 +1,6 @@
 #include "client.h"
 #include "connect.h"
+#include "protocol.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -146,7 +147,14 @@ client_get_sock(struct client *c, const char *key, size_t key_len)
 
 int
 client_set(struct client *c, const char *key, size_t key_len,
+           unsigned int flags, unsigned int exptime,
            const void *buf, size_t buf_size)
 {
+  int fd;
 
+  fd = client_get_sock(c, key, key_len);
+  if (fd == -1)
+    return MEMCACHED_FAILURE;
+
+  return protocol_set(fd, key, key_len, flags, exptime, buf, buf_size);
 }

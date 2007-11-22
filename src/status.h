@@ -1,0 +1,14 @@
+#ifndef STATUS_H
+#define STATUS_H 1
+
+
+enum client_status {
+  MEMCACHED_CLOSED,
+  MEMCACHED_UNKNOWN,
+  MEMCACHED_ERROR,
+  MEMCACHED_FAILURE,
+  MEMCACHED_SUCCESS
+};
+
+
+#endif // ! STATUS_H

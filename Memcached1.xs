@@ -79,23 +79,23 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
 MODULE = Cache::Memcached1		PACKAGE = Cache::Memcached1
 
 
-void
+Cache_Memcached1 *
 new(class, conf)
         const char *  class
         SV *          conf
     PROTOTYPE: $$
     PREINIT:
         Cache_Memcached1 *memd;
-    PPCODE:
+    CODE:
         New(0, memd, 1, Cache_Memcached1); /* FIXME: check OOM.  */
         if (client_init(memd) != 0)
           croak("Not enough memory");
         if (! SvROK(conf) || SvTYPE(SvRV(conf)) != SVt_PVHV)
           croak("Not a hash reference");
         parse_config(memd, (HV *) SvRV(conf));
-        PUSHmortal;
-        sv_setref_pv(ST(0), class, (void*) memd);
-        XSRETURN(1);            /* FIXME: do we need this?  */
+        RETVAL = memd;
+    OUTPUT:
+        RETVAL
 
 
 void
@@ -105,3 +105,30 @@ DESTROY(memd)
     CODE:
         client_destroy(memd);
         Safefree(memd);
+
+
+bool
+set(memd, skey, sval, ...)
+        Cache_Memcached1 *  memd
+        SV *                skey
+        SV *                sval
+    PROTOTYPE: $$$;$$
+    PREINIT:
+        const char *key;
+        STRLEN key_len;
+        unsigned int flags = 0;
+        unsigned int exptime = 0;
+        const void *buf;
+        STRLEN buf_len;
+        int res;
+    CODE:
+        if (items > 3)
+          flags = SvUV(ST(3));
+        if (items > 4)
+          exptime = SvUV(ST(4));
+        key = SvPV(skey, key_len);
+        buf = (void *) SvPV(sval, buf_len);
+        res = client_set(memd, key, key_len, flags, exptime, buf, buf_len);
+        RETVAL = (res == MEMCACHED_SUCCESS);
+    OUTPUT:
+        RETVAL

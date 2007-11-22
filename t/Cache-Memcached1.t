@@ -17,12 +17,16 @@ BEGIN { use_ok('Cache::Memcached1') };
 use Cache::Memcached1;
 
 my $memd = Cache::Memcached1->new({
-    servers => ['localhost:11211', 'moonlight:50000'],
+    servers => ['localhost:11211'], #['localhost:11211', 'moonlight:50000'],
     namespace => 'Cache::Memcached1::',
     connect_timeout => 0.26,
     select_timeout => 1.01,
 });
 
 isa_ok($memd, 'Cache::Memcached1');
+
+$memd->set("key1", "val");
+$memd->set("key2", "val", 1);
+$memd->set("key3", "val", 1, 10);
 
 undef $memd;
