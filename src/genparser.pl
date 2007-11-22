@@ -129,7 +129,7 @@ EOF
     }
 
     $res .= <<"EOF";
-$I  switch (*state->buf)
+$I  switch (*state->buf++)
 $I    {
 EOF
 
