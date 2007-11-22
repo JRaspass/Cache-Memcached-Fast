@@ -115,33 +115,51 @@ client_set_namespace(struct client *c, const char *ns, size_t ns_len)
 
 
 static
-int
-client_get_sock(struct client *c, const char *key, size_t key_len)
+void
+client_mark_failed(struct client *c, int server_index)
 {
+  struct server *s;
+
+  s = &c->servers[server_index];
+
+  if (s->fd != -1)
+    {
+      close(s->fd);
+      s->fd = -1;
+    }
+}
+
+
+static
+int
+client_get_server_index(struct client *c, const char *key, size_t key_len)
+{
+  int index;
+  struct server *s;
+
   if (c->server_count == 0)
     return -1;
 
-  struct server *s;
   if (c->server_count == 1)
     {
-      s = &c->servers[0];
+      index = 0;
     }
   else
     {
       assert(0 && "NOT IMPLEMENTED");
     }
 
+  s = &c->servers[index];
   if (s->fd == -1)
     s->fd = client_connect_inet(s->host, s->port, 1, c->connect_timeout);
 
-#if 0
   if (s->fd == -1)
     {
-      remove the server.
+      client_mark_failed(c, index);
+      return -1;
     }
-#endif
 
-  return s->fd;
+  return index;
 }
 
 
@@ -150,18 +168,17 @@ client_set(struct client *c, const char *key, size_t key_len,
            unsigned int flags, unsigned int exptime,
            const void *buf, size_t buf_size)
 {
-  int fd, res;
+  int server_index, fd, res;
 
-  fd = client_get_sock(c, key, key_len);
-  if (fd == -1)
-    return MEMCACHED_FAILURE;
+  server_index = client_get_server_index(c, key, key_len);
+  if (server_index == -1)
+    return MEMCACHED_CLOSED;
 
+  fd = c->servers[server_index].fd;
   res = protocol_set(fd, key, key_len, flags, exptime, buf, buf_size);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED)
-    {
-      //close(fd); /* FIXME: wrong: set fd = -1 in the server.  */
-    }
+    client_mark_failed(c, server_index);
 
   return res;
 }
