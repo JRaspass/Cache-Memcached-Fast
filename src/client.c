@@ -150,11 +150,18 @@ client_set(struct client *c, const char *key, size_t key_len,
            unsigned int flags, unsigned int exptime,
            const void *buf, size_t buf_size)
 {
-  int fd;
+  int fd, res;
 
   fd = client_get_sock(c, key, key_len);
   if (fd == -1)
     return MEMCACHED_FAILURE;
 
-  return protocol_set(fd, key, key_len, flags, exptime, buf, buf_size);
+  res = protocol_set(fd, key, key_len, flags, exptime, buf, buf_size);
+
+  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED)
+    {
+      //close(fd); /* FIXME: wrong: set fd = -1 in the server.  */
+    }
+
+  return res;
 }

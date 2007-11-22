@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 2;
+use Test::More tests => 5;
 BEGIN { use_ok('Cache::Memcached1') };
 
 #########################
@@ -25,8 +25,8 @@ my $memd = Cache::Memcached1->new({
 
 isa_ok($memd, 'Cache::Memcached1');
 
-$memd->set("key1", "val");
-$memd->set("key2", "val", 1);
-$memd->set("key3", "val", 1, 10);
+ok($memd->set("key1", "val1"));
+ok($memd->set("key2", "val2", 1));
+ok($memd->set("key3", "val3", 1, 10));
 
 undef $memd;

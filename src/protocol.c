@@ -495,6 +495,8 @@ read_reply(struct command_state *state)
   char buf[REPLY_BUF_SIZE];
   int res, match;
 
+  genparser_set_buf(&state->reply_parser_state, buf, buf);
+
   res = parse_keyword(state, buf);
   if (res != MEMCACHED_SUCCESS)
     return res;
