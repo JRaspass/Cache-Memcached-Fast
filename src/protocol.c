@@ -1,7 +1,13 @@
 #include "protocol.h"
 #include "parse_reply.h"
 #include <sys/uio.h>
+#include <unistd.h>
 #include <errno.h>
+
+
+#ifndef MAX_IOVEC
+#define MAX_IOVEC 1024
+#endif
 
 
 /* Any positive buffer size is supported, 1 is good for testing.  */
@@ -10,14 +16,35 @@ static const char sp[1] = " ";
 static const char eol[2] = "\r\n";
 
 
+struct command_state;
+typedef int (*parse_reply_func)(struct command_state *state, char *buf);
+
 struct command_state
 {
+  int fd;
+
   struct iovec *request_iov;
   size_t request_iov_count;
 
   struct genparser_state reply_parser_state;
   size_t eol_state;
+
+  parse_reply_func parse_reply;
 };
+
+
+static inline
+void
+command_state_init(struct command_state *state, int fd,
+                   struct iovec *iov, size_t count,
+                   parse_reply_func parse_reply)
+{
+  state->fd = fd;
+  state->request_iov = iov;
+  state->request_iov_count = count;
+  genparser_init(&state->reply_parser_state);
+  state->eol_state = 0;
+}
 
 
 static inline
@@ -50,7 +77,7 @@ writev_restart(int fd, const struct iovec *iov, size_t count)
 
 static
 int
-swallow_eol(int fd, struct command_state *state, char *buf, int skip)
+swallow_eol(struct command_state *state, char *buf, int skip)
 {
   char *pos, *end;
 
@@ -63,7 +90,7 @@ swallow_eol(int fd, struct command_state *state, char *buf, int skip)
         {
           ssize_t res;
 
-          res = read_restart(fd, buf, REPLY_BUF_SIZE);
+          res = read_restart(state->fd, buf, REPLY_BUF_SIZE);
           if (res <= 0)
             return MEMCACHED_CLOSED;
 
@@ -99,12 +126,52 @@ swallow_eol(int fd, struct command_state *state, char *buf, int skip)
 
 static
 int
-read_reply(int fd, struct command_state *state)
+parse_set_reply(struct command_state *state, char *buf)
+{
+  int match;
+
+  match = genparser_get_match(&state->reply_parser_state);
+  switch (match)
+    {
+    case MATCH_STORED:
+      return swallow_eol(state, buf, 0);
+
+    case MATCH_NOT_STORED:
+      {
+        int res;
+
+        res = swallow_eol(state, buf, 0);
+
+        return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+      }
+
+    default:
+      return MEMCACHED_UNKNOWN;
+    }
+}
+
+
+static
+int
+garbage_remains(struct command_state *state)
+{
+  char *pos, *end;
+
+  pos = genparser_get_buf(&state->reply_parser_state);
+  end = genparser_get_buf_end(&state->reply_parser_state);
+
+  return (pos != end);
+}
+
+
+static
+int
+read_reply(struct command_state *state)
 {
   char buf[REPLY_BUF_SIZE];
   ssize_t res;
 
-  while ((res = read_restart(fd, buf, REPLY_BUF_SIZE)) > 0)
+  while ((res = read_restart(state->fd, buf, REPLY_BUF_SIZE)) > 0)
     {
       int parse_res;
       int match;
@@ -123,29 +190,28 @@ read_reply(int fd, struct command_state *state)
         case MATCH_SERVER_ERROR:
         case MATCH_ERROR:
           {
-            int res = swallow_eol(fd, state, buf, (match != MATCH_ERROR));
+            int skip, res;
+
+            skip = (match != MATCH_ERROR);
+            res = swallow_eol(state, buf, skip);
+
+            if (garbage_remains(state))
+              return MEMCACHED_UNKNOWN;
+
             return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
           }
 
         default:
-        case MATCH_STAT:
-        case MATCH_VALUE:
-        case MATCH_VERSION:
-          return MEMCACHED_UNKNOWN;
-
-        case MATCH_EXISTS:
-        case MATCH_NOT_FOUND:
-        case MATCH_NOT_STORED:
           {
-            int res = swallow_eol(fd, state, buf, 0);
-            return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
-          }
+            int res;
 
-        case MATCH_STORED:
-        case MATCH_DELETED:
-        case MATCH_OK:
-        case MATCH_END:
-          return swallow_eol(fd, state, buf, 0);
+            res = state->parse_reply(state, buf);
+
+            if (garbage_remains(state))
+              return MEMCACHED_UNKNOWN;
+
+            return res;
+          }
         }
     }
 
@@ -155,14 +221,16 @@ read_reply(int fd, struct command_state *state)
 
 static
 int
-process_command(int fd, struct command_state *state,
-                int (*read_reply)(int fd, struct command_state *state))
+process_command(struct command_state *state)
 {
   while (state->request_iov_count > 0)
     {
+      size_t count;
       ssize_t res;
 
-      res = writev_restart(fd, state->request_iov, state->request_iov_count);
+      count = (state->request_iov_count < MAX_IOVEC
+               ? state->request_iov_count : MAX_IOVEC);
+      res = writev_restart(state->fd, state->request_iov, count);
 
       if (res <= 0)
         return MEMCACHED_CLOSED;
@@ -177,8 +245,8 @@ process_command(int fd, struct command_state *state,
       state->request_iov->iov_len -= res;
     }
 
-  if (read_reply)
-    return read_reply(fd, state);
+  if (state->parse_reply)
+    return read_reply(state);
 
   return MEMCACHED_SUCCESS;
 }
@@ -204,10 +272,8 @@ protocol_set(int fd, const char *key, size_t key_len,
   iov[4].iov_base = (void *) eol;
   iov[4].iov_len = sizeof(eol);
 
-  state.request_iov = iov;
-  state.request_iov_count = sizeof(iov) / sizeof(*iov);
-  genparser_init(&state.reply_parser_state);
-  state.eol_state = 0;
+  command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
+                     parse_set_reply);
 
-  return process_command(fd, &state, read_reply);
+  return process_command(&state);
 }
