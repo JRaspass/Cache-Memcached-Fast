@@ -32,6 +32,16 @@ XSLoader::load('Cache::Memcached1', $VERSION);
 
 # Preloaded methods go here.
 
+
+sub get {
+    my ($val, $flags) = _xs_get(@_);
+
+    # FIXME: process $flags here.
+
+    return $val;
+}
+
+
 1;
 __END__
 # Below is stub documentation for your module. You'd better edit it!

@@ -82,44 +82,27 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
 }
 
 
-static
-void *
-scalar_alloc(void *ps_arg, const char *key, size_t key_len,
-             flags_type flags, size_t value_size)
+struct xs_skey_result
 {
-  SV **ps;
-  char *res;
-
-  ps = (SV **) ps_arg;
-  *ps = newSVpvn("", 0);
-  res = SvGROW(*ps, value_size + 1); /* FIXME: check OOM.  */
-  res[value_size] = '\0';
-  SvCUR_set(*ps, value_size);
-
-  return (void *) res;
-}
+  SV *sv;
+  flags_type flags;
+};
 
 
 static
 void *
-hash_alloc(void *hash_arg, const char *key, size_t key_len,
+skey_alloc(void *arg, const char *key, size_t key_len,
            flags_type flags, size_t value_size)
 {
-  HV *hash;
-  SV **ps;
+  struct xs_skey_result *skey_res;
   char *res;
 
-  hash = (HV *) hash_arg;
-  /*
-    FIXME: use hv_fetch_ent() and SV* as a key.
-  */
-  ps = hv_fetch(hash, key, key_len, 1);
-  if (! ps)
-    croak("Not enough memory");
-
-  res = SvGROW(*ps, value_size + 1); /* FIXME: check OOM.  */
+  skey_res = (struct xs_skey_result *) arg;
+  skey_res->flags = flags;
+  skey_res->sv = newSVpvn("", 0);
+  res = SvGROW(skey_res->sv, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
-  SvCUR_set(*ps, value_size);
+  SvCUR_set(skey_res->sv, value_size);
 
   return (void *) res;
 }
@@ -183,19 +166,22 @@ set(memd, skey, sval, ...)
         RETVAL
 
 
-SV *
-get(memd, skey)
+void
+_xs_get(memd, skey)
         Cache_Memcached1 *  memd
         SV *                skey
     PROTOTYPE: $$
     PREINIT:
         const char *key;
         STRLEN key_len;
-        SV *sv;
-    CODE:
+        struct xs_skey_result skey_res;
+    PPCODE:
         key = SvPV(skey, key_len);
-        sv = &PL_sv_undef;
-        client_get(memd, key, key_len, scalar_alloc, &sv);
-        RETVAL = sv;
-    OUTPUT:
-        RETVAL
+        skey_res.sv = &PL_sv_undef;
+        client_get(memd, key, key_len, skey_alloc, &skey_res);
+        if (skey_res.sv != &PL_sv_undef)
+          {
+            PUSHs(sv_2mortal(skey_res.sv));
+            PUSHs(sv_2mortal(newSVuv(skey_res.flags)));
+            XSRETURN(2);
+          }
