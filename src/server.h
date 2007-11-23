@@ -1,6 +1,8 @@
 #ifndef SERVER_H
 #define SERVER_H 1
 
+#include <stddef.h>
+
 
 enum server_status {
   MEMCACHED_CLOSED,
@@ -16,6 +18,11 @@ typedef unsigned int flags_type;
 
 typedef int exptime_type;
 #define FMT_EXPTIME "%d"
+
+
+typedef void *(*alloc_value_func)(void *alloc_value_arg,
+                                  const char *key, size_t key_len,
+                                  flags_type flags, size_t value_size);
 
 
 #endif // ! SERVER_H

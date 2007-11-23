@@ -82,6 +82,45 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
 }
 
 
+static
+void *
+scalar_alloc(void *ps_arg, const char *key, size_t key_len,
+             flags_type flags, size_t value_size)
+{
+  SV **ps;
+  char *res;
+
+  ps = (SV **) ps_arg;
+  *ps = NEWSV(0, value_size); /* FIXME: check OOM.  */
+  res = SvPV_nolen(*ps);
+  res[value_size] = '\0';
+
+  return (void *) res;
+}
+
+
+static
+void *
+hash_alloc_value(void *hash_arg, const char *key, size_t key_len,
+                 flags_type flags, size_t value_size)
+{
+  HV *hash;
+  SV **ps;
+  char *res;
+
+  hash = (HV *) hash_arg;
+  ps = hv_fetch(hash, key, key_len, 1);
+  if (! ps)
+    croak("Not enough memory");
+
+  res = SvGROW(*ps, value_size + 1);
+  res[value_size] = '\0';
+  SvCUR_set(*ps, value_size);
+
+  return (void *) res;
+}
+
+
 MODULE = Cache::Memcached1		PACKAGE = Cache::Memcached1
 
 
@@ -136,5 +175,23 @@ set(memd, skey, sval, ...)
         buf = (void *) SvPV(sval, buf_len);
         res = client_set(memd, key, key_len, flags, exptime, buf, buf_len);
         RETVAL = (res == MEMCACHED_SUCCESS);
+    OUTPUT:
+        RETVAL
+
+
+SV *
+get(memd, skey)
+        Cache_Memcached1 *  memd
+        SV *                skey
+    PROTOTYPE: $$
+    PREINIT:
+        const char *key;
+        STRLEN key_len;
+        SV *sv;
+    CODE:
+        key = SvPV(skey, key_len);
+        sv = &PL_sv_undef;
+        client_get(memd, key, key_len, scalar_alloc, &sv);
+        RETVAL = sv;
     OUTPUT:
         RETVAL

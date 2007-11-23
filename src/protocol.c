@@ -17,10 +17,6 @@ static const char sp[1] = " ";
 static const char eol[2] = "\r\n";
 
 
-typedef void * (*alloc_value_func)(const char *key, size_t key_len,
-                                   flags_type flags, size_t value_size);
-
-
 typedef unsigned long long protocol_unum;
 
 
@@ -28,8 +24,9 @@ struct get_result_state
 {
   protocol_unum flags;
   protocol_unum value_size;
-  alloc_value_func alloc_value;
   void *value;
+  alloc_value_func alloc_value;
+  void *alloc_value_arg;
 };
 
 
@@ -45,10 +42,11 @@ get_result_state_reset(struct get_result_state *state)
 static inline
 void
 get_result_state_init(struct get_result_state *state,
-                      alloc_value_func alloc_value)
+                      alloc_value_func alloc_value, void *alloc_value_arg)
 {
   get_result_state_reset(state);
   state->alloc_value = alloc_value;
+  state->alloc_value_arg = alloc_value_arg;
 
 #if 0 /* No need to initialize the following.  */
   state->value = NULL;
@@ -370,7 +368,10 @@ read_value(struct command_state *state, char *buf, protocol_unum value_size)
 
   size = end - pos;
   if (size > value_size)
-    size = value_size;
+    {
+      size = value_size;
+      genparser_set_buf(&state->reply_parser_state, pos + value_size, end);
+    }
   memcpy(state->get_result.value, pos, size);
   value_size -= size;
 
@@ -424,10 +425,13 @@ parse_get_reply(struct command_state *state, char *buf)
         return res;
 
       state->get_result.value =
-        state->get_result.alloc_value((char *) state->key->iov_base,
+        state->get_result.alloc_value(state->get_result.alloc_value_arg,
+                                      (char *) state->key->iov_base,
                                       state->key->iov_len, 
                                       state->get_result.flags,
                                       state->get_result.value_size);
+      if (! state->get_result.value)
+        return MEMCACHED_FAILURE;
 
       res = read_value(state, buf, state->get_result.value_size);
       if (res != MEMCACHED_SUCCESS)
@@ -596,7 +600,7 @@ protocol_set(int fd, const char *key, size_t key_len,
 
 int
 protocol_get(int fd, const char *key, size_t key_len,
-             alloc_value_func alloc_value)
+             alloc_value_func alloc_value, void *alloc_value_arg)
 {
   struct iovec iov[3];
   struct command_state state;
@@ -610,6 +614,7 @@ protocol_get(int fd, const char *key, size_t key_len,
 
   command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
                      1, 1, parse_get_reply);
+  get_result_state_init(&state.get_result, alloc_value, alloc_value_arg);
 
   return process_command(&state);
 }

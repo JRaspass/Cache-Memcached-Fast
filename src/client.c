@@ -184,3 +184,24 @@ client_set(struct client *c, const char *key, size_t key_len,
 
   return res;
 }
+
+
+int
+client_get(struct client *c, const char *key, size_t key_len,
+           alloc_value_func alloc_value, void *alloc_value_arg)
+{
+  int server_index, fd, res;
+
+  server_index = client_get_server_index(c, key, key_len);
+  if (server_index == -1)
+    return MEMCACHED_CLOSED;
+
+  fd = c->servers[server_index].fd;
+  res = protocol_get(fd, key, key_len, alloc_value, alloc_value_arg);
+
+  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
+      || (c->close_on_error && res == MEMCACHED_ERROR))
+    client_mark_failed(c, server_index);
+
+  return res;
+}

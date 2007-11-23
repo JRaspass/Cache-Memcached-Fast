@@ -70,5 +70,10 @@ client_set(struct client *c, const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
            const void *buf, size_t buf_size);
 
+extern
+int
+client_get(struct client *c, const char *key, size_t key_len,
+           alloc_value_func alloc_value, void *alloc_value_arg);
+
 
 #endif /* ! CLIENT_H */
