@@ -33,6 +33,6 @@ ok(not $memd->set("key4", "x" x 2_000_000));
 ok($memd->set("key4", "x" x 1_000_000));
 
 is($memd->get("no_such_key"), undef);
-is($memd->get("key1"), "val1");
+is($memd->get("key2"), "val2");
 
 undef $memd;

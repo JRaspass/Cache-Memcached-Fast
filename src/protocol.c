@@ -338,11 +338,13 @@ parse_unum(struct command_state *state, char *buf,
             {
             case '0': case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8': case '9':
-              *num *= 10 + *pos - '0';
+              *num = *num * 10 + (*pos - '0');
               ++digits;
+              ++pos;
               break;
 
             default:
+              genparser_set_buf(&state->reply_parser_state, pos, end);
               return (digits ? MEMCACHED_SUCCESS : MEMCACHED_UNKNOWN);
             }
         }

@@ -91,9 +91,10 @@ scalar_alloc(void *ps_arg, const char *key, size_t key_len,
   char *res;
 
   ps = (SV **) ps_arg;
-  *ps = NEWSV(0, value_size); /* FIXME: check OOM.  */
-  res = SvPV_nolen(*ps);
+  *ps = newSVpvn("", 0);
+  res = SvGROW(*ps, value_size + 1);
   res[value_size] = '\0';
+  SvCUR_set(*ps, value_size);
 
   return (void *) res;
 }
@@ -109,6 +110,7 @@ hash_alloc_value(void *hash_arg, const char *key, size_t key_len,
   char *res;
 
   hash = (HV *) hash_arg;
+  /* FIXME: is there a way to use SV * as the key?  */
   ps = hv_fetch(hash, key, key_len, 1);
   if (! ps)
     croak("Not enough memory");
