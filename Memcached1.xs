@@ -181,7 +181,9 @@ _xs_get(memd, skey)
         client_get(memd, key, key_len, skey_alloc, &skey_res);
         if (skey_res.sv != &PL_sv_undef)
           {
+            dXSTARG;
+
             PUSHs(sv_2mortal(skey_res.sv));
-            PUSHs(sv_2mortal(newSVuv(skey_res.flags)));
+            PUSHu(skey_res.flags);
             XSRETURN(2);
           }
