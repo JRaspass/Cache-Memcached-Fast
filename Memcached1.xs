@@ -91,8 +91,7 @@ struct xs_skey_result
 
 static
 void *
-skey_alloc(void *arg, const char *key, size_t key_len,
-           flags_type flags, size_t value_size)
+skey_alloc(void *arg, size_t key_index, flags_type flags, size_t value_size)
 {
   struct xs_skey_result *skey_res;
   char *res;
@@ -103,6 +102,41 @@ skey_alloc(void *arg, const char *key, size_t key_len,
   res = SvGROW(skey_res->sv, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
   SvCUR_set(skey_res->sv, value_size);
+
+  return (void *) res;
+}
+
+
+struct xs_mkey_result
+{
+  AV *key_val;
+  AV *flags;
+  size_t stack_offset;
+};
+
+
+static
+void *
+mkey_alloc(void *arg, size_t key_index, flags_type flags, size_t value_size)
+{
+  dXSARGS;
+  struct xs_mkey_result *mkey_res;
+  SV *key_sv, *val_sv;
+  char *res;
+
+  mkey_res = (struct xs_mkey_result *) arg;
+
+  key_sv = ST(key_index + mkey_res->stack_offset);
+  SvREFCNT_inc(key_sv);
+  av_push(mkey_res->key_val, key_sv);
+
+  val_sv = newSVpvn("", 0);
+  res = SvGROW(val_sv, value_size + 1); /* FIXME: check OOM.  */
+  res[value_size] = '\0';
+  SvCUR_set(val_sv, value_size);
+  av_push(mkey_res->key_val, val_sv);
+
+  av_push(mkey_res->flags, newSVuv(flags));
 
   return (void *) res;
 }
@@ -161,6 +195,7 @@ set(memd, skey, sval, ...)
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
         res = client_set(memd, key, key_len, flags, exptime, buf, buf_len);
+        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:
         RETVAL
@@ -187,3 +222,34 @@ _xs_get(memd, skey)
             PUSHu(skey_res.flags);
             XSRETURN(2);
           }
+
+
+void
+_xs_mget(memd, ...)
+        Cache_Memcached1 *  memd
+    PROTOTYPE: $@
+    PREINIT:
+        struct xs_mkey_result mkey_res;
+        int key_count, i;
+    PPCODE:
+        key_count = items - 1;
+        mkey_res.stack_offset = 1;  
+        mkey_res.key_val = newAV();
+        mkey_res.flags = newAV();
+        av_extend(mkey_res.key_val, key_count * 2);
+        av_extend(mkey_res.flags, key_count);
+        //client_request_get();
+        for (i = 1; i <= key_count; ++i)
+          {
+            const char *key;
+            STRLEN key_len;
+
+            key = SvPV(ST(i), key_len);
+            //client_request_add_key(key, len);
+            client_get(memd, key, key_len, mkey_alloc, &mkey_res);
+          }
+        //client_request_execute(mkey_alloc, &mkey_res);
+        EXTEND(SP, 2);
+        PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
+        PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
+        XSRETURN(2);

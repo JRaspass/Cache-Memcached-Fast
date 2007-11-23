@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 13;
+use Test::More tests => 16;
 BEGIN { use_ok('Cache::Memcached1') };
 
 #########################
@@ -42,5 +42,12 @@ is($flags, 3);
 ($val, $flags) = $memd->_xs_get("no_such_key");
 is($val, undef);
 is($flags, undef);
+
+my $res1 = $memd->mget();
+is(scalar keys %$res1, 0);
+
+$res1 = $memd->mget("key1");
+is(scalar keys %$res1, 1);
+is($$res1{key1}, "val1");
 
 undef $memd;

@@ -42,6 +42,16 @@ sub get {
 }
 
 
+sub mget {
+    my ($key_val, $flags) = _xs_mget(@_);
+
+    # FIXME: process $flags here.
+
+    my %res = @$key_val;
+    return \%res;
+}
+
+
 1;
 __END__
 # Below is stub documentation for your module. You'd better edit it!

@@ -66,6 +66,7 @@ struct command_state
   size_t request_iov_count;
   struct iovec *key;
   size_t key_count;
+  size_t key_index;
 
   struct genparser_state reply_parser_state;
   size_t eol_state;
@@ -91,6 +92,7 @@ command_state_init(struct command_state *state, int fd,
   state->request_iov_count = count;
   state->key = &iov[first_key_index];
   state->key_count = key_count;
+  state->key_index = 0;
   genparser_init(&state->reply_parser_state);
   state->eol_state = 0;
   state->key_pos = (char *) state->key->iov_base;
@@ -284,9 +286,9 @@ parse_key(struct command_state *state, char *buf)
           prefix_len = state->key_pos - prefix_key;
           do
             {
+              ++state->key_index;
               state->key += 2;  /* Keys are interleaved with spaces.  */
               state->key_pos = (char *) state->key->iov_base;
-
             }
           while ((state->key->iov_len < prefix_len
                   || memcmp(state->key_pos, prefix_key, prefix_len) != 0)
@@ -428,8 +430,7 @@ parse_get_reply(struct command_state *state, char *buf)
 
       state->get_result.value =
         state->get_result.alloc_value(state->get_result.alloc_value_arg,
-                                      (char *) state->key->iov_base,
-                                      state->key->iov_len, 
+                                      state->key_index, 
                                       state->get_result.flags,
                                       state->get_result.value_size);
       if (! state->get_result.value)
