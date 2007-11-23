@@ -360,7 +360,8 @@ parse_unum(struct command_state *state, char *buf,
 
 static
 int
-read_value(struct command_state *state, char *buf, protocol_unum value_size)
+read_value(struct command_state *state, char *buf,
+           void *value, protocol_unum value_size)
 {
   char *pos, *end;
   size_t size;
@@ -376,10 +377,10 @@ read_value(struct command_state *state, char *buf, protocol_unum value_size)
       size = value_size;
       genparser_set_buf(&state->reply_parser_state, pos + value_size, end);
     }
-  memcpy(state->get_result.value, pos, size);
+  memcpy(value, pos, size);
   value_size -= size;
 
-  ptr = (void *) ((char *) state->get_result.value + size);
+  ptr = (void *) ((char *) value + size);
   while (value_size > 0
          && (res = read_restart(state->fd, ptr, value_size)) > 0)
     {
@@ -436,7 +437,8 @@ parse_get_reply(struct command_state *state, char *buf)
       if (! state->get_result.value)
         return MEMCACHED_FAILURE;
 
-      res = read_value(state, buf, state->get_result.value_size);
+      res = read_value(state, buf, state->get_result.value,
+                       state->get_result.value_size);
       if (res != MEMCACHED_SUCCESS)
         return res;
 
