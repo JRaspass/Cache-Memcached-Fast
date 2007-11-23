@@ -92,7 +92,7 @@ scalar_alloc(void *ps_arg, const char *key, size_t key_len,
 
   ps = (SV **) ps_arg;
   *ps = newSVpvn("", 0);
-  res = SvGROW(*ps, value_size + 1);
+  res = SvGROW(*ps, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
   SvCUR_set(*ps, value_size);
 
@@ -102,20 +102,22 @@ scalar_alloc(void *ps_arg, const char *key, size_t key_len,
 
 static
 void *
-hash_alloc_value(void *hash_arg, const char *key, size_t key_len,
-                 flags_type flags, size_t value_size)
+hash_alloc(void *hash_arg, const char *key, size_t key_len,
+           flags_type flags, size_t value_size)
 {
   HV *hash;
   SV **ps;
   char *res;
 
   hash = (HV *) hash_arg;
-  /* FIXME: is there a way to use SV * as the key?  */
+  /*
+    FIXME: use hv_fetch_ent() and SV* as a key.
+  */
   ps = hv_fetch(hash, key, key_len, 1);
   if (! ps)
     croak("Not enough memory");
 
-  res = SvGROW(*ps, value_size + 1);
+  res = SvGROW(*ps, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
   SvCUR_set(*ps, value_size);
 
