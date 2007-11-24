@@ -591,7 +591,8 @@ protocol_get(int fd, struct iovec *iov, int iov_count,
 {
   struct command_state state;
 
-  command_state_init(&state, fd, iov, iov_count, 1, 1, parse_get_reply);
+  command_state_init(&state, fd, iov, iov_count, iov_count - 2, 1,
+                     parse_get_reply);
   get_result_state_init(&state.get_result, alloc_value, alloc_value_arg);
 
   return process_command(&state);

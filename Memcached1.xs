@@ -119,6 +119,26 @@ struct xs_mkey_result
 
 
 static
+char *
+get_key(void *arg, int key_index, size_t *key_len)
+{
+  dXSARGS; /* Need this to access ST().  */
+  struct xs_mkey_result *mkey_res;
+  SV *key_sv;
+  STRLEN len;
+  char *res;
+
+  mkey_res = (struct xs_mkey_result *) arg;
+
+  key_sv = ST(key_index + mkey_res->stack_offset);
+  res = SvPV(key_sv, len);
+  *key_len = len;
+
+  return res;
+}
+
+
+static
 void *
 mkey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
 {
@@ -241,17 +261,18 @@ _xs_mget(memd, ...)
         mkey_res.flags = newAV();
         av_extend(mkey_res.key_val, key_count * 2);
         av_extend(mkey_res.flags, key_count);
-        //client_request_get();
-        for (i = 1; i <= key_count; ++i)
+        if (key_count > 0)
+#if 1
           {
-            const char *key;
+            char *key;
             STRLEN key_len;
 
-            key = SvPV(ST(i), key_len);
-            //client_request_add_key(key, len);
+            key = SvPV(ST(1), key_len);
             client_get(memd, key, key_len, mkey_alloc, &mkey_res);
           }
-        //client_request_execute(mkey_alloc, &mkey_res);
+#else
+          client_mget(memd, key_count, get_key, mkey_alloc, &mkey_res);
+#endif
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));

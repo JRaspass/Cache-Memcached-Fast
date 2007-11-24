@@ -220,7 +220,7 @@ client_set(struct client *c, const char *key, size_t key_len,
 
 int
 client_get(struct client *c, const char *key, size_t key_len,
-           alloc_value_func alloc_value, void *alloc_value_arg)
+           alloc_value_func alloc_value, void *arg)
 {
   static const size_t request_size = sizeof(struct iovec) * 3;
   struct iovec *iov;
@@ -252,7 +252,61 @@ client_get(struct client *c, const char *key, size_t key_len,
   iov[2].iov_base = "\r\n";
   iov[2].iov_len = 2;
 
-  res = protocol_get(s->fd, iov, 3, alloc_value, alloc_value_arg);
+  res = protocol_get(s->fd, iov, 3, alloc_value, arg);
+
+  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
+      || (c->close_on_error && res == MEMCACHED_ERROR))
+    client_mark_failed(c, server_index);
+
+  return res;
+}
+
+
+int
+client_mget(struct client *c, int key_count, get_key_func get_key,
+            alloc_value_func alloc_value, void *arg)
+{
+  size_t request_size = sizeof(struct iovec) * (key_count * 2 + 2);
+  struct iovec *iov;
+  int server_index, res;
+  struct server *s;
+  int i;
+
+  server_index = 0; //client_get_server_index(c, key, key_len);
+  if (server_index == -1)
+    return MEMCACHED_CLOSED;
+
+  s = &c->servers[server_index];
+
+  if (s->request_buf_size < request_size)
+    {
+      void *buf = realloc(s->request_buf, request_size);
+      if (! buf)
+        return -1;
+
+      s->request_buf = buf;
+      s->request_buf_size = request_size;
+    } 
+
+  iov = (struct iovec *) s->request_buf;
+
+  iov[0].iov_base = "get";
+  iov[0].iov_len = 3;
+  i = 1;
+  while (i <= key_count * 2)
+    {
+      size_t key_len;
+
+      iov[i].iov_base = " ";
+      iov[i].iov_len = 1;
+      iov[i + 1].iov_base = get_key(arg, i - 1, &key_len);
+      iov[i + 1].iov_len = key_len;
+      i += 2;
+    }
+  iov[i].iov_base = "\r\n";
+  iov[i].iov_len = 2;
+
+  res = protocol_get(s->fd, iov, i + 1, alloc_value, arg);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))

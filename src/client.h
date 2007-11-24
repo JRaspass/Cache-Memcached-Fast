@@ -75,7 +75,12 @@ client_set(struct client *c, const char *key, size_t key_len,
 extern
 int
 client_get(struct client *c, const char *key, size_t key_len,
-           alloc_value_func alloc_value, void *alloc_value_arg);
+           alloc_value_func alloc_value, void *arg);
+
+extern
+int
+client_mget(struct client *c, int key_count, get_key_func get_key,
+            alloc_value_func alloc_value, void *arg);
 
 
 #endif /* ! CLIENT_H */
