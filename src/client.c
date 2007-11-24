@@ -167,16 +167,48 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
 int
 client_set(struct client *c, const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *buf, size_t buf_size)
+           const void *value, size_t value_size)
 {
-  int server_index, fd, res;
+  static const size_t request_size =
+    (sizeof(struct iovec) * 5
+     + sizeof(" 4294967295 2147483647 18446744073709551615\r\n"));
+  struct iovec *iov;
+  char *buf;
+  int server_index, res;
+  struct server *s;
 
   server_index = client_get_server_index(c, key, key_len);
   if (server_index == -1)
     return MEMCACHED_CLOSED;
 
-  fd = c->servers[server_index].fd;
-  res = protocol_set(fd, key, key_len, flags, exptime, buf, buf_size);
+  s = &c->servers[server_index];
+
+  if (s->request_buf_size < request_size)
+    {
+      void *buf = realloc(s->request_buf, request_size);
+      if (! buf)
+        return -1;
+
+      s->request_buf = buf;
+      s->request_buf_size = request_size;
+    } 
+
+  iov = (struct iovec *) s->request_buf;
+  buf = (char *) s->request_buf + sizeof(struct iovec) * 5;
+
+  iov[0].iov_base = "set ";
+  iov[0].iov_len = 4;
+  iov[1].iov_base = (void *) key;
+  iov[1].iov_len = key_len;
+  iov[2].iov_base = buf;
+  iov[2].iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu\r\n",
+                           flags, exptime, value_size);
+  iov[3].iov_base = (void *) value;
+  iov[3].iov_len = value_size;
+  iov[4].iov_base = "\r\n";
+  iov[4].iov_len = 2;
+
+  res = protocol_set(s->fd, iov, 5, value, value_size);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -190,14 +222,37 @@ int
 client_get(struct client *c, const char *key, size_t key_len,
            alloc_value_func alloc_value, void *alloc_value_arg)
 {
-  int server_index, fd, res;
+  static const size_t request_size = sizeof(struct iovec) * 3;
+  struct iovec *iov;
+  int server_index, res;
+  struct server *s;
 
   server_index = client_get_server_index(c, key, key_len);
   if (server_index == -1)
     return MEMCACHED_CLOSED;
 
-  fd = c->servers[server_index].fd;
-  res = protocol_get(fd, key, key_len, alloc_value, alloc_value_arg);
+  s = &c->servers[server_index];
+
+  if (s->request_buf_size < request_size)
+    {
+      void *buf = realloc(s->request_buf, request_size);
+      if (! buf)
+        return -1;
+
+      s->request_buf = buf;
+      s->request_buf_size = request_size;
+    } 
+
+  iov = (struct iovec *) s->request_buf;
+
+  iov[0].iov_base = "get ";
+  iov[0].iov_len = 4;
+  iov[1].iov_base = (void *) key;
+  iov[1].iov_len = key_len;
+  iov[2].iov_base = "\r\n";
+  iov[2].iov_len = 2;
+
+  res = protocol_get(s->fd, iov, 3, alloc_value, alloc_value_arg);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))

@@ -1,6 +1,5 @@
 #include "protocol.h"
 #include "parse_reply.h"
-#include <sys/uio.h>
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -575,49 +574,24 @@ process_command(struct command_state *state)
 
 
 int
-protocol_set(int fd, const char *key, size_t key_len,
-             flags_type flags, exptime_type exptime,
+protocol_set(int fd, struct iovec *iov, int iov_count,
              const void *val, size_t val_size)
 {
-  struct iovec iov[5];
   struct command_state state;
-  char buf[sizeof(" 4294967295 4294967295 18446744073709551615\r\n")];
 
-  iov[0].iov_base = "set ";
-  iov[0].iov_len = 4;
-  iov[1].iov_base = (void *) key;
-  iov[1].iov_len = key_len;
-  iov[2].iov_base = buf;
-  iov[2].iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu\r\n",
-                           flags, exptime, val_size);
-  iov[3].iov_base = (void *) val;
-  iov[3].iov_len = val_size;
-  iov[4].iov_base = (void *) eol;
-  iov[4].iov_len = sizeof(eol);
-
-  command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
-                     1, 1, parse_set_reply);
+  command_state_init(&state, fd, iov, iov_count, 1, 1, parse_set_reply);
 
   return process_command(&state);
 }
 
 
 int
-protocol_get(int fd, const char *key, size_t key_len,
+protocol_get(int fd, struct iovec *iov, int iov_count,
              alloc_value_func alloc_value, void *alloc_value_arg)
 {
-  struct iovec iov[3];
   struct command_state state;
 
-  iov[0].iov_base = "get ";
-  iov[0].iov_len = 4;
-  iov[1].iov_base = (void *) key;
-  iov[1].iov_len = key_len;
-  iov[2].iov_base = (void *) eol;
-  iov[2].iov_len = sizeof(eol);
-
-  command_state_init(&state, fd, iov, sizeof(iov) / sizeof(*iov),
-                     1, 1, parse_get_reply);
+  command_state_init(&state, fd, iov, iov_count, 1, 1, parse_get_reply);
   get_result_state_init(&state.get_result, alloc_value, alloc_value_arg);
 
   return process_command(&state);

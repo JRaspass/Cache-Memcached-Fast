@@ -70,7 +70,7 @@ extern
 int
 client_set(struct client *c, const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *buf, size_t buf_size);
+           const void *value, size_t value_size);
 
 extern
 int
