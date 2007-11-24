@@ -20,7 +20,7 @@ typedef int exptime_type;
 #define FMT_EXPTIME "%d"
 
 
-typedef void *(*alloc_value_func)(void *alloc_value_arg, size_t key_index,
+typedef void *(*alloc_value_func)(void *alloc_value_arg, int key_index,
                                   flags_type flags, size_t value_size);
 
 

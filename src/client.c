@@ -22,6 +22,9 @@ server_init(struct server *s, const char *host, size_t host_len,
   memcpy(s->port, port, port_len);
   s->port[port_len] = '\0';
 
+  s->request_buf = NULL;
+  s->request_buf_size = 0;
+
   s->fd = -1;
 
   return 0;
@@ -32,20 +35,19 @@ static inline
 void
 server_destroy(struct server *s)
 {
+  free(s->host); /* This also frees port string.  */
+  free(s->request_buf);
+
   if (s->fd != -1)
     close(s->fd);
-
-  free(s->host);
 }
 
 
-int
+void
 client_init(struct client *c)
 {
-  c->servers = (struct server *) malloc(sizeof(struct server));
-  if (! c->servers)
-    return -1;
-  c->server_capacity = 1;
+  c->servers = NULL;
+  c->server_capacity = 0;
   c->server_count = 0;
 
   c->connect_timeout = 250;
@@ -53,15 +55,13 @@ client_init(struct client *c)
   c->namespace_prefix = NULL;
   c->namespace_prefix_len = 0;
   c->close_on_error = 1;
-
-  return 0;
 }
 
 
 void
 client_destroy(struct client *c)
 {
-  size_t i;
+  int i;
 
   for (i = 0; i < c->server_count; ++i)
     server_destroy(&c->servers[i]);
@@ -77,7 +77,7 @@ client_add_server(struct client *c, const char *host, size_t host_len,
 {
   if (c->server_count == c->server_capacity)
     {
-      size_t capacity = c->server_capacity * 2;
+      int capacity = (c->server_capacity > 0 ? c->server_capacity * 2 : 1);
       struct server *s =
         (struct server *) realloc(c->servers,
                                   capacity * sizeof(struct server));

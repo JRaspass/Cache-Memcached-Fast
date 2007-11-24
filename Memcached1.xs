@@ -41,6 +41,9 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
             continue;
           /* TODO: parse [host, weight].  */
           host = SvPV(*ps, len);
+          /*
+            NOTE: here we relay on the fact that host is zero-terminated.
+          */
           port = strrchr(host, delim);
           if (! port)
             croak("Servers should be specified as 'host:port'");
@@ -91,7 +94,7 @@ struct xs_skey_result
 
 static
 void *
-skey_alloc(void *arg, size_t key_index, flags_type flags, size_t value_size)
+skey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
 {
   struct xs_skey_result *skey_res;
   char *res;
@@ -117,9 +120,9 @@ struct xs_mkey_result
 
 static
 void *
-mkey_alloc(void *arg, size_t key_index, flags_type flags, size_t value_size)
+mkey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
 {
-  dXSARGS;
+  dXSARGS; /* Need this to access ST().  */
   struct xs_mkey_result *mkey_res;
   SV *key_sv, *val_sv;
   char *res;
@@ -154,8 +157,7 @@ new(class, conf)
         Cache_Memcached1 *memd;
     CODE:
         New(0, memd, 1, Cache_Memcached1); /* FIXME: check OOM.  */
-        if (client_init(memd) != 0)
-          croak("Not enough memory");
+        client_init(memd);
         if (! SvROK(conf) || SvTYPE(SvRV(conf)) != SVt_PVHV)
           croak("Not a hash reference");
         parse_config(memd, (HV *) SvRV(conf));
@@ -222,6 +224,7 @@ _xs_get(memd, skey)
             PUSHu(skey_res.flags);
             XSRETURN(2);
           }
+        /* Do we need 'else XSRETURN_EMPTY;'?  */
 
 
 void

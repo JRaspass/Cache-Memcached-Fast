@@ -4,6 +4,7 @@
 
 struct genparser_state
 {
+  /* FIXME: buf and buf_end aren't really a part of the state.  */
   char *buf;
   char *buf_end;
   const char *match_pos;

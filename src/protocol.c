@@ -13,7 +13,6 @@
 
 /* Any positive buffer size is supported, 1 is good for testing.  */
 static const int REPLY_BUF_SIZE = 2048;
-static const char sp[1] = " ";
 static const char eol[2] = "\r\n";
 
 
@@ -63,13 +62,13 @@ struct command_state
   int fd;
 
   struct iovec *request_iov;
-  size_t request_iov_count;
+  int request_iov_count;
   struct iovec *key;
-  size_t key_count;
-  size_t key_index;
+  int key_count;
+  int key_index;
 
   struct genparser_state reply_parser_state;
-  size_t eol_state;
+  int eol_state;
   char *key_pos;
 
   parse_reply_func parse_reply;
@@ -83,8 +82,8 @@ struct command_state
 static inline
 void
 command_state_init(struct command_state *state, int fd,
-                   struct iovec *iov, size_t count,
-                   int first_key_index, size_t key_count,
+                   struct iovec *iov, int count,
+                   int first_key_index, int key_count,
                    parse_reply_func parse_reply)
 {
   state->fd = fd;
@@ -116,7 +115,7 @@ read_restart(int fd, void *buf, size_t size)
 
 static inline
 ssize_t
-writev_restart(int fd, const struct iovec *iov, size_t count)
+writev_restart(int fd, const struct iovec *iov, int count)
 {
   ssize_t res;
 
@@ -226,7 +225,7 @@ skip_space(struct command_state *state, char *buf, char *pos, char **end)
 {
   while (1)
     {
-      while (pos != *end && *pos == sp[0])
+      while (pos != *end && *pos == ' ')
         ++pos;
 
       if (pos != *end)
@@ -300,7 +299,7 @@ parse_key(struct command_state *state, char *buf)
     {
       while (1)
         {
-          while (pos != end && *pos != sp[0])
+          while (pos != end && *pos != ' ')
             ++pos;
 
           if (pos != end)
@@ -323,7 +322,7 @@ parse_unum(struct command_state *state, char *buf,
            protocol_unum *num)
 {
   char *pos, *end;
-  int digits = 0;
+  int digits = 0; /* FIXME: should be part of the state.  */
 
   pos = genparser_get_buf(&state->reply_parser_state);
   end = genparser_get_buf_end(&state->reply_parser_state);
@@ -548,7 +547,7 @@ process_command(struct command_state *state)
 {
   while (state->request_iov_count > 0)
     {
-      size_t count;
+      int count;
       ssize_t res;
 
       count = (state->request_iov_count < MAX_IOVEC

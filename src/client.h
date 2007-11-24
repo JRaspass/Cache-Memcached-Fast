@@ -9,6 +9,8 @@ struct server
 {
   char *host;
   char *port;
+  void *request_buf;
+  size_t request_buf_size;
   int fd;
 };
 
@@ -18,8 +20,8 @@ struct client
   struct server *servers;
   char *namespace_prefix;
   size_t namespace_prefix_len;
-  size_t server_count;
-  size_t server_capacity;
+  int server_count;
+  int server_capacity;
   int connect_timeout;          /* 1/1000 sec.  */
   int io_timeout;               /* 1/1000 sec.  */
   int close_on_error;
@@ -27,7 +29,7 @@ struct client
 
 
 extern
-int
+void
 client_init(struct client *c);
 
 extern
