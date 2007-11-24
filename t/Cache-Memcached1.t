@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 16;
+use Test::More tests => 20;
 BEGIN { use_ok('Cache::Memcached1') };
 
 #########################
@@ -49,5 +49,13 @@ is(scalar keys %$res1, 0);
 $res1 = $memd->get_multi("key1");
 is(scalar keys %$res1, 1);
 is($$res1{key1}, "val1");
+
+$res1 = $memd->get_multi("key_no_such_key", "key1", "key_no_such_key",
+                         "key2", "key_no_such_key", "key_no_such_key",
+                         "key3", "key_no_such_key", "key2", "key_no_such_key");
+is(scalar keys %$res1, 3);
+is($$res1{key1}, "val1");
+is($$res1{key2}, "val2");
+is($$res1{key3}, "val3");
 
 undef $memd;

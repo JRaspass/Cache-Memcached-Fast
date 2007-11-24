@@ -281,6 +281,9 @@ parse_key(struct command_state *state, char *buf)
               ++pos;
             }
 
+          if (state->key_pos == key_end)
+            break;
+
           if (pos == end)
             {
               pos = read_next_chunk(state, buf, &end);
@@ -290,11 +293,13 @@ parse_key(struct command_state *state, char *buf)
               continue;
             }
 
-          if (state->key_pos == key_end)
-            break;
-
           if (--state->key_count == 0)
-            break;
+            {
+              ++state->key_index;
+              state->key += 2;  /* Keys are interleaved with spaces.  */
+
+              break;
+            }
 
           prefix_key = (char *) state->key->iov_base;
           prefix_len = state->key_pos - prefix_key;
@@ -302,11 +307,12 @@ parse_key(struct command_state *state, char *buf)
             {
               ++state->key_index;
               state->key += 2;  /* Keys are interleaved with spaces.  */
-              state->key_pos = (char *) state->key->iov_base;
             }
           while ((state->key->iov_len < prefix_len
-                  || memcmp(state->key_pos, prefix_key, prefix_len) != 0)
+                  || memcmp(state->key->iov_base, prefix_key, prefix_len) != 0)
                  && --state->key_count > 0);
+
+          state->key_pos = (char *) state->key->iov_base + prefix_len;
         }
     }
 
@@ -325,6 +331,10 @@ parse_key(struct command_state *state, char *buf)
             return MEMCACHED_CLOSED;
         }
     }
+
+  ++state->key_index;
+  state->key += 2;  /* Keys are interleaved with spaces.  */
+  state->key_pos = (char *) state->key->iov_base;
 
   genparser_set_buf(&state->reply_parser_state, pos, end);
   return MEMCACHED_SUCCESS;
@@ -445,7 +455,7 @@ parse_get_reply(struct command_state *state, char *buf)
 
       state->get_result.value =
         state->get_result.alloc_value(state->get_result.alloc_value_arg,
-                                      state->key_index, 
+                                      state->key_index - 1, 
                                       state->get_result.flags,
                                       state->get_result.value_size);
       if (! state->get_result.value)
