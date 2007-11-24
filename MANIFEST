@@ -15,5 +15,3 @@ src/client.h
 src/client.c
 src/connect.h
 src/connect.c
-src/protocol.h
-src/protocol.c

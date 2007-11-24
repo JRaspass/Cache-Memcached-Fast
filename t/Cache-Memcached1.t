@@ -43,10 +43,10 @@ is($flags, 3);
 is($val, undef);
 is($flags, undef);
 
-my $res1 = $memd->mget();
+my $res1 = $memd->get_multi();
 is(scalar keys %$res1, 0);
 
-$res1 = $memd->mget("key1");
+$res1 = $memd->get_multi("key1");
 is(scalar keys %$res1, 1);
 is($$res1{key1}, "val1");
 

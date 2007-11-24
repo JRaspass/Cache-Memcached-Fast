@@ -42,7 +42,7 @@ sub get {
 }
 
 
-sub mget {
+sub get_multi {
     my ($key_val, $flags) = _xs_mget(@_);
 
     # FIXME: process $flags here.
