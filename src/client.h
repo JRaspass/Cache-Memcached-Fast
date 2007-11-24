@@ -5,14 +5,7 @@
 #include <stddef.h>
 
 
-struct server
-{
-  char *host;
-  char *port;
-  void *request_buf;
-  size_t request_buf_size;
-  int fd;
-};
+struct server;
 
 
 struct client

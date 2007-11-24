@@ -31,6 +31,45 @@ struct get_result_state
 };
 
 
+struct command_state;
+typedef int (*parse_reply_func)(struct command_state *state, char *buf);
+
+
+struct command_state
+{
+  int fd;
+
+  struct iovec *request_iov;
+  int request_iov_count;
+  struct iovec *key;
+  int key_count;
+  int key_index;
+
+  struct genparser_state reply_parser_state;
+  int eol_state;
+  char *key_pos;
+
+  parse_reply_func parse_reply;
+  union
+  {
+    struct get_result_state get_result;
+  };
+
+  /* iov_buf should be the last field.  */
+  struct iovec iov_buf[1];
+};
+
+
+struct server
+{
+  char *host;
+  char *port;
+  void *request_buf;
+  size_t request_buf_size;
+  int fd;
+};
+
+
 static inline
 void
 get_result_state_reset(struct get_result_state *state)
@@ -55,43 +94,16 @@ get_result_state_init(struct get_result_state *state,
 }
 
 
-struct command_state;
-typedef int (*parse_reply_func)(struct command_state *state, char *buf);
-
-
-struct command_state
-{
-  int fd;
-
-  struct iovec *request_iov;
-  int request_iov_count;
-  struct iovec *key;
-  int key_count;
-  int key_index;
-
-  struct genparser_state reply_parser_state;
-  int eol_state;
-  char *key_pos;
-
-  parse_reply_func parse_reply;
-  union
-  {
-    struct get_result_state get_result;
-  };
-};
-
-
 static inline
 void
 command_state_init(struct command_state *state, int fd,
-                   struct iovec *iov, int count,
-                   int first_key_index, int key_count,
+                   int count, int first_key_index, int key_count,
                    parse_reply_func parse_reply)
 {
   state->fd = fd;
-  state->request_iov = iov;
+  state->request_iov = state->iov_buf;
   state->request_iov_count = count;
-  state->key = &iov[first_key_index];
+  state->key = &state->iov_buf[first_key_index];
   state->key_count = key_count;
   state->key_index = 0;
   genparser_init(&state->reply_parser_state);
@@ -577,34 +589,6 @@ process_command(struct command_state *state)
 }
 
 
-static
-int
-protocol_set(int fd, struct iovec *iov, int iov_count,
-             const void *val, size_t val_size)
-{
-  struct command_state state;
-
-  command_state_init(&state, fd, iov, iov_count, 1, 1, parse_set_reply);
-
-  return process_command(&state);
-}
-
-
-static
-int
-protocol_get(int fd, struct iovec *iov, int iov_count,
-             alloc_value_func alloc_value, void *alloc_value_arg)
-{
-  struct command_state state;
-
-  command_state_init(&state, fd, iov, iov_count, iov_count - 2, 1,
-                     parse_get_reply);
-  get_result_state_init(&state.get_result, alloc_value, alloc_value_arg);
-
-  return process_command(&state);
-}
-
-
 static inline
 int
 server_init(struct server *s, const char *host, size_t host_len,
@@ -768,8 +752,9 @@ client_set(struct client *c, const char *key, size_t key_len,
            const void *value, size_t value_size)
 {
   static const size_t request_size =
-    (sizeof(struct iovec) * 5
+    (sizeof(struct command_state) + sizeof(struct iovec) * (5 - 1)
      + sizeof(" 4294967295 2147483647 18446744073709551615\r\n"));
+  struct command_state *state;
   struct iovec *iov;
   char *buf;
   int server_index, res;
@@ -791,8 +776,9 @@ client_set(struct client *c, const char *key, size_t key_len,
       s->request_buf_size = request_size;
     } 
 
-  iov = (struct iovec *) s->request_buf;
-  buf = (char *) s->request_buf + sizeof(struct iovec) * 5;
+  state = (struct command_state *) s->request_buf;
+  iov = state->iov_buf;
+  buf = (char *) &state->iov_buf[5];
 
   iov[0].iov_base = "set ";
   iov[0].iov_len = 4;
@@ -806,7 +792,8 @@ client_set(struct client *c, const char *key, size_t key_len,
   iov[4].iov_base = "\r\n";
   iov[4].iov_len = 2;
 
-  res = protocol_set(s->fd, iov, 5, value, value_size);
+  command_state_init(state, s->fd, 5, 1, 1, parse_set_reply);
+  res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -820,7 +807,9 @@ int
 client_get(struct client *c, const char *key, size_t key_len,
            alloc_value_func alloc_value, void *arg)
 {
-  static const size_t request_size = sizeof(struct iovec) * 3;
+  static const size_t request_size =
+    (sizeof(struct command_state) + sizeof(struct iovec) * (3 - 1));
+  struct command_state *state;
   struct iovec *iov;
   int server_index, res;
   struct server *s;
@@ -839,9 +828,10 @@ client_get(struct client *c, const char *key, size_t key_len,
 
       s->request_buf = buf;
       s->request_buf_size = request_size;
-    } 
+    }
 
-  iov = (struct iovec *) s->request_buf;
+  state = (struct command_state *) s->request_buf;
+  iov = state->iov_buf;
 
   iov[0].iov_base = "get ";
   iov[0].iov_len = 4;
@@ -850,7 +840,9 @@ client_get(struct client *c, const char *key, size_t key_len,
   iov[2].iov_base = "\r\n";
   iov[2].iov_len = 2;
 
-  res = protocol_get(s->fd, iov, 3, alloc_value, arg);
+  command_state_init(state, s->fd, 3, 1, 1, parse_get_reply);
+  get_result_state_init(&state->get_result, alloc_value, arg);
+  res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -864,7 +856,10 @@ int
 client_mget(struct client *c, int key_count, get_key_func get_key,
             alloc_value_func alloc_value, void *arg)
 {
-  size_t request_size = sizeof(struct iovec) * (key_count * 2 + 2);
+  size_t request_size =
+    (sizeof(struct command_state)
+     + sizeof(struct iovec) * (key_count * 2 + 2 - 1));
+  struct command_state *state;
   struct iovec *iov, *piov;
   int server_index, res;
   struct server *s;
@@ -886,7 +881,8 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
       s->request_buf_size = request_size;
     } 
 
-  iov = (struct iovec *) s->request_buf;
+  state = (struct command_state *) s->request_buf;
+  iov = state->iov_buf;
 
   iov[0].iov_base = "get";
   iov[0].iov_len = 3;
@@ -907,7 +903,10 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
   piov->iov_base = "\r\n";
   piov->iov_len = 2;
 
-  res = protocol_get(s->fd, iov, (piov - iov) + 1, alloc_value, arg);
+  command_state_init(state, s->fd, (piov - iov) + 1, 2, key_count,
+                     parse_get_reply);
+  get_result_state_init(&state->get_result, alloc_value, arg);
+  res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
