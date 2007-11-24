@@ -267,7 +267,7 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
             alloc_value_func alloc_value, void *arg)
 {
   size_t request_size = sizeof(struct iovec) * (key_count * 2 + 2);
-  struct iovec *iov;
+  struct iovec *iov, *piov;
   int server_index, res;
   struct server *s;
   int i;
@@ -292,21 +292,24 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 
   iov[0].iov_base = "get";
   iov[0].iov_len = 3;
-  i = 1;
-  while (i <= key_count * 2)
+  piov = &iov[1];
+  i = 0;
+  while (i < key_count)
     {
       size_t key_len;
 
-      iov[i].iov_base = " ";
-      iov[i].iov_len = 1;
-      iov[i + 1].iov_base = get_key(arg, i - 1, &key_len);
-      iov[i + 1].iov_len = key_len;
-      i += 2;
+      piov->iov_base = " ";
+      piov->iov_len = 1;
+      ++piov;
+      piov->iov_base = (void *) get_key(arg, i, &key_len);
+      piov->iov_len = key_len;
+      ++piov;
+      ++i;
     }
-  iov[i].iov_base = "\r\n";
-  iov[i].iov_len = 2;
+  piov->iov_base = "\r\n";
+  piov->iov_len = 2;
 
-  res = protocol_get(s->fd, iov, i + 1, alloc_value, arg);
+  res = protocol_get(s->fd, iov, (piov - iov) + 1, alloc_value, arg);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))

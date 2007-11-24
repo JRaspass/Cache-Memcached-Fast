@@ -114,7 +114,8 @@ struct xs_mkey_result
 {
   AV *key_val;
   AV *flags;
-  size_t stack_offset;
+  I32 ax;
+  int stack_offset;
 };
 
 
@@ -122,15 +123,16 @@ static
 char *
 get_key(void *arg, int key_index, size_t *key_len)
 {
-  dXSARGS; /* Need this to access ST().  */
+  I32 ax;
   struct xs_mkey_result *mkey_res;
   SV *key_sv;
-  STRLEN len;
   char *res;
+  STRLEN len;
 
   mkey_res = (struct xs_mkey_result *) arg;
 
-  key_sv = ST(key_index + mkey_res->stack_offset);
+  ax = mkey_res->ax;
+  key_sv = ST(mkey_res->stack_offset + key_index);
   res = SvPV(key_sv, len);
   *key_len = len;
 
@@ -142,14 +144,15 @@ static
 void *
 mkey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
 {
-  dXSARGS; /* Need this to access ST().  */
+  I32 ax;
   struct xs_mkey_result *mkey_res;
   SV *key_sv, *val_sv;
   char *res;
 
   mkey_res = (struct xs_mkey_result *) arg;
 
-  key_sv = ST(key_index + mkey_res->stack_offset);
+  ax = mkey_res->ax;
+  key_sv = ST(mkey_res->stack_offset + key_index);
   SvREFCNT_inc(key_sv);
   av_push(mkey_res->key_val, key_sv);
 
@@ -256,23 +259,14 @@ _xs_mget(memd, ...)
         int key_count, i;
     PPCODE:
         key_count = items - 1;
+        mkey_res.ax = ax;
         mkey_res.stack_offset = 1;  
         mkey_res.key_val = newAV();
         mkey_res.flags = newAV();
         av_extend(mkey_res.key_val, key_count * 2);
         av_extend(mkey_res.flags, key_count);
         if (key_count > 0)
-#if 1
-          {
-            char *key;
-            STRLEN key_len;
-
-            key = SvPV(ST(1), key_len);
-            client_get(memd, key, key_len, mkey_alloc, &mkey_res);
-          }
-#else
           client_mget(memd, key_count, get_key, mkey_alloc, &mkey_res);
-#endif
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
