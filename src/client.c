@@ -397,12 +397,10 @@ read_value(struct command_state *state, char *buf,
 
   size = end - pos;
   if (size > value_size)
-    {
-      size = value_size;
-      genparser_set_buf(&state->reply_parser_state, pos + value_size, end);
-    }
+    size = value_size;
   memcpy(value, pos, size);
   value_size -= size;
+  genparser_set_buf(&state->reply_parser_state, pos + size, end);
 
   ptr = (void *) ((char *) value + size);
   while (value_size > 0
