@@ -1,12 +1,12 @@
 # Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl Cache-Memcached1.t'
+# `make test'. After `make install' it should work as `perl Cache-MemcachedFast.t'
 
 #########################
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test::More tests => 32;
-BEGIN { use_ok('Cache::Memcached1') };
+BEGIN { use_ok('Cache::MemcachedFast') };
 
 #########################
 
@@ -14,17 +14,17 @@ BEGIN { use_ok('Cache::Memcached1') };
 # its man page ( perldoc Test::More ) for help writing this test script.
 
 
-use Cache::Memcached1;
+use Cache::MemcachedFast;
 
-my $memd = Cache::Memcached1->new({
+my $memd = Cache::MemcachedFast->new({
     servers => ['localhost:11211'], #['localhost:11211', 'moonlight:50000'],
-    namespace => 'Cache::Memcached1::',
+    namespace => 'Cache::MemcachedFast::',
 #    connect_timeout => 0.26,
 #    select_timeout => 1.01,
     close_on_error => 0,
 });
 
-isa_ok($memd, 'Cache::Memcached1');
+isa_ok($memd, 'Cache::MemcachedFast');
 
 ok($memd->flush_all);
 

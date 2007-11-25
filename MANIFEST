@@ -1,11 +1,11 @@
 Changes
 Makefile.PL
 MANIFEST
-Memcached1.xs
+MemcachedFast.xs
 ppport.h
 README
-t/Cache-Memcached1.t
-lib/Cache/Memcached1.pm
+t/Cache-MemcachedFast.t
+lib/Cache/MemcachedFast.pm
 src/Makefile.PL
 src/genparser.pl
 src/genparser.h
