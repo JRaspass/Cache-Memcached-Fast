@@ -218,27 +218,27 @@ static inline
 int
 parse_keyword(struct command_state *state, char *buf)
 {
-  int parse_res;
+  int parse_res, res;
 
-  do
+  if (state->pos == state->end)
     {
-      /*
-        FIXME: on second and subsequent iterations the condition is
-        always true.
-      */
-      if (state->pos == state->end)
-        {
-          int res;
+      res = read_next_chunk(state, buf);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
+    }
 
-          res = read_next_chunk(state, buf);
-          if (res != MEMCACHED_SUCCESS)
-            return res;
-        }
+  parse_res = parse_reply(&state->reply_parser_state,
+                          &state->pos, state->end);
+
+  while (parse_res == 0)
+    {
+      res = read_next_chunk(state, buf);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
 
       parse_res = parse_reply(&state->reply_parser_state,
                               &state->pos, state->end);
     }
-  while (parse_res == 0);
 
   if (parse_res == -1)
     return MEMCACHED_UNKNOWN;
