@@ -205,6 +205,11 @@ _xs_set(memd, skey, sval, flags, ...)
         SV *                skey
         SV *                sval
         unsigned int        flags
+    ALIAS:
+        _xs_add      =  CMD_ADD
+        _xs_replace  =  CMD_REPLACE
+        _xs_append   =  CMD_APPEND
+        _xs_prepend  =  CMD_PREPEND
     PROTOTYPE: $$$$;$
     PREINIT:
         const char *key;
@@ -217,7 +222,7 @@ _xs_set(memd, skey, sval, flags, ...)
           exptime = SvIV(ST(4));
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
-        res = client_set(memd, key, key_len, flags, exptime, buf, buf_len);
+        res = client_set(memd, ix, key, key_len, flags, exptime, buf, buf_len);
         /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:

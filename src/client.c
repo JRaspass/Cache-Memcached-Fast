@@ -782,7 +782,8 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
 
 
 int
-client_set(struct client *c, const char *key, size_t key_len,
+client_set(struct client *c, enum set_cmd_e cmd,
+           const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
            const void *value, size_t value_size)
 {
@@ -815,8 +816,33 @@ client_set(struct client *c, const char *key, size_t key_len,
   iov = state->iov_buf;
   buf = (char *) &state->iov_buf[5];
 
-  iov[0].iov_base = "set ";
-  iov[0].iov_len = 4;
+  switch (cmd)
+    {
+    case CMD_SET:
+      iov[0].iov_base = "set ";
+      iov[0].iov_len = 4;
+      break;
+
+    case CMD_ADD:
+      iov[0].iov_base = "add ";
+      iov[0].iov_len = 4;
+      break;
+
+    case CMD_REPLACE:
+      iov[0].iov_base = "replace ";
+      iov[0].iov_len = 8;
+      break;
+
+    case CMD_APPEND:
+      iov[0].iov_base = "append ";
+      iov[0].iov_len = 7;
+      break;
+
+    case CMD_PREPEND:
+      iov[0].iov_base = "prepend ";
+      iov[0].iov_len = 8;
+      break;
+    }
   iov[1].iov_base = (void *) key;
   iov[1].iov_len = key_len;
   iov[2].iov_base = buf;

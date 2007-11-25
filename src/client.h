@@ -5,6 +5,9 @@
 #include <stddef.h>
 
 
+enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND };
+
+
 struct server;
 
 
@@ -61,7 +64,8 @@ client_set_close_on_error(struct client *c, int enable)
 
 extern
 int
-client_set(struct client *c, const char *key, size_t key_len,
+client_set(struct client *c, enum set_cmd_e cmd,
+           const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
            const void *value, size_t value_size);
 

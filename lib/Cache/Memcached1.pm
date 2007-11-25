@@ -43,6 +43,42 @@ sub set {
 }
 
 
+sub add {
+    my ($self, $key, $val, $exptime) = @_;
+    my $flags = 0;
+
+    # FIXME: set $flags here.
+
+    return _xs_add($self, $key, $val, $flags, $exptime);
+}
+
+
+sub replace {
+    my ($self, $key, $val, $exptime) = @_;
+    my $flags = 0;
+
+    # FIXME: set $flags here.
+
+    return _xs_replace($self, $key, $val, $flags, $exptime);
+}
+
+
+sub append {
+    my ($self, $key, $val, $exptime) = @_;
+
+    # append() does not affect flags.
+    return _xs_append($self, $key, $val, 0, $exptime);
+}
+
+
+sub prepend {
+    my ($self, $key, $val, $exptime) = @_;
+
+    # prepend() does not affect flags.
+    return _xs_prepend($self, $key, $val, 0, $exptime);
+}
+
+
 sub get {
     my ($val, $flags) = _xs_get(@_);
 
