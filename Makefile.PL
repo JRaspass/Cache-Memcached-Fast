@@ -8,7 +8,7 @@ WriteMakefile(
     PREREQ_PM         => {'Test::More'  =>  0}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Cache/Memcached1.pm', # retrieve abstract from module
-       AUTHOR         => 'Tomash Brechko <tomash@localdomain>') : ()),
+       AUTHOR         => 'Tomash Brechko <tomash.brechko@gmail.com>') : ()),
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'

@@ -6,7 +6,7 @@ WriteMakefile(
     NAME              => 'Cache::Memcached1::libclient',
     VERSION_FROM      => '../lib/Cache/Memcached1.pm', # finds $VERSION
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (AUTHOR         => 'Tomash Brechko <tomash@localdomain>') : ()),
+      (AUTHOR         => 'Tomash Brechko <tomash.brechko@gmail.com>') : ()),
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'

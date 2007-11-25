@@ -138,7 +138,7 @@ If you have a web site set up for your module, mention it here.
 
 =head1 AUTHOR
 
-Tomash Brechko, E<lt>tomash@localdomainE<gt>
+Tomash Brechko, E<lt>tomash.brechko@gmail.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
