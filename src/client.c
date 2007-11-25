@@ -6,7 +6,6 @@
 #include <sys/uio.h>
 #include <string.h>
 #include <errno.h>
-#include <assert.h>
 
 
 #ifndef MAX_IOVEC
@@ -782,7 +781,8 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
     }
   else
     {
-      assert(0 && "NOT IMPLEMENTED");
+      /* FIXME: implement multiple servers.  */
+      index = 0;
     }
 
   s = &c->servers[index];
