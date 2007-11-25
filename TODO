@@ -1,3 +1,5 @@
 - When reading multiple results, compare keys with what was passed in
   request, and use strings from there for hash keys.  Skip over
   namespace prefix.
+
+- Rework genparser state: leave only one pointer and one integer.

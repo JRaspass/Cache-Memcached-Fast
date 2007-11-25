@@ -292,3 +292,23 @@ _xs_mget(memd, ...)
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
         XSRETURN(2);
+
+
+bool
+delete(memd, skey, ...)
+        Cache_Memcached1 *  memd
+        SV *                skey
+    PROTOTYPE: $$;$
+    PREINIT:
+        const char *key;
+        STRLEN key_len;
+        int delay = 0, res;
+    CODE:
+        if (items > 2 && SvOK(ST(2)))
+          delay = SvIV(ST(2));
+        key = SvPV(skey, key_len);
+        res = client_delete(memd, key, key_len, delay);
+        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
+        RETVAL = (res == MEMCACHED_SUCCESS);
+    OUTPUT:
+        RETVAL

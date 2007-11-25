@@ -75,5 +75,10 @@ int
 client_mget(struct client *c, int key_count, get_key_func get_key,
             alloc_value_func alloc_value, void *arg);
 
+extern
+int
+client_delete(struct client *c, const char *key, size_t key_len,
+              delay_type delay);
+
 
 #endif /* ! CLIENT_H */

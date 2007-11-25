@@ -505,6 +505,33 @@ parse_set_reply(struct command_state *state, char *buf)
 }
 
 
+static
+int
+parse_delete_reply(struct command_state *state, char *buf)
+{
+  int match;
+
+  match = genparser_get_match(&state->reply_parser_state);
+  switch (match)
+    {
+    case MATCH_DELETED:
+      return swallow_eol(state, buf, 0);
+
+    case MATCH_NOT_FOUND:
+      {
+        int res;
+
+        res = swallow_eol(state, buf, 0);
+
+        return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+      }
+
+    default:
+      return MEMCACHED_UNKNOWN;
+    }
+}
+
+
 static inline
 int
 garbage_remains(struct command_state *state)
@@ -914,6 +941,57 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
   command_state_init(state, s->fd, (piov - iov) + 1, 2, key_count,
                      parse_get_reply);
   get_result_state_init(&state->get_result, alloc_value, arg);
+  res = process_command(state);
+
+  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
+      || (c->close_on_error && res == MEMCACHED_ERROR))
+    client_mark_failed(c, server_index);
+
+  return res;
+}
+
+
+int
+client_delete(struct client *c, const char *key, size_t key_len,
+              delay_type delay)
+{
+  static const size_t request_size =
+    (sizeof(struct command_state) + sizeof(struct iovec) * (3 - 1)
+     + sizeof(" 4294967295\r\n"));
+  struct command_state *state;
+  struct iovec *iov;
+  char *buf;
+  int server_index, res;
+  struct server *s;
+
+  server_index = client_get_server_index(c, key, key_len);
+  if (server_index == -1)
+    return MEMCACHED_CLOSED;
+
+  s = &c->servers[server_index];
+
+  if (s->request_buf_size < request_size)
+    {
+      void *buf = realloc(s->request_buf, request_size);
+      if (! buf)
+        return MEMCACHED_FAILURE;
+
+      s->request_buf = buf;
+      s->request_buf_size = request_size;
+    } 
+
+  state = (struct command_state *) s->request_buf;
+  iov = state->iov_buf;
+  buf = (char *) &state->iov_buf[3];
+
+  iov[0].iov_base = "delete ";
+  iov[0].iov_len = 7;
+  iov[1].iov_base = (void *) key;
+  iov[1].iov_len = key_len;
+  iov[2].iov_base = buf;
+  iov[2].iov_len = sprintf(buf, " " FMT_DELAY "\r\n", delay);
+
+  command_state_init(state, s->fd, 3, 1, 1, parse_delete_reply);
   res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
