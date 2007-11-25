@@ -18,7 +18,7 @@ use Cache::Memcached1;
 
 my $memd = Cache::Memcached1->new({
     servers => ['localhost:11211'], #['localhost:11211', 'moonlight:50000'],
-#    namespace => 'Cache::Memcached1::',
+    namespace => 'Cache::Memcached1::',
 #    connect_timeout => 0.26,
 #    select_timeout => 1.01,
     close_on_error => 0,

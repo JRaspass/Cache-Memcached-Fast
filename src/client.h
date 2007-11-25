@@ -14,8 +14,8 @@ struct server;
 struct client
 {
   struct server *servers;
-  char *namespace_prefix;
-  size_t namespace_prefix_len;
+  char *prefix;
+  size_t prefix_len;
   int server_count;
   int server_capacity;
   int connect_timeout;          /* 1/1000 sec.  */
@@ -39,7 +39,7 @@ client_add_server(struct client *c, const char *host, size_t host_len,
 
 extern
 int
-client_set_namespace(struct client *c, const char *ns, size_t ns_len);
+client_set_prefix(struct client *c, const char *ns, size_t ns_len);
 
 static inline
 void

@@ -61,7 +61,7 @@ parse_config(Cache_Memcached1 *memd, HV *conf)
       const char *ns;
       STRLEN len;
       ns = SvPV(*ps, len);
-      if (client_set_namespace(memd, ns, len) != 0)
+      if (client_set_prefix(memd, ns, len) != 0)
         croak("Not enough memory");
     }
 
