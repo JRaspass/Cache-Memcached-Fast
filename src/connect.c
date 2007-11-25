@@ -12,7 +12,7 @@ client_connect_inet(const char *host, const char *port, int stream,
                     int timeout)
 {
   struct addrinfo hint, *addr, *a;
-  int fd, res;
+  int fd = -1, res;
 
   memset(&hint, 0, sizeof(hint));
   hint.ai_flags = AI_ADDRCONFIG;
@@ -22,9 +22,9 @@ client_connect_inet(const char *host, const char *port, int stream,
     {
 #if 0
       if (res != EAI_SYSTEM)
-        throw Exception::gai_errno("getaddrinfo()", res);
+        GAI error
       else
-        throw Exception::system_errno("getaddrinfo()");
+        system error
 #endif
 
       return -1;

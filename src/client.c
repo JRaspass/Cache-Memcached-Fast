@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/uio.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 
 
@@ -173,7 +174,7 @@ swallow_eol(struct command_state *state, char *buf, int skip)
   pos = genparser_get_buf(&state->reply_parser_state);
   end = genparser_get_buf_end(&state->reply_parser_state);
 
-  while (state->eol_state < sizeof(eol))
+  while (state->eol_state < (int) sizeof(eol))
     {
       if (pos == end)
         {
@@ -274,7 +275,7 @@ parse_key(struct command_state *state, char *buf)
 
   /* Skip over the prefix.  */
   prefix_len = state->prefix_len;
-  while (end - pos < prefix_len)
+  while ((size_t) (end - pos) < prefix_len)
     {
       prefix_len -= end - pos;
       pos = read_next_chunk(state, buf, &end);
@@ -402,8 +403,7 @@ parse_unum(struct command_state *state, char *buf,
 
 static
 int
-read_value(struct command_state *state, char *buf,
-           void *value, protocol_unum value_size)
+read_value(struct command_state *state, void *value, protocol_unum value_size)
 {
   char *pos, *end;
   size_t size;
@@ -477,7 +477,7 @@ parse_get_reply(struct command_state *state, char *buf)
       if (! state->get_result.value)
         return MEMCACHED_FAILURE;
 
-      res = read_value(state, buf, state->get_result.value,
+      res = read_value(state, state->get_result.value,
                        state->get_result.value_size);
       if (res != MEMCACHED_SUCCESS)
         return res;

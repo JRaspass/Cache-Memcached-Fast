@@ -271,7 +271,7 @@ _xs_mget(memd, ...)
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;
-        int key_count, i;
+        int key_count;
     PPCODE:
         key_count = items - 1;
         mkey_res.ax = ax;
