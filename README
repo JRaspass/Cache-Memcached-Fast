@@ -25,16 +25,12 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  Test::More
+  Test::More (required only to run tests)
 
 COPYRIGHT AND LICENCE
-
-Put the correct copyright and licence information here.
 
 Copyright (C) 2007 by Tomash Brechko
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.5 or,
 at your option, any later version of Perl 5 you may have available.
-
-
