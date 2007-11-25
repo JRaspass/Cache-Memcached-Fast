@@ -15,7 +15,7 @@
 
 
 /* Any positive buffer size is supported, 1 is good for testing.  */
-static const int REPLY_BUF_SIZE = 2048;
+static const int REPLY_BUF_SIZE = 4096;
 
 
 typedef unsigned long long protocol_unum;
