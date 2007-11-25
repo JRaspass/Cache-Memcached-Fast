@@ -27,8 +27,8 @@ my $memd = Cache::Memcached1->new({
 isa_ok($memd, 'Cache::Memcached1');
 
 ok($memd->set("key1", "val1"));
-ok($memd->set("key2", "val2", 2));
-ok($memd->set("key3", "val3", 3, 10));
+ok($memd->_xs_set("key2", "val2", 2));
+ok($memd->_xs_set("key3", "val3", 3, 10));
 ok(not $memd->set("key4", "x" x 2_000_000));
 ok($memd->set("key4", "x" x 1_000_000));
 

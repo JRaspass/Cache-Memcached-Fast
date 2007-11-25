@@ -200,23 +200,20 @@ DESTROY(memd)
 
 
 bool
-set(memd, skey, sval, ...)
+_xs_set(memd, skey, sval, flags, ...)
         Cache_Memcached1 *  memd
         SV *                skey
         SV *                sval
-    PROTOTYPE: $$$;$$
+        unsigned int        flags
+    PROTOTYPE: $$$$;$
     PREINIT:
         const char *key;
         STRLEN key_len;
-        unsigned int flags = 0;
-        int exptime = 0;
         const void *buf;
         STRLEN buf_len;
-        int res;
+        int exptime = 0, res;
     CODE:
-        if (items > 3)
-          flags = SvUV(ST(3));
-        if (items > 4)
+        if (items > 4 && SvOK(ST(4)))
           exptime = SvIV(ST(4));
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);

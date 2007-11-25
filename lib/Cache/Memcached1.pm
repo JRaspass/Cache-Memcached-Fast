@@ -33,6 +33,16 @@ XSLoader::load('Cache::Memcached1', $VERSION);
 # Preloaded methods go here.
 
 
+sub set {
+    my ($self, $key, $val, $exptime) = @_;
+    my $flags = 0;
+
+    # FIXME: set $flags here.
+
+    return _xs_set($self, $key, $val, $flags, $exptime);
+}
+
+
 sub get {
     my ($val, $flags) = _xs_get(@_);
 
