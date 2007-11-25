@@ -41,6 +41,7 @@ struct command_state
 
   struct iovec *request_iov;
   int request_iov_count;
+  int write_offset;
   struct iovec *key;
   int key_count;
   int key_index;
@@ -108,6 +109,7 @@ command_state_init(struct command_state *state, int fd,
   state->fd = fd;
   state->request_iov = state->iov_buf;
   state->request_iov_count = count;
+  state->write_offset = 0;
   state->key = &state->iov_buf[first_key_index];
   state->key_count = key_count;
   state->key_index = 0;
@@ -220,6 +222,10 @@ parse_keyword(struct command_state *state, char *buf)
 
   do
     {
+      /*
+        FIXME: on second and subsequent iterations the condition is
+        always true.
+      */
       if (state->pos == state->end)
         {
           int res;
@@ -631,22 +637,32 @@ process_command(struct command_state *state)
     {
       int count;
       ssize_t res;
+      size_t len;
 
       count = (state->request_iov_count < MAX_IOVEC
                ? state->request_iov_count : MAX_IOVEC);
+
+      state->request_iov->iov_base += state->write_offset;
+      state->request_iov->iov_len -= state->write_offset;
+      len = state->request_iov->iov_len;
+
       res = writev_restart(state->fd, state->request_iov, count);
+
+      state->request_iov->iov_base -= state->write_offset;
+      state->request_iov->iov_len += state->write_offset;
 
       if (res <= 0)
         return MEMCACHED_CLOSED;
 
-      while ((size_t) res >= state->request_iov->iov_len)
+      while ((size_t) res >= len)
         {
-          res -= state->request_iov->iov_len;
+          res -= len;
           ++state->request_iov;
-          --state->request_iov_count;
+          if (--state->request_iov_count == 0)
+            break;
+          len = state->request_iov->iov_len;
         }
-      state->request_iov->iov_base += res;
-      state->request_iov->iov_len -= res;
+      state->write_offset = res;
     }
 
   if (state->parse_reply)
