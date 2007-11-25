@@ -1,6 +1,7 @@
 Changes
 Makefile.PL
 MANIFEST
+typemap
 MemcachedFast.xs
 ppport.h
 README
