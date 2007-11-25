@@ -84,5 +84,9 @@ int
 client_delete(struct client *c, const char *key, size_t key_len,
               delay_type delay);
 
+extern
+int
+client_flush_all(struct client *c, delay_type delay);
+
 
 #endif /* ! CLIENT_H */

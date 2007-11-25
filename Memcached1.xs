@@ -307,12 +307,30 @@ delete(memd, skey, ...)
     PREINIT:
         const char *key;
         STRLEN key_len;
-        int delay = 0, res;
+        unsigned int delay = 0;
+        int res;
     CODE:
         if (items > 2 && SvOK(ST(2)))
-          delay = SvIV(ST(2));
+          delay = SvUV(ST(2));
         key = SvPV(skey, key_len);
         res = client_delete(memd, key, key_len, delay);
+        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
+        RETVAL = (res == MEMCACHED_SUCCESS);
+    OUTPUT:
+        RETVAL
+
+
+bool
+flush_all(memd, ...)
+        Cache_Memcached1 *  memd
+    PROTOTYPE: $;$
+    PREINIT:
+        unsigned int delay = 0;
+        int res;
+    CODE:
+        if (items > 1 && SvOK(ST(1)))
+          delay = SvUV(ST(1));
+        res = client_flush_all(memd, delay);
         /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:

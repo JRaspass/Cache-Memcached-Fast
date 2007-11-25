@@ -3,3 +3,6 @@
   namespace prefix.
 
 - Rework genparser state: leave only one pointer and one integer.
+
+- Do we have to free all memory on croak() to avoid a leak?  Can we
+  use scopes for that?

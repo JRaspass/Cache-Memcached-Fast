@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 28;
+use Test::More tests => 32;
 BEGIN { use_ok('Cache::Memcached1') };
 
 #########################
@@ -25,6 +25,8 @@ my $memd = Cache::Memcached1->new({
 });
 
 isa_ok($memd, 'Cache::Memcached1');
+
+ok($memd->flush_all);
 
 ok($memd->set("key1", "val1"));
 ok($memd->_xs_set("key2", "val2", 2));
@@ -67,5 +69,10 @@ ok(not $memd->add("key5", "x"));
 ok($memd->append("key5", "a"));
 ok($memd->prepend("key5", "b"));
 is($memd->get("key5"), "bxa");
+
+ok($memd->flush_all(2));
+is(keys %{$memd->get_multi(map { "key$_" } (1, 2, 3, 5))}, 4);
+sleep(2.2);
+is(keys %{$memd->get_multi(map { "key$_" } (1, 2, 3, 5))}, 0);
 
 undef $memd;
