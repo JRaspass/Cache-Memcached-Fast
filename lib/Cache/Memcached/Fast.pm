@@ -1,4 +1,4 @@
-package Cache::MemcachedFast;
+package Cache::Memcached::Fast;
 
 use 5.006;
 use strict;
@@ -12,7 +12,7 @@ our @ISA = qw(Exporter);
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration	use Cache::MemcachedFast ':all';
+# This allows declaration	use Cache::Memcached::Fast ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = ( 'all' => [ qw(
@@ -28,7 +28,7 @@ our @EXPORT = qw(
 our $VERSION = '0.01';
 
 require XSLoader;
-XSLoader::load('Cache::MemcachedFast', $VERSION);
+XSLoader::load('Cache::Memcached::Fast', $VERSION);
 
 # Preloaded methods go here.
 
@@ -104,18 +104,18 @@ __END__
 
 =head1 NAME
 
-Cache::MemcachedFast - Perl extension for blah blah blah
+Cache::Memcached::Fast - Perl extension for blah blah blah
 
 =head1 SYNOPSIS
 
-  use Cache::MemcachedFast;
+  use Cache::Memcached::Fast;
   blah blah blah
 
 =head1 DESCRIPTION
 
-Stub documentation for Cache::MemcachedFast, created by h2xs. It looks
-like the author of the extension was negligent enough to leave the
-stub unedited.
+Stub documentation for Cache::Memcached::Fast, created by h2xs. It
+looks like the author of the extension was negligent enough to leave
+the stub unedited.
 
 Blah blah blah.
 

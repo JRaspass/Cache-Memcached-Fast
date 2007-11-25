@@ -2,11 +2,11 @@ Changes
 Makefile.PL
 MANIFEST
 typemap
-MemcachedFast.xs
+Fast.xs
 ppport.h
 README
-t/Cache-MemcachedFast.t
-lib/Cache/MemcachedFast.pm
+t/Cache-Memcached-Fast.t
+lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
 src/genparser.pl
 src/genparser.h

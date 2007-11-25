@@ -10,12 +10,12 @@
 #include <string.h>
 
 
-typedef struct client Cache_MemcachedFast;
+typedef struct client Cache_Memcached_Fast;
 
 
 static
 void
-parse_config(Cache_MemcachedFast *memd, HV *conf)
+parse_config(Cache_Memcached_Fast *memd, HV *conf)
 {
   SV **ps;
 
@@ -169,18 +169,18 @@ mkey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
 }
 
 
-MODULE = Cache::MemcachedFast		PACKAGE = Cache::MemcachedFast
+MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast
 
 
-Cache_MemcachedFast *
+Cache_Memcached_Fast *
 new(class, conf)
-        const char *           class
-        SV *                   conf
+        const char *            class
+        SV *                    conf
     PROTOTYPE: $$
     PREINIT:
-        Cache_MemcachedFast *memd;
+        Cache_Memcached_Fast *memd;
     CODE:
-        New(0, memd, 1, Cache_MemcachedFast); /* FIXME: check OOM.  */
+        New(0, memd, 1, Cache_Memcached_Fast); /* FIXME: check OOM.  */
         client_init(memd);
         if (! SvROK(conf) || SvTYPE(SvRV(conf)) != SVt_PVHV)
           croak("Not a hash reference");
@@ -192,7 +192,7 @@ new(class, conf)
 
 void
 DESTROY(memd)
-        Cache_MemcachedFast *  memd
+        Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     CODE:
         client_destroy(memd);
@@ -201,10 +201,10 @@ DESTROY(memd)
 
 bool
 _xs_set(memd, skey, sval, flags, ...)
-        Cache_MemcachedFast *  memd
-        SV *                   skey
-        SV *                   sval
-        unsigned int           flags
+        Cache_Memcached_Fast *  memd
+        SV *                    skey
+        SV *                    sval
+        unsigned int            flags
     ALIAS:
         _xs_add      =  CMD_ADD
         _xs_replace  =  CMD_REPLACE
@@ -231,8 +231,8 @@ _xs_set(memd, skey, sval, flags, ...)
 
 void
 _xs_get(memd, skey)
-        Cache_MemcachedFast *  memd
-        SV *                   skey
+        Cache_Memcached_Fast *  memd
+        SV *                    skey
     PROTOTYPE: $$
     PREINIT:
         const char *key;
@@ -267,7 +267,7 @@ _xs_get(memd, skey)
 
 void
 _xs_mget(memd, ...)
-        Cache_MemcachedFast *  memd
+        Cache_Memcached_Fast *  memd
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;
@@ -301,8 +301,8 @@ _xs_mget(memd, ...)
 
 bool
 delete(memd, skey, ...)
-        Cache_MemcachedFast *  memd
-        SV *                   skey
+        Cache_Memcached_Fast *  memd
+        SV *                    skey
     PROTOTYPE: $$;$
     PREINIT:
         const char *key;
@@ -322,7 +322,7 @@ delete(memd, skey, ...)
 
 bool
 flush_all(memd, ...)
-        Cache_MemcachedFast *  memd
+        Cache_Memcached_Fast *  memd
     PROTOTYPE: $;$
     PREINIT:
         unsigned int delay = 0;

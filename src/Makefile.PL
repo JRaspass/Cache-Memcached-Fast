@@ -3,8 +3,8 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
-    NAME              => 'Cache::MemcachedFast::libclient',
-    VERSION_FROM      => '../lib/Cache/MemcachedFast.pm', # finds $VERSION
+    NAME              => 'Cache::Memcached::Fast::libclient',
+    VERSION_FROM      => '../lib/Cache/Memcached/Fast.pm', # finds $VERSION
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (AUTHOR         => 'Tomash Brechko <tomash.brechko@gmail.com>') : ()),
     LIBS              => [''], # e.g., '-lm'

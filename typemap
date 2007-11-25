@@ -1,18 +1,18 @@
 TYPEMAP
-Cache_MemcachedFast *      T_CACHE_MEMCACHED
+Cache_Memcached_Fast *      T_CACHE_MEMCACHED_FAST
 
 
 INPUT
-T_CACHE_MEMCACHED
-        if (sv_derived_from($arg, \"Cache::MemcachedFast\"))
+T_CACHE_MEMCACHED_FAST
+        if (sv_derived_from($arg, \"Cache::Memcached::Fast\"))
           {
             IV tmp = SvIV((SV*) SvRV($arg));
-            $var = INT2PTR(Cache_MemcachedFast *, tmp);
+            $var = INT2PTR(Cache_Memcached_Fast *, tmp);
           }
         else
-          croak(\"memd is not of type Cache::MemcachedFast\");
+          croak(\"memd is not of type Cache::Memcached::Fast\");
 
 
 OUTPUT
-T_CACHE_MEMCACHED
+T_CACHE_MEMCACHED_FAST
         sv_setref_pv($arg, class, (void*) $var);
