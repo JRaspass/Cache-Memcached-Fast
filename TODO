@@ -1,8 +1,6 @@
-- When reading multiple results, compare keys with what was passed in
-  request, and use strings from there for hash keys.  Skip over
-  namespace prefix.
-
-- Rework genparser state: leave only one pointer and one integer.
-
 - Do we have to free all memory on croak() to avoid a leak?  Can we
   use scopes for that?
+
+- skip_reply() function, counter for pending replies to skip.  On
+  every call skip what's pending until request is pushed (and reply is
+  got).

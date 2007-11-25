@@ -46,6 +46,8 @@ struct command_state
   int key_index;
 
   struct genparser_state reply_parser_state;
+  char *pos;
+  char *end;
   int eol_state;
   char *key_pos;
   size_t prefix_len;
@@ -116,6 +118,11 @@ command_state_init(struct command_state *state, int fd,
   /* Keys are interleaved with spaces and possibly with prefix.  */
   state->key_step = (prefix_len ? 3 : 2);
   state->parse_reply = parse_reply;
+
+#if 0 /* No need to initialize the following.  */
+  state->pos = NULL;
+  state->end = NULL;
+#endif
 }
 
 
@@ -148,19 +155,19 @@ writev_restart(int fd, const struct iovec *iov, int count)
 
 
 static inline
-char *
-read_next_chunk(struct command_state *state, char *buf, char **end)
+int
+read_next_chunk(struct command_state *state, char *buf)
 {
   ssize_t res;
 
   res = read_restart(state->fd, buf, REPLY_BUF_SIZE);
   if (res <= 0)
-    return NULL;
+    return MEMCACHED_CLOSED;
 
-  *end = buf + res;
-  genparser_set_buf(&state->reply_parser_state, buf, *end);
+  state->pos = buf;
+  state->end = buf + res;
 
-  return buf;
+  return MEMCACHED_SUCCESS;
 }
 
 
@@ -169,26 +176,24 @@ int
 swallow_eol(struct command_state *state, char *buf, int skip)
 {
   static const char eol[2] = "\r\n";
-  char *pos, *end;
-
-  pos = genparser_get_buf(&state->reply_parser_state);
-  end = genparser_get_buf_end(&state->reply_parser_state);
 
   while (state->eol_state < (int) sizeof(eol))
     {
-      if (pos == end)
+      if (state->pos == state->end)
         {
-          pos = read_next_chunk(state, buf, &end);
-          if (! pos)
-            return MEMCACHED_CLOSED;
+          int res;
+
+          res = read_next_chunk(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
         }
 
-      if (*pos != eol[state->eol_state])
+      if (*state->pos != eol[state->eol_state])
         {
           if (skip)
             {
               state->eol_state = 0;
-              ++pos;
+              ++state->pos;
               continue;
             }
           else
@@ -197,11 +202,10 @@ swallow_eol(struct command_state *state, char *buf, int skip)
             }
         }
 
-      ++pos;
+      ++state->pos;
       ++state->eol_state;
     }
 
-  genparser_set_buf(&state->reply_parser_state, pos, end);
   state->eol_state = 0;
 
   return MEMCACHED_SUCCESS;
@@ -216,20 +220,17 @@ parse_keyword(struct command_state *state, char *buf)
 
   do
     {
-      /* FIXME: make the loop more effective.  */
-      char *pos, *end;
-
-      pos = genparser_get_buf(&state->reply_parser_state);
-      end = genparser_get_buf_end(&state->reply_parser_state);
-
-      if (pos == end)
+      if (state->pos == state->end)
         {
-          pos = read_next_chunk(state, buf, &end);
-          if (! pos)
-            return MEMCACHED_CLOSED;
+          int res;
+
+          res = read_next_chunk(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
         }
 
-      parse_res = parse_reply(&state->reply_parser_state);
+      parse_res = parse_reply(&state->reply_parser_state,
+                              &state->pos, state->end);
     }
   while (parse_res == 0);
 
@@ -241,20 +242,22 @@ parse_keyword(struct command_state *state, char *buf)
 
 
 static inline
-char *
-skip_space(struct command_state *state, char *buf, char *pos, char **end)
+int
+skip_space(struct command_state *state, char *buf)
 {
   while (1)
     {
-      while (pos != *end && *pos == ' ')
-        ++pos;
+      int res;
 
-      if (pos != *end)
-        return pos;
+      while (state->pos != state->end && *state->pos == ' ')
+        ++state->pos;
 
-      pos = read_next_chunk(state, buf, end);
-      if (! pos)
-        return NULL;
+      if (state->pos != state->end)
+        return MEMCACHED_SUCCESS;
+
+      res = read_next_chunk(state, buf);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
     }
 }
 
@@ -263,27 +266,26 @@ static
 int
 parse_key(struct command_state *state, char *buf)
 {
-  char *pos, *end;
   size_t prefix_len;
+  int res;
 
-  pos = genparser_get_buf(&state->reply_parser_state);
-  end = genparser_get_buf_end(&state->reply_parser_state);
-
-  pos = skip_space(state, buf, pos, &end);
-  if (! pos)
-    return MEMCACHED_CLOSED;
+  res = skip_space(state, buf);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   /* Skip over the prefix.  */
   prefix_len = state->prefix_len;
-  while ((size_t) (end - pos) < prefix_len)
+  while ((size_t) (state->end - state->pos) < prefix_len)
     {
-      prefix_len -= end - pos;
-      pos = read_next_chunk(state, buf, &end);
-      if (! pos)
-        return MEMCACHED_CLOSED;
+      int res;
+
+      prefix_len -= state->end - state->pos;
+      res = read_next_chunk(state, buf);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
     }
   if (prefix_len > 0)
-    pos += prefix_len;
+    state->pos += prefix_len;
 
   if (--state->key_count > 0)
     {
@@ -293,21 +295,23 @@ parse_key(struct command_state *state, char *buf)
           size_t prefix_len;
 
           key_end = (char *) state->key->iov_base + state->key->iov_len;
-          while (pos != end && state->key_pos != key_end
-                 && *pos == *state->key_pos)
+          while (state->pos != state->end && state->key_pos != key_end
+                 && *state->pos == *state->key_pos)
             {
               ++state->key_pos;
-              ++pos;
+              ++state->pos;
             }
 
           if (state->key_pos == key_end)
             break;
 
-          if (pos == end)
+          if (state->pos == state->end)
             {
-              pos = read_next_chunk(state, buf, &end);
-              if (! pos)
-                return MEMCACHED_CLOSED;
+              int res;
+
+              res = read_next_chunk(state, buf);
+              if (res != MEMCACHED_SUCCESS)
+                return res;
 
               continue;
             }
@@ -339,15 +343,17 @@ parse_key(struct command_state *state, char *buf)
     {
       while (1)
         {
-          while (pos != end && *pos != ' ')
-            ++pos;
+          int res;
 
-          if (pos != end)
+          while (state->pos != state->end && *state->pos != ' ')
+            ++state->pos;
+
+          if (state->pos != state->end)
             break;
 
-          pos = read_next_chunk(state, buf, &end);
-          if (! pos)
-            return MEMCACHED_CLOSED;
+          res = read_next_chunk(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
         }
     }
 
@@ -355,7 +361,6 @@ parse_key(struct command_state *state, char *buf)
   state->key += state->key_step;
   state->key_pos = (char *) state->key->iov_base;
 
-  genparser_set_buf(&state->reply_parser_state, pos, end);
   return MEMCACHED_SUCCESS;
 }
 
@@ -365,38 +370,36 @@ int
 parse_unum(struct command_state *state, char *buf,
            protocol_unum *num)
 {
-  char *pos, *end;
   int digits = 0; /* FIXME: should be part of the state.  */
+  int res;
 
-  pos = genparser_get_buf(&state->reply_parser_state);
-  end = genparser_get_buf_end(&state->reply_parser_state);
-
-  pos = skip_space(state, buf, pos, &end);
-  if (! pos)
-    return MEMCACHED_CLOSED;
+  res = skip_space(state, buf);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   while (1)
     {
-      while (pos != end)
+      int res;
+
+      while (state->pos != state->end)
         {
-          switch (*pos)
+          switch (*state->pos)
             {
             case '0': case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8': case '9':
-              *num = *num * 10 + (*pos - '0');
+              *num = *num * 10 + (*state->pos - '0');
               ++digits;
-              ++pos;
+              ++state->pos;
               break;
 
             default:
-              genparser_set_buf(&state->reply_parser_state, pos, end);
               return (digits ? MEMCACHED_SUCCESS : MEMCACHED_UNKNOWN);
             }
         }
 
-      pos = read_next_chunk(state, buf, &end);
-      if (! pos)
-        return MEMCACHED_CLOSED;
+      res = read_next_chunk(state, buf);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
     }
 }
 
@@ -405,20 +408,16 @@ static
 int
 read_value(struct command_state *state, void *value, protocol_unum value_size)
 {
-  char *pos, *end;
   size_t size;
   void *ptr;
   ssize_t res;
 
-  pos = genparser_get_buf(&state->reply_parser_state);
-  end = genparser_get_buf_end(&state->reply_parser_state);
-
-  size = end - pos;
+  size = state->end - state->pos;
   if (size > value_size)
     size = value_size;
-  memcpy(value, pos, size);
+  memcpy(value, state->pos, size);
   value_size -= size;
-  genparser_set_buf(&state->reply_parser_state, pos + size, end);
+  state->pos += size;
 
   ptr = (void *) ((char *) value + size);
   while (value_size > 0
@@ -572,12 +571,7 @@ static inline
 int
 garbage_remains(struct command_state *state)
 {
-  char *pos, *end;
-
-  pos = genparser_get_buf(&state->reply_parser_state);
-  end = genparser_get_buf_end(&state->reply_parser_state);
-
-  return (pos != end);
+  return (state->pos != state->end);
 }
 
 
@@ -588,7 +582,7 @@ read_reply(struct command_state *state)
   char buf[REPLY_BUF_SIZE];
   int res, match;
 
-  genparser_set_buf(&state->reply_parser_state, buf, buf);
+  state->pos = state->end = buf;
 
   res = parse_keyword(state, buf);
   if (res != MEMCACHED_SUCCESS)

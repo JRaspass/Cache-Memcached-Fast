@@ -93,11 +93,11 @@ $I  state->match_pos = "$common";
 
 $I  do
 $I    {
-$I      if (state->buf == state->buf_end)
+$I      if (*pos == end)
 $I        return 0;
 
 $I    LABEL_$prefix:
-$I      if (*state->buf++ != *state->match_pos++)
+$I      if (*(*pos)++ != *state->match_pos++)
 $I        {
 $I          state->phase = NO_MATCH;
 $I          return -1;
@@ -113,7 +113,7 @@ EOF
         if (@keys) {
             push @internal_labels, $phase;
             $res .= <<"EOF";
-$I  if (state->buf == state->buf_end)
+$I  if (*pos == end)
 $I    return 0;
 
 ${I}LABEL_$phase:
@@ -129,7 +129,7 @@ EOF
     }
 
     $res .= <<"EOF";
-$I  switch (*state->buf++)
+$I  switch (*(*pos)++)
 $I    {
 EOF
 
@@ -186,7 +186,7 @@ $gen_comment
 
 
 ${func_comment}int
-$C{parser_func}(struct genparser_state *state)
+$C{parser_func}(struct genparser_state *state, char **pos, char *end)
 {
   /*
     Use negative values to avoid collision with elements
@@ -243,7 +243,7 @@ enum $C{parser_func}_e {
 
 ${func_comment}extern
 int
-$C{parser_func}(struct genparser_state *state);
+$C{parser_func}(struct genparser_state *state, char **pos, char *end);
 
 
 #endif /* ! $guard */
