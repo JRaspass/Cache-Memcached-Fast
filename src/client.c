@@ -274,6 +274,7 @@ parse_key(struct command_state *state, char *buf)
     return res;
 
   /* Skip over the prefix.  */
+  /* FIXME: should be part of the state.  */
   prefix_len = state->prefix_len;
   while ((size_t) (state->end - state->pos) < prefix_len)
     {
@@ -419,6 +420,7 @@ read_value(struct command_state *state, void *value, protocol_unum value_size)
   value_size -= size;
   state->pos += size;
 
+  /* FIXME: should be part of the state (as well as value_size).  */
   ptr = (void *) ((char *) value + size);
   while (value_size > 0
          && (res = read_restart(state->fd, ptr, value_size)) > 0)
