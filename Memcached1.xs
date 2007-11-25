@@ -100,6 +100,7 @@ skey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
   char *res;
 
   skey_res = (struct xs_skey_result *) arg;
+
   skey_res->flags = flags;
   skey_res->sv = newSVpvn("", 0);
   res = SvGROW(skey_res->sv, value_size + 1); /* FIXME: check OOM.  */
@@ -235,19 +236,31 @@ _xs_get(memd, skey)
         const char *key;
         STRLEN key_len;
         struct xs_skey_result skey_res;
+        int res;
     PPCODE:
         key = SvPV(skey, key_len);
-        skey_res.sv = &PL_sv_undef;
-        client_get(memd, key, key_len, skey_alloc, &skey_res);
-        if (skey_res.sv != &PL_sv_undef)
+        skey_res.sv = NULL;
+        res = client_get(memd, key, key_len, skey_alloc, &skey_res);
+        if (skey_res.sv != NULL)
           {
-            dXSTARG;
+            if (res == MEMCACHED_SUCCESS)
+              {
+                dXSTARG;
 
-            PUSHs(sv_2mortal(skey_res.sv));
-            PUSHu(skey_res.flags);
-            XSRETURN(2);
+                PUSHs(sv_2mortal(skey_res.sv));
+                PUSHu(skey_res.flags);
+                XSRETURN(2);
+              }
+            else
+              {
+                /*
+                  client_get() didn't return success, so we can't be
+                  sure the value is valid.  Release SV, and return no
+                  result.
+                */
+                SvREFCNT_dec(skey_res.sv);
+              }
           }
-        /* Do we need 'else XSRETURN_EMPTY;'?  */
 
 
 void
@@ -266,7 +279,18 @@ _xs_mget(memd, ...)
         av_extend(mkey_res.key_val, key_count * 2);
         av_extend(mkey_res.flags, key_count);
         if (key_count > 0)
-          client_mget(memd, key_count, get_key, mkey_alloc, &mkey_res);
+          {
+            int res;
+
+            res = client_mget(memd, key_count, get_key, mkey_alloc, &mkey_res);
+            if (res != MEMCACHED_SUCCESS && av_len(mkey_res.flags) >= 0)
+              {
+                /* Last value may be invalid.  Release it.  */
+                SvREFCNT_dec(av_pop(mkey_res.key_val));
+                SvREFCNT_dec(av_pop(mkey_res.key_val));
+                SvREFCNT_dec(av_pop(mkey_res.flags));
+              }
+          }
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
