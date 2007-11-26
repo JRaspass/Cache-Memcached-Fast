@@ -1,6 +1,17 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
-0.01  Mon Nov 19 14:44:53 2007
-	- original version; created by h2xs 1.23 with options
-		-O --omit-autoload --compat-version=5.6.0 --use-new-tests --name=Cache::Memcached::Fast
 
+0.01  2007-11-26
+        - first internal release.
+
+        Supported only one server connection (TCP).  Commands are
+        set(), add(), replace(), prepend(), append(), delete(),
+        flush_all(), get(), get_multi().  Client parameters are
+        'servers', 'namespace', 'close_on_error'.  There's no
+        documentation.  Test case is messy (but does its job).
+
+
+0.01  2007-11-19
+        - original version; created by h2xs 1.23 with options
+            -O --omit-autoload --compat-version=5.6.0 \
+            --use-new-tests --name=Cache::Memcached::Fast
