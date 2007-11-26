@@ -233,7 +233,7 @@ $gen_comment
 #ifndef $guard
 #define $guard 1
 
-#include "${FindBin::Dir}genparser.h"
+#include "${FindBin::Dir}/genparser.h"
 
 
 enum $C{parser_func}_e {
