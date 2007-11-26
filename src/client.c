@@ -725,6 +725,7 @@ client_init(struct client *c)
   c->prefix = NULL;
   c->prefix_len = 0;
   c->close_on_error = 1;
+  c->noreply = 0;
 }
 
 
@@ -839,12 +840,13 @@ int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *value, size_t value_size)
+           const void *value, size_t value_size, int noreply)
 {
+  int use_noreply = (noreply && c->noreply);
   size_t request_size =
     (sizeof(struct command_state)
      + sizeof(struct iovec) * ((c->prefix_len ? 6 : 5) - 1)
-     + sizeof(" 4294967295 2147483647 18446744073709551615\r\n"));
+     + sizeof(" 4294967295 2147483647 18446744073709551615 noreply\r\n"));
   struct command_state *state;
   struct iovec *iov;
   char *buf;
@@ -909,8 +911,9 @@ client_set(struct client *c, enum set_cmd_e cmd,
   ++iov;
   buf = (char *) (iov + 3);
   iov->iov_base = buf;
-  iov->iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu\r\n",
-                           flags, exptime, value_size);
+  iov->iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu%s\r\n",
+                         flags, exptime, value_size,
+                         (use_noreply ? " noreply" : ""));
   ++iov;
   iov->iov_base = (void *) value;
   iov->iov_len = value_size;
@@ -920,8 +923,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
   ++iov;
 
   command_state_init(state, s->fd, (iov - state->iov_buf),
-                     (c->prefix_len ? 2 : 1), 1,
-                     c->prefix_len, parse_set_reply);
+                     (c->prefix_len ? 2 : 1), 1, c->prefix_len,
+                     (use_noreply ? NULL : parse_set_reply));
   res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
@@ -1068,12 +1071,13 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 
 int
 client_delete(struct client *c, const char *key, size_t key_len,
-              delay_type delay)
+              delay_type delay, int noreply)
 {
+  int use_noreply = (noreply && c->noreply);
   size_t request_size =
     (sizeof(struct command_state)
      + sizeof(struct iovec) * ((c->prefix_len ? 4 : 3) - 1)
-     + sizeof(" 4294967295\r\n"));
+     + sizeof(" 4294967295 noreply\r\n"));
   struct command_state *state;
   struct iovec *iov;
   char *buf;
@@ -1113,12 +1117,13 @@ client_delete(struct client *c, const char *key, size_t key_len,
   ++iov;
   buf = (char *) (iov + 1);
   iov->iov_base = buf;
-  iov->iov_len = sprintf(buf, " " FMT_DELAY "\r\n", delay);
+  iov->iov_len = sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
+                         (use_noreply ? " noreply" : ""));
   ++iov;
 
   command_state_init(state, s->fd, (iov - state->iov_buf),
-                     (c->prefix_len ? 2 : 1), 1,
-                     c->prefix_len, parse_delete_reply);
+                     (c->prefix_len ? 2 : 1), 1, c->prefix_len,
+                     (use_noreply ? NULL : parse_delete_reply));
   res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
@@ -1130,11 +1135,12 @@ client_delete(struct client *c, const char *key, size_t key_len,
 
 
 int
-client_flush_all(struct client *c, delay_type delay)
+client_flush_all(struct client *c, delay_type delay, int noreply)
 {
+  int use_noreply = (noreply && c->noreply);
   static const size_t request_size =
     (sizeof(struct command_state) + sizeof(struct iovec) * (1 - 1)
-     + sizeof("flush_all 4294967295\r\n"));
+     + sizeof("flush_all 4294967295 noreply\r\n"));
   struct command_state *state;
   struct iovec *iov;
   char *buf;
@@ -1163,9 +1169,11 @@ client_flush_all(struct client *c, delay_type delay)
 
   buf = (char *) (iov + 1);
   iov->iov_base = buf;
-  iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "\r\n", delay);
+  iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
+                         delay, (use_noreply ? " noreply" : ""));
 
-  command_state_init(state, s->fd, 1, 0, 0, c->prefix_len, parse_ok_reply);
+  command_state_init(state, s->fd, 1, 0, 0, c->prefix_len,
+                     (use_noreply ? NULL : parse_ok_reply));
   res = process_command(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED

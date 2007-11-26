@@ -82,6 +82,17 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
     {
       client_set_close_on_error(memd, SvTRUE(*ps));
     }
+
+  ps = hv_fetch(conf, "noreply", 7, 0);
+  if (ps)
+    {
+      int noreply;
+
+      noreply = SvTRUE(*ps);
+      client_set_noreply(memd, noreply);
+      if (noreply)
+        client_set_close_on_error(memd, 1);
+    }
 }
 
 
@@ -216,13 +227,15 @@ _xs_set(memd, skey, sval, flags, ...)
         STRLEN key_len;
         const void *buf;
         STRLEN buf_len;
-        int exptime = 0, res;
+        int exptime = 0, noreply, res;
     CODE:
         if (items > 4 && SvOK(ST(4)))
           exptime = SvIV(ST(4));
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
-        res = client_set(memd, ix, key, key_len, flags, exptime, buf, buf_len);
+        noreply = (GIMME_V == G_VOID);
+        res = client_set(memd, ix, key, key_len, flags, exptime,
+                         buf, buf_len, noreply);
         /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:
@@ -308,12 +321,13 @@ delete(memd, skey, ...)
         const char *key;
         STRLEN key_len;
         unsigned int delay = 0;
-        int res;
+        int noreply, res;
     CODE:
         if (items > 2 && SvOK(ST(2)))
           delay = SvUV(ST(2));
         key = SvPV(skey, key_len);
-        res = client_delete(memd, key, key_len, delay);
+        noreply = (GIMME_V == G_VOID);
+        res = client_delete(memd, key, key_len, delay, noreply);
         /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:
@@ -326,11 +340,12 @@ flush_all(memd, ...)
     PROTOTYPE: $;$
     PREINIT:
         unsigned int delay = 0;
-        int res;
+        int noreply, res;
     CODE:
         if (items > 1 && SvOK(ST(1)))
           delay = SvUV(ST(1));
-        res = client_flush_all(memd, delay);
+        noreply = (GIMME_V == G_VOID);
+        res = client_flush_all(memd, delay, noreply);
         /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:

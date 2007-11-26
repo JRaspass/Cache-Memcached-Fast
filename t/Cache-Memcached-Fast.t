@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 32;
+use Test::More tests => 34;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -76,3 +76,27 @@ sleep(2.2);
 is(keys %{$memd->get_multi(map { "key$_" } (1, 2, 3, 5))}, 0);
 
 undef $memd;
+
+
+if (1) {
+   ok(1);
+   ok(1);
+} else {
+    my $memd_noreply = Cache::Memcached::Fast->new({
+        servers => ['localhost:11211'],
+        namespace => 'Cache::Memcached::Fast::',
+        close_on_error => 0, # noreply should re-enable this.
+        noreply => 1,
+    });
+
+    $memd_noreply->flush_all;
+    $memd_noreply->add("k", "v");
+    $memd_noreply->set("k", "v");
+    $memd_noreply->replace("k", "v");
+    $memd_noreply->prepend("k", "_");
+    $memd_noreply->append("k", "_");
+    is($memd_noreply->get("k"), "_v_");
+    $memd_noreply->delete("k");
+    is($memd_noreply->get("k"), undef);
+    $memd_noreply->flush_all;
+}

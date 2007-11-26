@@ -21,6 +21,7 @@ struct client
   int connect_timeout;          /* 1/1000 sec.  */
   int io_timeout;               /* 1/1000 sec.  */
   int close_on_error;
+  int noreply;
 };
 
 
@@ -62,12 +63,19 @@ client_set_close_on_error(struct client *c, int enable)
   c->close_on_error = enable;
 }
 
+static inline
+void
+client_set_noreply(struct client *c, int enable)
+{
+  c->noreply = enable;
+}
+
 extern
 int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *value, size_t value_size);
+           const void *value, size_t value_size, int noreply);
 
 extern
 int
@@ -82,11 +90,11 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 extern
 int
 client_delete(struct client *c, const char *key, size_t key_len,
-              delay_type delay);
+              delay_type delay, int noreply);
 
 extern
 int
-client_flush_all(struct client *c, delay_type delay);
+client_flush_all(struct client *c, delay_type delay, int noreply);
 
 
 #endif /* ! CLIENT_H */

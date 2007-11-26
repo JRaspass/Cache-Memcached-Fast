@@ -11,3 +11,5 @@
 
 - Improve make files: libclient.a should not be installed (does it
   now?).
+
+- Add doc section "Compatibility with Cache::Memcached".
