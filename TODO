@@ -6,3 +6,5 @@
   got).
 
 - Move the tree into separate repository.
+
+- server::request_buf may have the type of struct command_state *.

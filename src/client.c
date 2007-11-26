@@ -431,6 +431,11 @@ read_value(struct command_state *state, void *value, protocol_unum value_size)
   while (value_size > 0
          && (res = read_restart(state->fd, ptr, value_size)) > 0)
     {
+      /*
+        FIXME: entering the loop would mean that the buffer is empty,
+        and there is at least "\r\n" after the value.  So better to
+        create iovec[2], and try to fill the buffer too.
+      */
       ptr = (void *) ((char *) ptr + res);
       value_size -= res;
     }
