@@ -1,4 +1,4 @@
-# Input file for getparser.pl script.
+# Input file for genparser.pl script.
 
 # Name of the parser function.
 parser_func = parse_reply
