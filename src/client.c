@@ -282,7 +282,7 @@ parse_key(struct command_state *state, char *buf)
   /* Skip over the prefix.  */
   /* FIXME: should be part of the state.  */
   prefix_len = state->prefix_len;
-  while ((size_t) (state->end - state->pos) < prefix_len)
+  while ((size_t) (state->end - state->pos) <= prefix_len)
     {
       int res;
 
