@@ -70,8 +70,8 @@ struct server
 {
   char *host;
   char *port;
-  void *request_buf;
-  size_t request_buf_size;
+  struct command_state *cmd_state;
+  size_t cmd_state_size;
   int fd;
 };
 
@@ -692,8 +692,8 @@ server_init(struct server *s, const char *host, size_t host_len,
   memcpy(s->port, port, port_len);
   s->port[port_len] = '\0';
 
-  s->request_buf = NULL;
-  s->request_buf_size = 0;
+  s->cmd_state = NULL;
+  s->cmd_state_size = 0;
 
   s->fd = -1;
 
@@ -706,7 +706,7 @@ void
 server_destroy(struct server *s)
 {
   free(s->host); /* This also frees port string.  */
-  free(s->request_buf);
+  free(s->cmd_state);
 
   if (s->fd != -1)
     close(s->fd);
@@ -859,17 +859,18 @@ client_set(struct client *c, enum set_cmd_e cmd,
 
   s = &c->servers[server_index];
 
-  if (s->request_buf_size < request_size)
+  if (s->cmd_state_size < request_size)
     {
-      void *buf = realloc(s->request_buf, request_size);
+      struct command_state *buf =
+        (struct command_state *) realloc(s->cmd_state, request_size);
       if (! buf)
         return MEMCACHED_FAILURE;
 
-      s->request_buf = buf;
-      s->request_buf_size = request_size;
+      s->cmd_state = buf;
+      s->cmd_state_size = request_size;
     } 
 
-  state = (struct command_state *) s->request_buf;
+  state = s->cmd_state;
   iov = state->iov_buf;
 
   switch (cmd)
@@ -953,17 +954,18 @@ client_get(struct client *c, const char *key, size_t key_len,
 
   s = &c->servers[server_index];
 
-  if (s->request_buf_size < request_size)
+  if (s->cmd_state_size < request_size)
     {
-      void *buf = realloc(s->request_buf, request_size);
+      struct command_state *buf =
+        (struct command_state *) realloc(s->cmd_state, request_size);
       if (! buf)
         return MEMCACHED_FAILURE;
 
-      s->request_buf = buf;
-      s->request_buf_size = request_size;
+      s->cmd_state = buf;
+      s->cmd_state_size = request_size;
     }
 
-  state = (struct command_state *) s->request_buf;
+  state = s->cmd_state;
   iov = state->iov_buf;
 
   iov->iov_base = "get ";
@@ -1016,17 +1018,18 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 
   s = &c->servers[server_index];
 
-  if (s->request_buf_size < request_size)
+  if (s->cmd_state_size < request_size)
     {
-      void *buf = realloc(s->request_buf, request_size);
+      struct command_state *buf =
+        (struct command_state *) realloc(s->cmd_state, request_size);
       if (! buf)
         return MEMCACHED_FAILURE;
 
-      s->request_buf = buf;
-      s->request_buf_size = request_size;
+      s->cmd_state = buf;
+      s->cmd_state_size = request_size;
     } 
 
-  state = (struct command_state *) s->request_buf;
+  state = s->cmd_state;
   iov = state->iov_buf;
 
   iov->iov_base = "get";
@@ -1090,17 +1093,18 @@ client_delete(struct client *c, const char *key, size_t key_len,
 
   s = &c->servers[server_index];
 
-  if (s->request_buf_size < request_size)
+  if (s->cmd_state_size < request_size)
     {
-      void *buf = realloc(s->request_buf, request_size);
+      struct command_state *buf =
+        (struct command_state *) realloc(s->cmd_state, request_size);
       if (! buf)
         return MEMCACHED_FAILURE;
 
-      s->request_buf = buf;
-      s->request_buf_size = request_size;
+      s->cmd_state = buf;
+      s->cmd_state_size = request_size;
     } 
 
-  state = (struct command_state *) s->request_buf;
+  state = s->cmd_state;
   iov = state->iov_buf;
 
   iov->iov_base = "delete ";
@@ -1154,17 +1158,18 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   s = &c->servers[server_index];
 
-  if (s->request_buf_size < request_size)
+  if (s->cmd_state_size < request_size)
     {
-      void *buf = realloc(s->request_buf, request_size);
+      struct command_state *buf =
+        (struct command_state *) realloc(s->cmd_state, request_size);
       if (! buf)
         return MEMCACHED_FAILURE;
 
-      s->request_buf = buf;
-      s->request_buf_size = request_size;
+      s->cmd_state = buf;
+      s->cmd_state_size = request_size;
     } 
 
-  state = (struct command_state *) s->request_buf;
+  state = s->cmd_state;
   iov = state->iov_buf;
 
   buf = (char *) (iov + 1);

@@ -7,9 +7,17 @@
 
 - Move the tree into separate repository.
 
-- server::request_buf may have the type of struct command_state *.
-
 - Improve make files: libclient.a should not be installed (does it
   now?).
 
 - Add doc section "Compatibility with Cache::Memcached".
+
+
+
+my $have_compress_zlib;
+
+BEGIN {
+    $have_compress_zlib = eval { use Compress::Zlib; 1; };
+}
+
+
