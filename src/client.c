@@ -56,6 +56,7 @@ struct command_state
   int key_step;
 
   parse_reply_func parse_reply;
+  int digits_seen;
 
   struct get_result_state get_result;
 
@@ -118,6 +119,7 @@ command_state_init(struct command_state *state, int fd,
   /* Keys are interleaved with spaces and possibly with prefix.  */
   state->key_step = (prefix_len ? 3 : 2);
   state->parse_reply = parse_reply;
+  state->digits_seen = 0;
 
 #if 0 /* No need to initialize the following.  */
   state->pos = NULL;
@@ -375,7 +377,6 @@ int
 parse_unum(struct command_state *state, char *buf,
            protocol_unum *num)
 {
-  int digits = 0; /* FIXME: should be part of the state.  */
   int res;
 
   res = skip_space(state, buf);
@@ -393,12 +394,20 @@ parse_unum(struct command_state *state, char *buf,
             case '0': case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8': case '9':
               *num = *num * 10 + (*state->pos - '0');
-              ++digits;
+              ++state->digits_seen;
               ++state->pos;
               break;
 
             default:
-              return (digits ? MEMCACHED_SUCCESS : MEMCACHED_UNKNOWN);
+              if (state->digits_seen)
+                {
+                  state->digits_seen = 0;
+                  return MEMCACHED_SUCCESS;
+                }
+              else
+                {
+                  return MEMCACHED_UNKNOWN;
+                }
             }
         }
 
