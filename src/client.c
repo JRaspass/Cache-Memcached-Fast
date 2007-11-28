@@ -25,7 +25,8 @@ struct get_result_state
 {
   protocol_unum flags;
   protocol_unum value_size;
-  void *value;
+  /* Make value char * just to save on type casts.  */
+  char *value;
   alloc_value_func alloc_value;
   void *alloc_value_arg;
 };
@@ -56,10 +57,7 @@ struct command_state
 
   parse_reply_func parse_reply;
 
-  union
-  {
-    struct get_result_state get_result;
-  };
+  struct get_result_state get_result;
 
   /* iov_buf should be the last field.  */
   struct iovec iov_buf[1];
@@ -413,34 +411,34 @@ parse_unum(struct command_state *state, char *buf,
 
 static
 int
-read_value(struct command_state *state, void *value, protocol_unum value_size)
+read_value(struct command_state *state)
 {
   size_t size;
-  void *ptr;
   ssize_t res;
 
   size = state->end - state->pos;
-  if (size > value_size)
-    size = value_size;
-  memcpy(value, state->pos, size);
-  value_size -= size;
+  if (size > state->get_result.value_size)
+    size = state->get_result.value_size;
+  memcpy(state->get_result.value, state->pos, size);
+  state->get_result.value_size -= size;
+  state->get_result.value += size;
   state->pos += size;
 
-  /* FIXME: should be part of the state (as well as value_size).  */
-  ptr = (void *) ((char *) value + size);
-  while (value_size > 0
-         && (res = read_restart(state->fd, ptr, value_size)) > 0)
+  while (state->get_result.value_size > 0
+         && (res = read_restart(state->fd, state->get_result.value,
+                                state->get_result.value_size)) > 0)
     {
       /*
         FIXME: entering the loop would mean that the buffer is empty,
         and there is at least "\r\n" after the value.  So better to
         create iovec[2], and try to fill the buffer too.
       */
-      ptr = (void *) ((char *) ptr + res);
-      value_size -= res;
+      state->get_result.value_size -= res;
+      state->get_result.value += res;
     }
 
-  return (value_size == 0 ? MEMCACHED_SUCCESS : MEMCACHED_CLOSED);
+  return (state->get_result.value_size == 0
+          ? MEMCACHED_SUCCESS : MEMCACHED_CLOSED);
 }
 
 
@@ -482,15 +480,14 @@ parse_get_reply(struct command_state *state, char *buf)
         return res;
 
       state->get_result.value =
-        state->get_result.alloc_value(state->get_result.alloc_value_arg,
-                                      state->key_index - 1, 
-                                      state->get_result.flags,
-                                      state->get_result.value_size);
+        (char *) state->get_result.alloc_value
+                          (state->get_result.alloc_value_arg,
+                           state->key_index - 1, state->get_result.flags,
+                           state->get_result.value_size);
       if (! state->get_result.value)
         return MEMCACHED_FAILURE;
 
-      res = read_value(state, state->get_result.value,
-                       state->get_result.value_size);
+      res = read_value(state);
       if (res != MEMCACHED_SUCCESS)
         return res;
 
