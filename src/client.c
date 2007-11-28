@@ -56,6 +56,7 @@ struct command_state
   int key_step;
 
   parse_reply_func parse_reply;
+  size_t remaining_prefix_len;
   int digits_seen;
 
   struct get_result_state get_result;
@@ -119,6 +120,7 @@ command_state_init(struct command_state *state, int fd,
   /* Keys are interleaved with spaces and possibly with prefix.  */
   state->key_step = (prefix_len ? 3 : 2);
   state->parse_reply = parse_reply;
+  state->remaining_prefix_len = state->prefix_len;
   state->digits_seen = 0;
 
 #if 0 /* No need to initialize the following.  */
@@ -272,7 +274,6 @@ static
 int
 parse_key(struct command_state *state, char *buf)
 {
-  size_t prefix_len;
   int res;
 
   res = skip_space(state, buf);
@@ -280,19 +281,19 @@ parse_key(struct command_state *state, char *buf)
     return res;
 
   /* Skip over the prefix.  */
-  /* FIXME: should be part of the state.  */
-  prefix_len = state->prefix_len;
-  while ((size_t) (state->end - state->pos) <= prefix_len)
+  while ((size_t) (state->end - state->pos) <= state->remaining_prefix_len)
     {
       int res;
 
-      prefix_len -= state->end - state->pos;
+      state->remaining_prefix_len -= state->end - state->pos;
       res = read_next_chunk(state, buf);
       if (res != MEMCACHED_SUCCESS)
         return res;
     }
-  if (prefix_len > 0)
-    state->pos += prefix_len;
+  if (state->remaining_prefix_len > 0)
+    state->pos += state->remaining_prefix_len;
+
+  state->remaining_prefix_len = state->prefix_len;
 
   if (--state->key_count > 0)
     {
