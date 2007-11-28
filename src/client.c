@@ -295,59 +295,49 @@ parse_key(struct command_state *state, char *buf)
 
   state->remaining_prefix_len = state->prefix_len;
 
-  if (--state->key_count > 0)
+  while (state->key_count > 1)
     {
-      while (1)
+      char *key_end, *prefix_key;
+      size_t prefix_len;
+
+      key_end = (char *) state->key->iov_base + state->key->iov_len;
+      while (state->pos != state->end && state->key_pos != key_end
+             && *state->pos == *state->key_pos)
         {
-          char *key_end, *prefix_key;
-          size_t prefix_len;
-
-          key_end = (char *) state->key->iov_base + state->key->iov_len;
-          while (state->pos != state->end && state->key_pos != key_end
-                 && *state->pos == *state->key_pos)
-            {
-              ++state->key_pos;
-              ++state->pos;
-            }
-
-          if (state->key_pos == key_end)
-            break;
-
-          if (state->pos == state->end)
-            {
-              int res;
-
-              res = read_next_chunk(state, buf);
-              if (res != MEMCACHED_SUCCESS)
-                return res;
-
-              continue;
-            }
-
-          if (--state->key_count == 0)
-            {
-              ++state->key_index;
-              state->key += state->key_step;
-
-              break;
-            }
-
-          prefix_key = (char *) state->key->iov_base;
-          prefix_len = state->key_pos - prefix_key;
-          do
-            {
-              ++state->key_index;
-              state->key += state->key_step;
-            }
-          while ((state->key->iov_len < prefix_len
-                  || memcmp(state->key->iov_base, prefix_key, prefix_len) != 0)
-                 && --state->key_count > 0);
-
-          state->key_pos = (char *) state->key->iov_base + prefix_len;
+          ++state->key_pos;
+          ++state->pos;
         }
+
+      if (state->key_pos == key_end)
+        break;
+
+      if (state->pos == state->end)
+        {
+          int res;
+
+          res = read_next_chunk(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          continue;
+        }
+
+      prefix_key = (char *) state->key->iov_base;
+      prefix_len = state->key_pos - prefix_key;
+      do
+        {
+          ++state->key_index;
+          state->key += state->key_step;
+        }
+      while (--state->key_count > 1
+             && (state->key->iov_len < prefix_len
+                 || memcmp(state->key->iov_base,
+                           prefix_key, prefix_len) != 0));
+
+      state->key_pos = (char *) state->key->iov_base + prefix_len;
     }
 
-  if (state->key_count == 0)
+  if (state->key_count == 1)
     {
       while (1)
         {
@@ -365,6 +355,7 @@ parse_key(struct command_state *state, char *buf)
         }
     }
 
+  --state->key_count;
   ++state->key_index;
   state->key += state->key_step;
   state->key_pos = (char *) state->key->iov_base;
