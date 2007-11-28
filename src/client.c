@@ -36,8 +36,26 @@ struct command_state;
 typedef int (*parse_reply_func)(struct command_state *state, char *buf);
 
 
+enum command_phase
+{
+  PHASE_SEND,
+  PHASE_PARSE,
+  PHASE_MATCH,
+  PHASE_KEY,
+  PHASE_SP1,
+  PHASE_UNUM1,
+  PHASE_SP2,
+  PHASE_UNUM2,
+  PHASE_EOL1,
+  PHASE_VALUE,
+  PHASE_EOL2
+};
+
+
 struct command_state
 {
+  int phase;
+
   int fd;
 
   struct iovec *request_iov;
@@ -106,6 +124,7 @@ command_state_init(struct command_state *state, int fd,
                    int count, int first_key_index, int key_count,
                    size_t prefix_len, parse_reply_func parse_reply)
 {
+  state->phase = PHASE_SEND;
   state->fd = fd;
   state->request_iov = state->iov_buf;
   state->request_iov_count = count;
@@ -129,6 +148,8 @@ command_state_init(struct command_state *state, int fd,
 #endif
 }
 
+
+#if 1
 
 static inline
 ssize_t
@@ -157,6 +178,53 @@ writev_restart(int fd, const struct iovec *iov, int count)
   return res;
 }
 
+#else /* Definitions for testing.  */
+
+static inline
+ssize_t
+read_restart(int fd, void *buf, size_t size)
+{
+  static int return_error = 0;
+  ssize_t res;
+
+  return_error = ! return_error;
+  if (return_error)
+    {
+      errno = EAGAIN;
+      return -1;
+    }
+
+  do
+    res = read(fd, buf, size > 3 ? 3 : size);
+  while (res == -1 && errno == EINTR);
+
+  return res;
+}
+
+
+static inline
+ssize_t
+writev_restart(int fd, const struct iovec *iov, int count)
+{
+  static int return_error = 0;
+  ssize_t res;
+
+  return_error = ! return_error;
+  if (return_error)
+    {
+      errno = EAGAIN;
+      return -1;
+    }
+
+  do
+    res = write(fd, iov->iov_base, iov->iov_len > 1 ? iov->iov_len - 1 : 1);
+  while (res == -1 && errno == EINTR);
+
+  return res;
+}
+
+#endif
+
 
 static inline
 int
@@ -164,12 +232,16 @@ read_next_chunk(struct command_state *state, char *buf)
 {
   ssize_t res;
 
+  state->pos = buf;
+  state->end = buf;
+
   res = read_restart(state->fd, buf, REPLY_BUF_SIZE);
+  if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    return MEMCACHED_EAGAIN;
   if (res <= 0)
     return MEMCACHED_CLOSED;
 
-  state->pos = buf;
-  state->end = buf + res;
+  state->end += res;
 
   return MEMCACHED_SUCCESS;
 }
@@ -276,10 +348,6 @@ parse_key(struct command_state *state, char *buf)
 {
   int res;
 
-  res = skip_space(state, buf);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
-
   /* Skip over the prefix.  */
   while ((size_t) (state->end - state->pos) <= state->remaining_prefix_len)
     {
@@ -291,9 +359,10 @@ parse_key(struct command_state *state, char *buf)
         return res;
     }
   if (state->remaining_prefix_len > 0)
-    state->pos += state->remaining_prefix_len;
-
-  state->remaining_prefix_len = state->prefix_len;
+    {
+      state->pos += state->remaining_prefix_len;
+      state->remaining_prefix_len = 0;
+    }
 
   while (state->key_count > 1)
     {
@@ -360,6 +429,8 @@ parse_key(struct command_state *state, char *buf)
   state->key += state->key_step;
   state->key_pos = (char *) state->key->iov_base;
 
+  state->remaining_prefix_len = state->prefix_len;
+
   return MEMCACHED_SUCCESS;
 }
 
@@ -370,10 +441,6 @@ parse_unum(struct command_state *state, char *buf,
            protocol_unum *num)
 {
   int res;
-
-  res = skip_space(state, buf);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
 
   while (1)
     {
@@ -415,7 +482,7 @@ int
 read_value(struct command_state *state)
 {
   size_t size;
-  ssize_t res;
+  ssize_t res = 0;
 
   size = state->end - state->pos;
   if (size > state->get_result.value_size)
@@ -438,6 +505,9 @@ read_value(struct command_state *state)
       state->get_result.value += res;
     }
 
+  if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+    return MEMCACHED_EAGAIN;
+
   return (state->get_result.value_size == 0
           ? MEMCACHED_SUCCESS : MEMCACHED_CLOSED);
 }
@@ -451,57 +521,103 @@ parse_get_reply(struct command_state *state, char *buf)
     {
       int match, res;
 
-      match = genparser_get_match(&state->reply_parser_state);
-      switch (match)
+      switch (state->phase)
         {
-        case MATCH_END:
-          return swallow_eol(state, buf, 0);
+        case PHASE_MATCH:
+          match = genparser_get_match(&state->reply_parser_state);
+          switch (match)
+            {
+            case MATCH_END:
+              return swallow_eol(state, buf, 0);
 
-        default:
-          return MEMCACHED_UNKNOWN;
+            default:
+              return MEMCACHED_UNKNOWN;
 
-        case MATCH_VALUE:
+            case MATCH_VALUE:
+              break;
+            }
+
+          res = skip_space(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_KEY;
+
+        case PHASE_KEY:
+          res = parse_key(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_SP1;
+
+        case PHASE_SP1:
+          res = skip_space(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_UNUM1;
+
+        case PHASE_UNUM1:
+          res = parse_unum(state, buf, &state->get_result.flags);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_SP2;
+
+        case PHASE_SP2:
+          res = skip_space(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_UNUM2;
+
+        case PHASE_UNUM2:
+          res = parse_unum(state, buf, &state->get_result.value_size);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_EOL1;
+
+        case PHASE_EOL1:
+          res = swallow_eol(state, buf, 0);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->get_result.value =
+            (char *) state->get_result.alloc_value
+                              (state->get_result.alloc_value_arg,
+                               state->key_index - 1, state->get_result.flags,
+                               state->get_result.value_size);
+          if (! state->get_result.value)
+            return MEMCACHED_FAILURE;
+
+          state->phase = PHASE_VALUE;
+
+        case PHASE_VALUE:
+          res = read_value(state);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_EOL2;
+
+        case PHASE_EOL2:
+          res = swallow_eol(state, buf, 0);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          get_result_state_reset(&state->get_result);
+
+          /* Proceed with the next key.  */
+          state->phase = PHASE_PARSE;
+
+          res = parse_keyword(state, buf);
+          if (res != MEMCACHED_SUCCESS)
+            return res;
+
+          state->phase = PHASE_MATCH;
+
           break;
         }
-
-      res = parse_key(state, buf);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
-
-      res = parse_unum(state, buf, &state->get_result.flags);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
-
-      res = parse_unum(state, buf, &state->get_result.value_size);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
-
-      res = swallow_eol(state, buf, 0);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
-
-      state->get_result.value =
-        (char *) state->get_result.alloc_value
-                          (state->get_result.alloc_value_arg,
-                           state->key_index - 1, state->get_result.flags,
-                           state->get_result.value_size);
-      if (! state->get_result.value)
-        return MEMCACHED_FAILURE;
-
-      res = read_value(state);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
-
-      res = swallow_eol(state, buf, 0);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
-
-      get_result_state_reset(&state->get_result);
-
-      /* Proceed with the next key.  */
-      res = parse_keyword(state, buf);
-      if (res != MEMCACHED_SUCCESS)
-        return res;
     }
 }
 
@@ -593,41 +709,48 @@ read_reply(struct command_state *state)
   char buf[REPLY_BUF_SIZE];
   int res, match;
 
-  state->pos = state->end = buf;
-
-  res = parse_keyword(state, buf);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
-
-  match = genparser_get_match(&state->reply_parser_state);
-  switch (match)
+  switch (state->phase)
     {
-    case MATCH_CLIENT_ERROR:
-    case MATCH_SERVER_ERROR:
-    case MATCH_ERROR:
-      {
-        int skip, res;
+    case PHASE_PARSE:
+      state->pos = state->end = buf;
 
-        skip = (match != MATCH_ERROR);
-        res = swallow_eol(state, buf, skip);
+      res = parse_keyword(state, buf);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
 
-        if (garbage_remains(state))
-          return MEMCACHED_UNKNOWN;
-
-        return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
-      }
+      state->phase = PHASE_MATCH;
 
     default:
-      {
-        int res;
+      match = genparser_get_match(&state->reply_parser_state);
+      switch (match)
+        {
+        case MATCH_CLIENT_ERROR:
+        case MATCH_SERVER_ERROR:
+        case MATCH_ERROR:
+          {
+            int skip, res;
 
-        res = state->parse_reply(state, buf);
+            skip = (match != MATCH_ERROR);
+            res = swallow_eol(state, buf, skip);
 
-        if (garbage_remains(state))
-          return MEMCACHED_UNKNOWN;
+            if (garbage_remains(state))
+              return MEMCACHED_UNKNOWN;
 
-        return res;
-      }
+            return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
+          }
+
+        default:
+          {
+            int res;
+
+            res = state->parse_reply(state, buf);
+
+            if (garbage_remains(state))
+              return MEMCACHED_UNKNOWN;
+
+            return res;
+          }
+        }
     }
 }
 
@@ -636,42 +759,65 @@ static
 int
 process_command(struct command_state *state)
 {
-  while (state->request_iov_count > 0)
+  switch (state->phase)
     {
-      int count;
-      ssize_t res;
-      size_t len;
-
-      count = (state->request_iov_count < MAX_IOVEC
-               ? state->request_iov_count : MAX_IOVEC);
-
-      state->request_iov->iov_base += state->write_offset;
-      state->request_iov->iov_len -= state->write_offset;
-      len = state->request_iov->iov_len;
-
-      res = writev_restart(state->fd, state->request_iov, count);
-
-      state->request_iov->iov_base -= state->write_offset;
-      state->request_iov->iov_len += state->write_offset;
-
-      if (res <= 0)
-        return MEMCACHED_CLOSED;
-
-      while ((size_t) res >= len)
+    case PHASE_SEND:
+      while (state->request_iov_count > 0)
         {
-          res -= len;
-          ++state->request_iov;
-          if (--state->request_iov_count == 0)
-            break;
+          int count;
+          ssize_t res;
+          size_t len;
+
+          count = (state->request_iov_count < MAX_IOVEC
+                   ? state->request_iov_count : MAX_IOVEC);
+
+          state->request_iov->iov_base += state->write_offset;
+          state->request_iov->iov_len -= state->write_offset;
           len = state->request_iov->iov_len;
+
+          res = writev_restart(state->fd, state->request_iov, count);
+
+          state->request_iov->iov_base -= state->write_offset;
+          state->request_iov->iov_len += state->write_offset;
+
+          if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
+            return MEMCACHED_EAGAIN;
+          if (res <= 0)
+            return MEMCACHED_CLOSED;
+
+          while ((size_t) res >= len)
+            {
+              res -= len;
+              ++state->request_iov;
+              if (--state->request_iov_count == 0)
+                break;
+              len = state->request_iov->iov_len;
+            }
+          state->write_offset = res;
         }
-      state->write_offset = res;
+
+      state->phase = PHASE_PARSE;
+
+    default:
+      if (state->parse_reply)
+        return read_reply(state);
     }
 
-  if (state->parse_reply)
-    return read_reply(state);
-
   return MEMCACHED_SUCCESS;
+}
+
+
+static
+int
+process_commands(struct command_state *state)
+{
+  int res;
+
+  do
+    res = process_command(state);
+  while (res == MEMCACHED_EAGAIN);
+
+  return res;
 }
 
 
@@ -924,7 +1070,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   command_state_init(state, s->fd, (iov - state->iov_buf),
                      (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_set_reply));
-  res = process_command(state);
+  res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -986,7 +1132,7 @@ client_get(struct client *c, const char *key, size_t key_len,
                      (c->prefix_len ? 2 : 1), 1,
                      c->prefix_len, parse_get_reply);
   get_result_state_init(&state->get_result, alloc_value, arg);
-  res = process_command(state);
+  res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -1060,7 +1206,7 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
                      (c->prefix_len ? 3 : 2), key_count,
                      c->prefix_len, parse_get_reply);
   get_result_state_init(&state->get_result, alloc_value, arg);
-  res = process_command(state);
+  res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -1126,7 +1272,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   command_state_init(state, s->fd, (iov - state->iov_buf),
                      (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_delete_reply));
-  res = process_command(state);
+  res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))
@@ -1177,7 +1323,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   command_state_init(state, s->fd, 1, 0, 0, c->prefix_len,
                      (use_noreply ? NULL : parse_ok_reply));
-  res = process_command(state);
+  res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
       || (c->close_on_error && res == MEMCACHED_ERROR))

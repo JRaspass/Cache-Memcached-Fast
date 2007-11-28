@@ -23,3 +23,6 @@ BEGIN {
 
 - In the distant future, it would be interesting to compare
   one-pass-restartable approach to classical accumulate-in-buffer one.
+
+- Possible bug in memcached: does it cleanly swallow too large value
+  (especially with noreply)?
