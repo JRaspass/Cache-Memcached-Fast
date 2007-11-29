@@ -28,7 +28,8 @@ struct get_result_state
   /* Make value char * just to save on type casts.  */
   char *value;
   alloc_value_func alloc_value;
-  void *alloc_value_arg;
+  invalidate_value_func invalidate_value;
+  void *value_arg;
 };
 
 
@@ -106,11 +107,14 @@ get_result_state_reset(struct get_result_state *state)
 static inline
 void
 get_result_state_init(struct get_result_state *state,
-                      alloc_value_func alloc_value, void *alloc_value_arg)
+                      alloc_value_func alloc_value,
+                      invalidate_value_func invalidate_value,
+                      void *value_arg)
 {
   get_result_state_reset(state);
   state->alloc_value = alloc_value;
-  state->alloc_value_arg = alloc_value_arg;
+  state->invalidate_value = invalidate_value;
+  state->value_arg = value_arg;
 
 #if 0 /* No need to initialize the following.  */
   state->value = NULL;
@@ -589,7 +593,7 @@ parse_get_reply(struct command_state *state, char *buf)
 
           state->get_result.value =
             (char *) state->get_result.alloc_value
-                              (state->get_result.alloc_value_arg,
+                              (state->get_result.value_arg,
                                state->key_index - 1, state->get_result.flags,
                                state->get_result.value_size);
           if (! state->get_result.value)
@@ -600,14 +604,24 @@ parse_get_reply(struct command_state *state, char *buf)
         case PHASE_VALUE:
           res = read_value(state);
           if (res != MEMCACHED_SUCCESS)
-            return res;
+            {
+              if (res != MEMCACHED_EAGAIN)
+                state->get_result.invalidate_value
+                  (state->get_result.value_arg);
+              return res;
+            }
 
           state->phase = PHASE_EOL2;
 
         case PHASE_EOL2:
           res = swallow_eol(state, buf, 0);
           if (res != MEMCACHED_SUCCESS)
-            return res;
+            {
+              if (res != MEMCACHED_EAGAIN)
+                state->get_result.invalidate_value
+                  (state->get_result.value_arg);
+              return res;
+            }
 
           get_result_state_reset(&state->get_result);
 
@@ -1087,7 +1101,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
 
 int
 client_get(struct client *c, const char *key, size_t key_len,
-           alloc_value_func alloc_value, void *arg)
+           alloc_value_func alloc_value,
+           invalidate_value_func invalidate_value, void *arg)
 {
   size_t request_size =
     (sizeof(struct command_state)
@@ -1136,7 +1151,8 @@ client_get(struct client *c, const char *key, size_t key_len,
   command_state_init(state, s->fd, (iov - state->iov_buf),
                      (c->prefix_len ? 2 : 1), 1,
                      c->prefix_len, parse_get_reply);
-  get_result_state_init(&state->get_result, alloc_value, arg);
+  get_result_state_init(&state->get_result,
+                        alloc_value, invalidate_value, arg);
   res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
@@ -1149,7 +1165,8 @@ client_get(struct client *c, const char *key, size_t key_len,
 
 int
 client_mget(struct client *c, int key_count, get_key_func get_key,
-            alloc_value_func alloc_value, void *arg)
+            alloc_value_func alloc_value,
+            invalidate_value_func invalidate_value, void *arg)
 {
   size_t request_size =
     (sizeof(struct command_state)
@@ -1210,7 +1227,8 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
   command_state_init(state, s->fd, (iov - state->iov_buf),
                      (c->prefix_len ? 3 : 2), key_count,
                      c->prefix_len, parse_get_reply);
-  get_result_state_init(&state->get_result, alloc_value, arg);
+  get_result_state_init(&state->get_result,
+                        alloc_value, invalidate_value, arg);
   res = process_commands(state);
 
   if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED

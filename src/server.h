@@ -28,6 +28,9 @@ typedef void *(*alloc_value_func)(void *alloc_value_arg, int key_index,
                                   flags_type flags, size_t value_size);
 
 
+typedef void (*invalidate_value_func)(void *arg);
+
+
 typedef char *(*get_key_func)(void *arg, int key_index, size_t *key_len);
 
 

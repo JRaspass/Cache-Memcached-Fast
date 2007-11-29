@@ -122,6 +122,19 @@ skey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
 }
 
 
+static
+void
+skey_invalidate(void *arg)
+{
+  struct xs_skey_result *skey_res;
+
+  skey_res = (struct xs_skey_result *) arg;
+
+  SvREFCNT_dec(skey_res->sv);
+  skey_res->sv = NULL;
+}
+
+
 struct xs_mkey_result
 {
   AV *key_val;
@@ -177,6 +190,21 @@ mkey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
   av_push(mkey_res->flags, newSVuv(flags));
 
   return (void *) res;
+}
+
+
+static
+void
+mkey_invalidate(void *arg)
+{
+  struct xs_mkey_result *mkey_res;
+
+  mkey_res = (struct xs_mkey_result *) arg;
+
+  /* Release last value.  */
+  SvREFCNT_dec(av_pop(mkey_res->key_val));
+  SvREFCNT_dec(av_pop(mkey_res->key_val));
+  SvREFCNT_dec(av_pop(mkey_res->flags));
 }
 
 
@@ -251,30 +279,18 @@ _xs_get(memd, skey)
         const char *key;
         STRLEN key_len;
         struct xs_skey_result skey_res;
-        int res;
     PPCODE:
         key = SvPV(skey, key_len);
         skey_res.sv = NULL;
-        res = client_get(memd, key, key_len, skey_alloc, &skey_res);
+        client_get(memd, key, key_len,
+                   skey_alloc, skey_invalidate, &skey_res);
         if (skey_res.sv != NULL)
           {
-            if (res == MEMCACHED_SUCCESS)
-              {
-                dXSTARG;
+            dXSTARG;
 
-                PUSHs(sv_2mortal(skey_res.sv));
-                PUSHu(skey_res.flags);
-                XSRETURN(2);
-              }
-            else
-              {
-                /*
-                  client_get() didn't return success, so we can't be
-                  sure the value is valid.  Release SV, and return no
-                  result.
-                */
-                SvREFCNT_dec(skey_res.sv);
-              }
+            PUSHs(sv_2mortal(skey_res.sv));
+            PUSHu(skey_res.flags);
+            XSRETURN(2);
           }
 
 
@@ -294,18 +310,8 @@ _xs_mget(memd, ...)
         av_extend(mkey_res.key_val, key_count * 2);
         av_extend(mkey_res.flags, key_count);
         if (key_count > 0)
-          {
-            int res;
-
-            res = client_mget(memd, key_count, get_key, mkey_alloc, &mkey_res);
-            if (res != MEMCACHED_SUCCESS && av_len(mkey_res.flags) >= 0)
-              {
-                /* Last value may be invalid.  Release it.  */
-                SvREFCNT_dec(av_pop(mkey_res.key_val));
-                SvREFCNT_dec(av_pop(mkey_res.key_val));
-                SvREFCNT_dec(av_pop(mkey_res.flags));
-              }
-          }
+          client_mget(memd, key_count, get_key,
+                      mkey_alloc, mkey_invalidate, &mkey_res);
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
