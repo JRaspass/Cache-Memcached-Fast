@@ -130,13 +130,12 @@ get_result_state_init(struct get_result_state *state,
 static inline
 void
 command_state_init(struct command_state *state, int fd,
-                   int count, int first_key_index, int key_count,
+                   int first_key_index, int key_count,
                    size_t prefix_len, parse_reply_func parse_reply)
 {
   state->phase = PHASE_SEND;
   state->fd = fd;
   state->request_iov = state->iov_buf;
-  state->request_iov_count = count;
   state->write_offset = 0;
   state->key = &state->iov_buf[first_key_index];
   state->key_count = key_count;
@@ -1118,6 +1117,38 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
 }
 
 
+static inline
+int
+cmd_state_extend(struct server *s, size_t size)
+{
+  if (s->cmd_state_size < size)
+    {
+      struct command_state *buf =
+        (struct command_state *) realloc(s->cmd_state, size);
+      if (! buf)
+        return MEMCACHED_FAILURE;
+
+      s->cmd_state = buf;
+      s->cmd_state_size = size;
+    }
+
+  return MEMCACHED_SUCCESS;
+}
+
+
+static inline
+void
+iov_push(struct command_state *state, void *buf, size_t buf_size)
+{
+  struct iovec *iov = &state->iov_buf[state->request_iov_count++];
+  iov->iov_base = buf;
+  iov->iov_len = buf_size;
+}
+
+
+#define STR_WITH_LEN(str) (str), (sizeof(str) - 1)
+
+
 int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
@@ -1130,7 +1161,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
      + sizeof(struct iovec) * ((c->prefix_len ? 6 : 5) - 1)
      + sizeof(" 4294967295 2147483647 18446744073709551615 noreply\r\n"));
   struct command_state *state;
-  struct iovec *iov;
+  struct iovec *buf_iov;
   char *buf;
   int server_index, res;
   struct server *s;
@@ -1141,73 +1172,52 @@ client_set(struct client *c, enum set_cmd_e cmd,
 
   s = &c->servers[server_index];
 
-  if (s->cmd_state_size < request_size)
-    {
-      struct command_state *buf =
-        (struct command_state *) realloc(s->cmd_state, request_size);
-      if (! buf)
-        return MEMCACHED_FAILURE;
-
-      s->cmd_state = buf;
-      s->cmd_state_size = request_size;
-    } 
+  res = cmd_state_extend(s, request_size);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   state = s->cmd_state;
-  iov = state->iov_buf;
+  state->request_iov_count = 0;
 
   switch (cmd)
     {
     case CMD_SET:
-      iov->iov_base = "set ";
-      iov->iov_len = 4;
+      iov_push(state, STR_WITH_LEN("set "));
       break;
 
     case CMD_ADD:
-      iov->iov_base = "add ";
-      iov->iov_len = 4;
+      iov_push(state, STR_WITH_LEN("add "));
       break;
 
     case CMD_REPLACE:
-      iov->iov_base = "replace ";
-      iov->iov_len = 8;
+      iov_push(state, STR_WITH_LEN("replace "));
       break;
 
     case CMD_APPEND:
-      iov->iov_base = "append ";
-      iov->iov_len = 7;
+      iov_push(state, STR_WITH_LEN("append "));
       break;
 
     case CMD_PREPEND:
-      iov->iov_base = "prepend ";
-      iov->iov_len = 8;
+      iov_push(state, STR_WITH_LEN("prepend "));
       break;
     }
-  ++iov;
   if (c->prefix_len)
-    {
-      iov->iov_base = c->prefix;
-      iov->iov_len = c->prefix_len;
-      ++iov;
-    }
-  iov->iov_base = (void *) key;
-  iov->iov_len = key_len;
-  ++iov;
-  buf = (char *) (iov + 3);
-  iov->iov_base = buf;
-  iov->iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu%s\r\n",
-                         flags, exptime, value_size,
-                         (use_noreply ? " noreply" : ""));
-  ++iov;
-  iov->iov_base = (void *) value;
-  iov->iov_len = value_size;
-  ++iov;
-  iov->iov_base = "\r\n";
-  iov->iov_len = 2;
-  ++iov;
+    iov_push(state, c->prefix, c->prefix_len);
+  iov_push(state, (void *) key, key_len);
+  buf_iov = &state->iov_buf[state->request_iov_count];
+  iov_push(state, NULL, 0);
+  iov_push(state, (void *) value, value_size);
+  iov_push(state, STR_WITH_LEN("\r\n"));
 
-  command_state_init(state, s->fd, (iov - state->iov_buf),
-                     (c->prefix_len ? 2 : 1), 1, c->prefix_len,
+  buf = (char *) &state->iov_buf[state->request_iov_count];
+  buf_iov->iov_base = buf;
+  buf_iov->iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " %zu%s\r\n",
+                             flags, exptime, value_size,
+                             (use_noreply ? " noreply" : ""));
+
+  command_state_init(state, s->fd, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_set_reply));
+
   res = process_scommand(c, server_index);
 
   return res;
@@ -1223,7 +1233,6 @@ client_get(struct client *c, const char *key, size_t key_len,
     (sizeof(struct command_state)
      + sizeof(struct iovec) * ((c->prefix_len ? 4 : 3) - 1));
   struct command_state *state;
-  struct iovec *iov;
   int server_index, res;
   struct server *s;
 
@@ -1233,41 +1242,24 @@ client_get(struct client *c, const char *key, size_t key_len,
 
   s = &c->servers[server_index];
 
-  if (s->cmd_state_size < request_size)
-    {
-      struct command_state *buf =
-        (struct command_state *) realloc(s->cmd_state, request_size);
-      if (! buf)
-        return MEMCACHED_FAILURE;
-
-      s->cmd_state = buf;
-      s->cmd_state_size = request_size;
-    }
+  res = cmd_state_extend(s, request_size);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   state = s->cmd_state;
-  iov = state->iov_buf;
+  state->request_iov_count = 0;
 
-  iov->iov_base = "get ";
-  iov->iov_len = 4;
-  ++iov;
+  iov_push(state, STR_WITH_LEN("get "));
   if (c->prefix_len)
-    {
-      iov->iov_base = c->prefix;
-      iov->iov_len = c->prefix_len;
-      ++iov;
-    }
-  iov->iov_base = (void *) key;
-  iov->iov_len = key_len;
-  ++iov;
-  iov->iov_base = "\r\n";
-  iov->iov_len = 2;
-  ++iov;
+    iov_push(state, c->prefix, c->prefix_len);
+  iov_push(state, (void *) key, key_len);
+  iov_push(state, STR_WITH_LEN("\r\n"));
 
-  command_state_init(state, s->fd, (iov - state->iov_buf),
-                     (c->prefix_len ? 2 : 1), 1,
+  command_state_init(state, s->fd, (c->prefix_len ? 2 : 1), 1,
                      c->prefix_len, parse_get_reply);
   get_result_state_init(&state->get_result,
                         alloc_value, invalidate_value, arg);
+
   res = process_scommand(c, server_index);
 
   return res;
@@ -1283,7 +1275,6 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
     (sizeof(struct command_state)
      + sizeof(struct iovec) * (key_count * (c->prefix_len ? 3 : 2) + 2 - 1));
   struct command_state *state;
-  struct iovec *iov;
   int server_index, res;
   struct server *s;
   int i;
@@ -1295,51 +1286,32 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 
   s = &c->servers[server_index];
 
-  if (s->cmd_state_size < request_size)
-    {
-      struct command_state *buf =
-        (struct command_state *) realloc(s->cmd_state, request_size);
-      if (! buf)
-        return MEMCACHED_FAILURE;
-
-      s->cmd_state = buf;
-      s->cmd_state_size = request_size;
-    } 
+  res = cmd_state_extend(s, request_size);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   state = s->cmd_state;
-  iov = state->iov_buf;
+  state->request_iov_count = 0;
 
-  iov->iov_base = "get";
-  iov->iov_len = 3;
-  ++iov;
-  i = 0;
-  while (i < key_count)
+  iov_push(state, STR_WITH_LEN("get"));
+  for (i = 0; i < key_count; ++i)
     {
+      char *key;
       size_t key_len;
 
-      iov->iov_base = " ";
-      iov->iov_len = 1;
-      ++iov;
+      iov_push(state, STR_WITH_LEN(" "));
       if (c->prefix_len)
-        {
-          iov->iov_base = c->prefix;
-          iov->iov_len = c->prefix_len;
-          ++iov;
-        }
-      iov->iov_base = (void *) get_key(arg, i, &key_len);
-      iov->iov_len = key_len;
-      ++iov;
-      ++i;
+        iov_push(state, c->prefix, c->prefix_len);
+      key = get_key(arg, i, &key_len);
+      iov_push(state, (void *) key, key_len);
     }
-  iov->iov_base = "\r\n";
-  iov->iov_len = 2;
-  ++iov;
+  iov_push(state, STR_WITH_LEN("\r\n"));
 
-  command_state_init(state, s->fd, (iov - state->iov_buf),
-                     (c->prefix_len ? 3 : 2), key_count,
+  command_state_init(state, s->fd, (c->prefix_len ? 3 : 2), key_count,
                      c->prefix_len, parse_get_reply);
   get_result_state_init(&state->get_result,
                         alloc_value, invalidate_value, arg);
+
   res = process_mcommand(c);
 
   return res;
@@ -1356,7 +1328,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
      + sizeof(struct iovec) * ((c->prefix_len ? 4 : 3) - 1)
      + sizeof(" 4294967295 noreply\r\n"));
   struct command_state *state;
-  struct iovec *iov;
+  struct iovec *buf_iov;
   char *buf;
   int server_index, res;
   struct server *s;
@@ -1367,41 +1339,27 @@ client_delete(struct client *c, const char *key, size_t key_len,
 
   s = &c->servers[server_index];
 
-  if (s->cmd_state_size < request_size)
-    {
-      struct command_state *buf =
-        (struct command_state *) realloc(s->cmd_state, request_size);
-      if (! buf)
-        return MEMCACHED_FAILURE;
-
-      s->cmd_state = buf;
-      s->cmd_state_size = request_size;
-    } 
+  res = cmd_state_extend(s, request_size);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   state = s->cmd_state;
-  iov = state->iov_buf;
+  state->request_iov_count = 0;
 
-  iov->iov_base = "delete ";
-  iov->iov_len = 7;
-  ++iov;
+  iov_push(state, STR_WITH_LEN("delete "));
   if (c->prefix_len)
-    {
-      iov->iov_base = c->prefix;
-      iov->iov_len = c->prefix_len;
-      ++iov;
-    }
-  iov->iov_base = (void *) key;
-  iov->iov_len = key_len;
-  ++iov;
-  buf = (char *) (iov + 1);
-  iov->iov_base = buf;
-  iov->iov_len = sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
-                         (use_noreply ? " noreply" : ""));
-  ++iov;
+    iov_push(state, c->prefix, c->prefix_len);
+  iov_push(state, (void *) key, key_len);
+  buf_iov = &state->iov_buf[state->request_iov_count];
+  iov_push(state, NULL, 0);
+  buf = (char *) &state->iov_buf[state->request_iov_count];
+  buf_iov->iov_base = buf;
+  buf_iov->iov_len = sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
+                             (use_noreply ? " noreply" : ""));
 
-  command_state_init(state, s->fd, (iov - state->iov_buf),
-                     (c->prefix_len ? 2 : 1), 1, c->prefix_len,
+  command_state_init(state, s->fd, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_delete_reply));
+
   res = process_scommand(c, server_index);
 
   return res;
@@ -1416,7 +1374,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
     (sizeof(struct command_state) + sizeof(struct iovec) * (1 - 1)
      + sizeof("flush_all 4294967295 noreply\r\n"));
   struct command_state *state;
-  struct iovec *iov;
+  struct iovec *buf_iov;
   char *buf;
   int server_index, res;
   struct server *s;
@@ -1428,26 +1386,21 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   s = &c->servers[server_index];
 
-  if (s->cmd_state_size < request_size)
-    {
-      struct command_state *buf =
-        (struct command_state *) realloc(s->cmd_state, request_size);
-      if (! buf)
-        return MEMCACHED_FAILURE;
-
-      s->cmd_state = buf;
-      s->cmd_state_size = request_size;
-    } 
+  res = cmd_state_extend(s, request_size);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   state = s->cmd_state;
-  iov = state->iov_buf;
+  state->request_iov_count = 0;
 
-  buf = (char *) (iov + 1);
-  iov->iov_base = buf;
-  iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
-                         delay, (use_noreply ? " noreply" : ""));
+  buf_iov = &state->iov_buf[state->request_iov_count];
+  iov_push(state, NULL, 0);
+  buf = (char *) &state->iov_buf[state->request_iov_count];
+  buf_iov->iov_base = buf;
+  buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
+                             delay, (use_noreply ? " noreply" : ""));
 
-  command_state_init(state, s->fd, 1, 0, 0, c->prefix_len,
+  command_state_init(state, s->fd, 0, 0, c->prefix_len,
                      (use_noreply ? NULL : parse_ok_reply));
   res = process_scommand(c, server_index);
 
