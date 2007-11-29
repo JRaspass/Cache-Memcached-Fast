@@ -393,6 +393,10 @@ parse_key(struct command_state *state, char *buf)
 
       prefix_key = (char *) state->key->iov_base;
       prefix_len = state->key_pos - prefix_key;
+      /*
+        TODO: Below it might be faster to compare the tail of the key
+        before comparing the head.
+      */
       do
         {
           ++state->key_index;
