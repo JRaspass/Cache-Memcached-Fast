@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 
 
@@ -12,7 +13,7 @@ client_connect_inet(const char *host, const char *port, int stream,
                     int timeout)
 {
   struct addrinfo hint, *addr, *a;
-  int fd = -1, res;
+  int fd = -1, res, flags;
 
   memset(&hint, 0, sizeof(hint));
   hint.ai_flags = AI_ADDRCONFIG;
@@ -48,6 +49,14 @@ client_connect_inet(const char *host, const char *port, int stream,
     }
 
   freeaddrinfo(addr);
+
+  flags = (fd, F_GETFL);
+  res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+  if (res != 0)
+    {
+      close(fd);
+      fd = -1;
+    }
 
   return fd;
 }

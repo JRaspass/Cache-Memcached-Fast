@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
 
 #ifndef MAX_IOVEC
@@ -78,6 +80,8 @@ struct command_state
   size_t remaining_prefix_len;
   int digits_seen;
 
+  int active;
+
   struct get_result_state get_result;
 
   /* iov_buf should be the last field.  */
@@ -145,6 +149,7 @@ command_state_init(struct command_state *state, int fd,
   state->parse_reply = parse_reply;
   state->remaining_prefix_len = state->prefix_len;
   state->digits_seen = 0;
+  state->active = 1;
 
 #if 0 /* No need to initialize the following.  */
   state->pos = NULL;
@@ -827,16 +832,116 @@ process_command(struct command_state *state)
 
 
 static
-int
-process_commands(struct command_state *state)
+void
+client_mark_failed(struct client *c, int server_index)
 {
-  int res;
+  struct server *s;
 
-  do
-    res = process_command(state);
-  while (res == MEMCACHED_EAGAIN);
+  s = &c->servers[server_index];
 
-  return res;
+  if (s->fd != -1)
+    {
+      close(s->fd);
+      s->fd = -1;
+    }
+}
+
+
+static
+int
+process_commands(struct client *c)
+{
+  int result = MEMCACHED_FAILURE;
+
+  while (1)
+    {
+      int i, max_fd, res;
+      fd_set write_set, read_set;
+
+      max_fd = -1;
+      FD_ZERO(&write_set);
+      FD_ZERO(&read_set);
+      for (i = 0; i < c->server_count; ++i)
+        {
+          struct server *s = &c->servers[i];
+
+          if (s->cmd_state->active)
+            {
+              if (max_fd < s->fd)
+                max_fd = s->fd;
+
+              if (s->cmd_state->phase == PHASE_SEND)
+                FD_SET(s->fd, &write_set);
+              else
+                FD_SET(s->fd, &read_set);
+            }
+        }
+
+      if (max_fd == -1)
+        break;
+
+      do
+        res = select(max_fd + 1, &read_set, &write_set, NULL, NULL);
+      while (res == -1 && errno == EINTR);
+
+      /*
+        On error or timeout close all active connections.  Otherwise
+        we might receive garbage on them later.
+      */
+      if (res <= 0)
+        {
+          for (i = 0; i < c->server_count; ++i)
+            {
+              struct server *s = &c->servers[i];
+
+              if (s->cmd_state->active)
+                {
+                  s->cmd_state->active = 0;
+                  client_mark_failed(c, i);
+                }
+            }
+
+          break;
+        }
+
+      for (i = 0; i < c->server_count; ++i)
+        {
+          struct server *s = &c->servers[i];
+
+          if (FD_ISSET(s->fd, &read_set) || FD_ISSET(s->fd, &write_set))
+            {
+              res = process_command(s->cmd_state);
+              switch (res)
+                {
+                case MEMCACHED_EAGAIN:
+                  break;
+
+                case MEMCACHED_SUCCESS:
+                  result = MEMCACHED_SUCCESS;
+                  s->cmd_state->active = 0;
+                  break;
+
+                case MEMCACHED_FAILURE:
+                  s->cmd_state->active = 0;
+                  break;
+
+                case MEMCACHED_ERROR:
+                  s->cmd_state->active = 0;
+                  if (c->close_on_error)
+                    client_mark_failed(c, i);
+                  break;
+
+                case MEMCACHED_UNKNOWN:
+                case MEMCACHED_CLOSED:
+                  s->cmd_state->active = 0;
+                  client_mark_failed(c, i);
+                  break;
+                }
+            }
+        }
+    }
+
+  return result;
 }
 
 
@@ -946,22 +1051,6 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
   c->prefix_len = ns_len;
 
   return 0;
-}
-
-
-static
-void
-client_mark_failed(struct client *c, int server_index)
-{
-  struct server *s;
-
-  s = &c->servers[server_index];
-
-  if (s->fd != -1)
-    {
-      close(s->fd);
-      s->fd = -1;
-    }
 }
 
 
@@ -1089,11 +1178,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   command_state_init(state, s->fd, (iov - state->iov_buf),
                      (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_set_reply));
-  res = process_commands(state);
-
-  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
-      || (c->close_on_error && res == MEMCACHED_ERROR))
-    client_mark_failed(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1153,11 +1238,7 @@ client_get(struct client *c, const char *key, size_t key_len,
                      c->prefix_len, parse_get_reply);
   get_result_state_init(&state->get_result,
                         alloc_value, invalidate_value, arg);
-  res = process_commands(state);
-
-  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
-      || (c->close_on_error && res == MEMCACHED_ERROR))
-    client_mark_failed(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1229,11 +1310,7 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
                      c->prefix_len, parse_get_reply);
   get_result_state_init(&state->get_result,
                         alloc_value, invalidate_value, arg);
-  res = process_commands(state);
-
-  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
-      || (c->close_on_error && res == MEMCACHED_ERROR))
-    client_mark_failed(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1295,11 +1372,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   command_state_init(state, s->fd, (iov - state->iov_buf),
                      (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_delete_reply));
-  res = process_commands(state);
-
-  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
-      || (c->close_on_error && res == MEMCACHED_ERROR))
-    client_mark_failed(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1346,11 +1419,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   command_state_init(state, s->fd, 1, 0, 0, c->prefix_len,
                      (use_noreply ? NULL : parse_ok_reply));
-  res = process_commands(state);
-
-  if (res == MEMCACHED_UNKNOWN || res == MEMCACHED_CLOSED
-      || (c->close_on_error && res == MEMCACHED_ERROR))
-    client_mark_failed(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
