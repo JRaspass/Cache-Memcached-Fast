@@ -796,8 +796,9 @@ process_command(struct command_state *state)
               if (--state->request_iov_count == 0)
                 break;
               len = state->request_iov->iov_len;
+              state->write_offset = 0;
             }
-          state->write_offset = res;
+          state->write_offset += res;
         }
 
       state->phase = PHASE_PARSE;
