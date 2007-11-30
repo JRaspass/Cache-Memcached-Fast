@@ -111,6 +111,9 @@ skey_alloc(void *arg, int key_index, flags_type flags,
   struct xs_skey_result *skey_res;
   char *res;
 
+  /* Suppress warning about unused key_index.  */
+  if (key_index) {}
+
   skey_res = (struct xs_skey_result *) arg;
 
   skey_res->flags = flags;
