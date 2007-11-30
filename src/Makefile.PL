@@ -10,7 +10,7 @@ WriteMakefile(
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
-    OBJECT            => 'parse_reply$(OBJ_EXT) $(O_FILES)',
+    OBJECT            => 'parse_keyword$(OBJ_EXT) $(O_FILES)',
 );
 
 sub MY::top_targets {
@@ -25,7 +25,7 @@ libclient$(LIB_EXT): $(OBJECT)
 	$(AR) cr libclient$(LIB_EXT) $(OBJECT)
 	$(RANLIB) libclient$(LIB_EXT)
 
-parse_reply.c parse_reply.h :: genparser.pl reply.kw
-	$(PERL) genparser.pl reply.kw parse_reply.c parse_reply.h
+parse_keyword.c parse_keyword.h :: genparser.pl reply.kw
+	$(PERL) genparser.pl reply.kw parse_keyword.c parse_keyword.h
 '
 }

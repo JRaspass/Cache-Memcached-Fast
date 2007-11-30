@@ -1,7 +1,7 @@
 # Input file for genparser.pl script.
 
 # Name of the parser function.
-parser_func = parse_reply
+parser_func = parse_keyword
 
 
 %%

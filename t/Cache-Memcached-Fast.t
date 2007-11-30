@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 34;
+use Test::More tests => 37;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -36,6 +36,7 @@ ok($memd->set("key4", "x" x 1_000_000));
 
 is($memd->get("no_such_key"), undef);
 is($memd->get("key2"), "val2");
+is($memd->get("key4"), "x" x 1_000_000);
 
 my ($val, $flags) = $memd->_xs_get("key3");
 is($val, "val3");
@@ -51,6 +52,11 @@ is(scalar keys %$res1, 0);
 $res1 = $memd->get_multi("key1");
 is(scalar keys %$res1, 1);
 is($$res1{key1}, "val1");
+
+
+ok($memd->set("zero", ""));
+is($memd->get("zero"), "");
+
 
 $res1 = $memd->get_multi("key_no_such_key", "key1", "key_no_such_key",
                          "key2", "key_no_such_key", "key_no_such_key",

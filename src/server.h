@@ -23,9 +23,13 @@ typedef int exptime_type;
 typedef unsigned int delay_type;
 #define FMT_DELAY "%u"
 
+typedef size_t value_size_type;
+#define FMT_VALUE_SIZE "%zu"
+
 
 typedef void *(*alloc_value_func)(void *alloc_value_arg, int key_index,
-                                  flags_type flags, size_t value_size);
+                                  flags_type flags,
+                                  value_size_type value_size);
 
 
 typedef void (*invalidate_value_func)(void *arg);

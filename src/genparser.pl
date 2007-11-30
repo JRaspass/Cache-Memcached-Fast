@@ -75,7 +75,6 @@ my $tree = dispatch_keywords(\@keywords);
 
 
 my @external_enum = qw(NO_MATCH);
-my @internal_labels;
 
 sub create_switch {
     my ($depth, $prefix, $common, $hash) = @_;
@@ -87,41 +86,24 @@ sub create_switch {
     my $res = '';
 
     if ($common) {
-        push @internal_labels, $prefix;
         $res .= <<"EOF";
-$I  state->match_pos = "$common";
+$I  match_pos = "$common";
 
-$I  do
+$I  while (**pos == *match_pos)
 $I    {
-$I      if (*pos == end)
-$I        return 0;
-
-$I    LABEL_$prefix:
-$I      if (*(*pos)++ != *state->match_pos++)
-$I        {
-$I          state->phase = NO_MATCH;
-$I          return -1;
-$I        }
+$I      ++*pos;
+$I      ++match_pos;
 $I    }
-$I  while (*state->match_pos);
-
-$I  state->phase = $phase;
+$I  if (*match_pos != '\\0')
+$I    return NO_MATCH;
 
 EOF
     }
     if ($common or $depth) {
-        if (@keys) {
-            push @internal_labels, $phase;
-            $res .= <<"EOF";
-$I  if (*pos == end)
-$I    return 0;
-
-${I}LABEL_$phase:
-EOF
-        } else {
+        if (! @keys) {
             push @external_enum, $phase;
             $res .= <<"EOF";
-$I  return 1;
+$I  return $phase;
 
 EOF
             return $res;
@@ -137,16 +119,13 @@ EOF
         my $subphase = $phase . $key;
         $res .= <<"EOF";
 $I    case '$key':
-$I      state->phase = $subphase;
-
 EOF
         $res .= create_switch($depth + 1, $subphase, @{$$hash{$key}});
     }
 
     $res .= <<"EOF";
 $I    default:
-$I      state->phase = NO_MATCH;
-$I      return -1;
+$I      return NO_MATCH;
 $I    }
 EOF
 
@@ -166,15 +145,6 @@ my $gen_comment = <<"EOF";
 */
 EOF
 
-my $func_comment = <<"EOF";
-/*
-   $C{parser_func}() returns
-     -1 when no match.
-      0 when parsing is not finished yet.
-      1 when matched.
-*/
-EOF
-
 
 open(my $fc, '>', $file_c)
   or die "open(> $file_c): $!";
@@ -185,33 +155,10 @@ $gen_comment
 #include "$file_h"
 
 
-${func_comment}int
-$C{parser_func}(struct genparser_state *state, char **pos, char *end)
+enum $C{parser_func}_e
+$C{parser_func}(char **pos)
 {
-  /*
-    Use negative values to avoid collision with elements
-    of $C{parser_func}_e defined in $file_h.
-  */
-  enum {
-    @{[ join ",\n    ", map { "$_ = " . --$i } @internal_labels ]}
-  };
-
-  /*
-    Jump table to bring us to the place we stopped last time.
-  */
-  switch (state->phase)
-    {
-EOF
-foreach my $label (@internal_labels) {
-    print $fc <<"EOF";
-    case $label:
-      goto LABEL_$label;
-EOF
-}
-print $fc <<"EOF";
-    default:
-      break;
-    }
+  char *match_pos;
 
 $switch
   /* Never reach here.  */
@@ -233,17 +180,15 @@ $gen_comment
 #ifndef $guard
 #define $guard 1
 
-#include "${FindBin::Dir}/genparser.h"
-
 
 enum $C{parser_func}_e {
   @{[ join ",\n  ", @external_enum ]}
 };
 
 
-${func_comment}extern
-int
-$C{parser_func}(struct genparser_state *state, char **pos, char *end);
+extern
+enum $C{parser_func}_e
+$C{parser_func}(char **pos);
 
 
 #endif /* ! $guard */

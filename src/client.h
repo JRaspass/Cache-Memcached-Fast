@@ -75,7 +75,7 @@ int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *value, size_t value_size, int noreply);
+           const void *value, value_size_type value_size, int noreply);
 
 extern
 int

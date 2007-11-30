@@ -9,7 +9,6 @@ t/Cache-Memcached-Fast.t
 lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
 src/genparser.pl
-src/genparser.h
 src/reply.kw
 src/server.h
 src/client.h

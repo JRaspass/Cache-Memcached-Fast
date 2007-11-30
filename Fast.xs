@@ -105,7 +105,8 @@ struct xs_skey_result
 
 static
 void *
-skey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
+skey_alloc(void *arg, int key_index, flags_type flags,
+           value_size_type value_size)
 {
   struct xs_skey_result *skey_res;
   char *res;
@@ -167,7 +168,8 @@ get_key(void *arg, int key_index, size_t *key_len)
 
 static
 void *
-mkey_alloc(void *arg, int key_index, flags_type flags, size_t value_size)
+mkey_alloc(void *arg, int key_index, flags_type flags,
+           value_size_type value_size)
 {
   I32 ax;
   struct xs_mkey_result *mkey_res;
