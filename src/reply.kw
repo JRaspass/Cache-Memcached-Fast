@@ -3,6 +3,13 @@
 # Name of the parser function.
 parser_func = parse_keyword
 
+# When loose_match is enabled the parser matches only essential
+# characters.  This is faster, but not future-compatible.  For
+# instance, NOT_FOUND and NOT_STORED can be matched by testing first
+# and fifth character, but if, say, NOT_SET would be introduced, the
+# parser will match it to NOT_STORED until it knows the new keyword.
+loose_match = 0
+
 
 %%
 

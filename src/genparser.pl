@@ -86,18 +86,27 @@ sub create_switch {
     my $res = '';
 
     if ($common) {
-        $res .= <<"EOF";
+        if ($C{loose_match}) {
+            $res .= <<"EOF";
+$I  *pos += @{[ length $common ]};
+
+EOF
+        } else {
+            $res .= <<"EOF";
 $I  match_pos = "$common";
 
-$I  while (**pos == *match_pos)
+$I  do
 $I    {
+$I      if (**pos != *match_pos)
+$I        return NO_MATCH;
+
 $I      ++*pos;
 $I      ++match_pos;
 $I    }
-$I  if (*match_pos != '\\0')
-$I    return NO_MATCH;
+$I  while (*match_pos != '\\0');
 
 EOF
+        }
     }
     if ($common or $depth) {
         if (! @keys) {
@@ -158,8 +167,16 @@ $gen_comment
 enum $C{parser_func}_e
 $C{parser_func}(char **pos)
 {
+EOF
+
+unless ($C{loose_match}) {
+    print $fc <<"EOF";
   char *match_pos;
 
+EOF
+}
+
+print $fc <<"EOF";
 $switch
   /* Never reach here.  */
 }
