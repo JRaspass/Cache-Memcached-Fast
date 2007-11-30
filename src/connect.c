@@ -38,6 +38,9 @@ client_connect_inet(const char *host, const char *port, int stream,
         break;
 
       /* TODO: support timeout.  */
+      if (timeout)
+        {}
+
       do
         res = connect(fd, a->ai_addr, a->ai_addrlen);
       while (res == -1 && errno == EINTR);
@@ -50,7 +53,7 @@ client_connect_inet(const char *host, const char *port, int stream,
 
   freeaddrinfo(addr);
 
-  flags = (fd, F_GETFL);
+  flags = fcntl(fd, F_GETFL);
   res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
   if (res != 0)
     {
