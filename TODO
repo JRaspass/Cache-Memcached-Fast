@@ -21,5 +21,4 @@ BEGIN {
 }
 
 
-- In the distant future, it would be interesting to compare
-  one-pass-restartable approach to classical accumulate-in-buffer one.
+- Try to execute command before calling select().
