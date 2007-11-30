@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <fcntl.h>
 
 
 #ifndef MAX_IOVEC
@@ -849,36 +848,7 @@ client_mark_failed(struct client *c, int server_index)
 
 static
 int
-process_scommand(struct client *c, int server_index)
-{
-  struct command_state *state = c->servers[server_index].cmd_state;
-  int res, result, flags;
-
-  flags = fcntl(state->fd, F_GETFL);
-  res = fcntl(state->fd, F_SETFL, flags & ~O_NONBLOCK);
-  if (res != 0)
-    {
-      client_mark_failed(c, server_index);
-      return MEMCACHED_FAILURE;
-    }
-
-  result = process_command(state);
-
-  res = fcntl(state->fd, F_SETFL, flags);
-  if (res != 0)
-    {
-      client_mark_failed(c, server_index);
-      return MEMCACHED_FAILURE;
-    }
-
-  return (result == MEMCACHED_SUCCESS
-          ? MEMCACHED_SUCCESS : MEMCACHED_FAILURE);
-}
-
-
-static
-int
-process_mcommand(struct client *c)
+process_commands(struct client *c)
 {
   int result = MEMCACHED_FAILURE;
 
@@ -1218,7 +1188,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   command_state_init(state, s->fd, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_set_reply));
 
-  res = process_scommand(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1260,7 +1230,7 @@ client_get(struct client *c, const char *key, size_t key_len,
   get_result_state_init(&state->get_result,
                         alloc_value, invalidate_value, arg);
 
-  res = process_scommand(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1312,7 +1282,7 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
   get_result_state_init(&state->get_result,
                         alloc_value, invalidate_value, arg);
 
-  res = process_mcommand(c);
+  res = process_commands(c);
 
   return res;
 }
@@ -1360,7 +1330,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   command_state_init(state, s->fd, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                      (use_noreply ? NULL : parse_delete_reply));
 
-  res = process_scommand(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
@@ -1402,7 +1372,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   command_state_init(state, s->fd, 0, 0, c->prefix_len,
                      (use_noreply ? NULL : parse_ok_reply));
-  res = process_scommand(c, server_index);
+  res = process_commands(c);
 
   return res;
 }
