@@ -50,7 +50,8 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
           host_len = port - host;
           ++port;
           port_len = len - host_len - 1;
-          if (client_add_server(memd, host, host_len, port, port_len) != 0)
+          if (client_add_server(memd, host, host_len, port, port_len)
+              != MEMCACHED_SUCCESS)
             croak("Not enough memory");
         }
     }
@@ -61,7 +62,7 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
       const char *ns;
       STRLEN len;
       ns = SvPV(*ps, len);
-      if (client_set_prefix(memd, ns, len) != 0)
+      if (client_set_prefix(memd, ns, len) != MEMCACHED_SUCCESS)
         croak("Not enough memory");
     }
 

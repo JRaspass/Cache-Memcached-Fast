@@ -164,7 +164,7 @@ server_init(struct server *s, const char *host, size_t host_len,
 {
   s->host = (char *) malloc(host_len + 1 + port_len + 1);
   if (! s->host)
-    return -1;
+    return MEMCACHED_FAILURE;
 
   s->port = s->host + host_len + 1;
   memcpy(s->host, host, host_len);
@@ -174,7 +174,7 @@ server_init(struct server *s, const char *host, size_t host_len,
 
   command_state_init(&s->cmd_state, -1);
 
-  return 0;
+  return MEMCACHED_SUCCESS;
 }
 
 
@@ -828,6 +828,8 @@ int
 client_add_server(struct client *c, const char *host, size_t host_len,
                   const char *port, size_t port_len)
 {
+  int res;
+
   if (c->server_count == c->server_capacity)
     {
       int capacity = (c->server_capacity > 0 ? c->server_capacity * 2 : 1);
@@ -835,19 +837,20 @@ client_add_server(struct client *c, const char *host, size_t host_len,
         (struct server *) realloc(c->servers,
                                   capacity * sizeof(struct server));
       if (! s)
-        return -1;
+        return MEMCACHED_FAILURE;
 
       c->servers = s;
       c->server_capacity = capacity;
     }
 
-  if (server_init(&c->servers[c->server_count],
-                  host, host_len, port, port_len) != 0)
-    return -1;
+  res = server_init(&c->servers[c->server_count],
+                    host, host_len, port, port_len);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
 
   ++c->server_count;
 
-  return 0;
+  return MEMCACHED_SUCCESS;
 }
 
 
@@ -856,7 +859,7 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
 {
   char *s = (char *) realloc(c->prefix, ns_len + 1);
   if (! s)
-    return -1;
+    return MEMCACHED_FAILURE;
 
   memcpy(s, ns, ns_len);
   s[ns_len] = '\0';
@@ -864,7 +867,7 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
   c->prefix = s;
   c->prefix_len = ns_len;
 
-  return 0;
+  return MEMCACHED_SUCCESS;
 }
 
 
