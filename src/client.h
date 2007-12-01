@@ -16,6 +16,7 @@ struct client
   struct server *servers;
   char *prefix;
   size_t prefix_len;
+  int key_step;
   int server_count;
   int server_capacity;
   int connect_timeout;          /* 1/1000 sec.  */

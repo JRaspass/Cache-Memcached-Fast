@@ -68,6 +68,7 @@ enum command_phase
 
 struct command_state
 {
+  const struct client *client;
   int fd;
 
   /*
@@ -85,7 +86,6 @@ struct command_state
   char *end;
   char *eol;
   int match;
-  size_t prefix_len;
 
   struct iovec *iov;
   int iov_count;
@@ -93,7 +93,6 @@ struct command_state
   struct iovec *key;
   int key_count;
   int key_index;
-  int key_step;
 
   parse_reply_func parse_reply;
 
@@ -105,9 +104,11 @@ struct command_state
 
 static inline
 void
-command_state_init(struct command_state *state, int fd)
+command_state_init(struct command_state *state,
+                   const struct client *c)
 {
-  state->fd = fd;
+  state->client = c;
+  state->fd = -1;
   state->iov_buf = NULL;
   state->iov_buf_size = 0;
 }
@@ -125,18 +126,14 @@ command_state_destroy(struct command_state *state)
 
 static inline
 void
-command_state_reset(struct command_state *state,
-                   int first_key_index, int key_count,
-                   size_t prefix_len, parse_reply_func parse_reply)
+command_state_reset(struct command_state *state, int first_key_index,
+                    int key_count, parse_reply_func parse_reply)
 {
   state->key = &state->iov_buf[first_key_index];
   state->key_count = key_count;
-  state->prefix_len = prefix_len;
   state->parse_reply = parse_reply;
 
   state->phase = PHASE_SEND;
-  /* Keys are interleaved with spaces and possibly with prefix.  */
-  state->key_step = (prefix_len ? 3 : 2);
   state->iov = state->iov_buf;
   state->write_offset = 0;
   state->key_index = 0;
@@ -159,7 +156,8 @@ struct server
 
 static inline
 int
-server_init(struct server *s, const char *host, size_t host_len,
+server_init(struct server *s, const struct client *c,
+            const char *host, size_t host_len,
             const char *port, size_t port_len)
 {
   s->host = (char *) malloc(host_len + 1 + port_len + 1);
@@ -172,7 +170,7 @@ server_init(struct server *s, const char *host, size_t host_len,
   memcpy(s->port, port, port_len);
   s->port[port_len] = '\0';
 
-  command_state_init(&s->cmd_state, -1);
+  command_state_init(&s->cmd_state, c);
 
   return MEMCACHED_SUCCESS;
 }
@@ -239,7 +237,7 @@ parse_key(struct command_state *state)
   char *key_pos;
 
   /* Skip over the prefix.  */
-  state->pos += state->prefix_len;
+  state->pos += state->client->prefix_len;
 
   key_pos = (char *) state->key->iov_base;
   while (state->key_count > 1)
@@ -266,7 +264,7 @@ parse_key(struct command_state *state)
       do
         {
           ++state->key_index;
-          state->key += state->key_step;
+          state->key += state->client->key_step;
         }
       while (--state->key_count > 1
              && (state->key->iov_len < prefix_len
@@ -284,7 +282,7 @@ parse_key(struct command_state *state)
 
   --state->key_count;
   ++state->key_index;
-  state->key += state->key_step;
+  state->key += state->client->key_step;
 
   return MEMCACHED_SUCCESS;
 }
@@ -806,6 +804,8 @@ client_init(struct client *c)
   c->io_timeout = 1000;
   c->prefix = NULL;
   c->prefix_len = 0;
+  /* Keys are interleaved with spaces.  */
+  c->key_step = 2;
   c->close_on_error = 1;
   c->noreply = 0;
 }
@@ -843,7 +843,7 @@ client_add_server(struct client *c, const char *host, size_t host_len,
       c->server_capacity = capacity;
     }
 
-  res = server_init(&c->servers[c->server_count],
+  res = server_init(&c->servers[c->server_count], c,
                     host, host_len, port, port_len);
   if (res != MEMCACHED_SUCCESS)
     return res;
@@ -857,9 +857,24 @@ client_add_server(struct client *c, const char *host, size_t host_len,
 int
 client_set_prefix(struct client *c, const char *ns, size_t ns_len)
 {
-  char *s = (char *) realloc(c->prefix, ns_len + 1);
+  char *s;
+
+  if (ns_len == 0)
+    {
+      free(c->prefix);
+      c->prefix = NULL;
+      c->prefix_len = 0;
+      /* Keys are interleaved with spaces.  */
+      c->key_step = 2;
+      return MEMCACHED_SUCCESS;
+    }
+
+  s = (char *) realloc(c->prefix, ns_len + 1);
   if (! s)
     return MEMCACHED_FAILURE;
+
+  /* Keys are interleaved with spaces and prefix.  */
+  c->key_step = 3;
 
   memcpy(s, ns, ns_len);
   s[ns_len] = '\0';
@@ -1015,7 +1030,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
                              flags, exptime, value_size,
                              (use_noreply ? " noreply" : ""));
 
-  command_state_reset(state, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
+  command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_set_reply));
 
   return process_commands(c);
@@ -1049,8 +1064,7 @@ client_get(struct client *c, const char *key, size_t key_len,
   iov_push(state, (void *) key, key_len);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
-  command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
-                      c->prefix_len, parse_get_reply);
+  command_state_reset(state, (c->prefix_len ? 2 : 1), 1, parse_get_reply);
   get_result_state_reset(&state->get_result,
                          alloc_value, invalidate_value, arg);
 
@@ -1117,7 +1131,7 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
           iov_push(state, STR_WITH_LEN("\r\n"));
 
           command_state_reset(state, (c->prefix_len ? 3 : 2), key_count,
-                              c->prefix_len, parse_get_reply);
+                              parse_get_reply);
           get_result_state_reset(&state->get_result,
                                  alloc_value, invalidate_value, arg);
         }
@@ -1163,7 +1177,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   buf_iov->iov_len = sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
                              (use_noreply ? " noreply" : ""));
 
-  command_state_reset(state, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
+  command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_delete_reply));
 
   return process_commands(c);
@@ -1212,8 +1226,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
                                  (delay_type) ddelay,
                                  (use_noreply ? " noreply" : ""));
 
-      command_state_reset(state, 0, 0, c->prefix_len,
-                          (use_noreply ? NULL : parse_ok_reply));
+      command_state_reset(state, 0, 0, (use_noreply ? NULL : parse_ok_reply));
     }
 
   return process_commands(c);
