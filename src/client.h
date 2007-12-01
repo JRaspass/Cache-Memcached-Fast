@@ -1,34 +1,56 @@
 #ifndef CLIENT_H
 #define CLIENT_H 1
 
-#include "server.h"
 #include <stddef.h>
 
+
+struct client;
+
+
+enum server_status {
+  MEMCACHED_SUCCESS,
+  MEMCACHED_FAILURE,
+  MEMCACHED_EAGAIN,
+  MEMCACHED_ERROR,
+  MEMCACHED_UNKNOWN,
+  MEMCACHED_CLOSED
+};
 
 enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND };
 
 
-struct server;
+typedef unsigned int flags_type;
+#define FMT_FLAGS "%u"
+
+typedef int exptime_type;
+#define FMT_EXPTIME "%d"
+
+typedef unsigned int delay_type;
+#define FMT_DELAY "%u"
+
+typedef size_t value_size_type;
+#define FMT_VALUE_SIZE "%zu"
 
 
-struct client
+typedef char *(*get_key_func)(void *arg, int key_index, size_t *key_len);
+
+typedef void *(*alloc_value_func)(void *arg, value_size_type value_size);
+typedef void (*store_value_func)(void *arg, int key_index, flags_type flags);
+typedef void (*free_value_func)(void *arg);
+
+struct value_object
 {
-  struct server *servers;
-  char *prefix;
-  size_t prefix_len;
-  int key_step;
-  int server_count;
-  int server_capacity;
-  int connect_timeout;          /* 1/1000 sec.  */
-  int io_timeout;               /* 1/1000 sec.  */
-  int close_on_error;
-  int noreply;
+  alloc_value_func alloc;
+  store_value_func store;
+  free_value_func free;
+
+  void *arg;
 };
 
 
 extern
-void
-client_init(struct client *c);
+struct client *
+client_init();
 
 extern
 void
@@ -43,35 +65,21 @@ extern
 int
 client_set_prefix(struct client *c, const char *ns, size_t ns_len);
 
-static inline
+extern
 void
-client_set_connect_timeout(struct client *c, int to)
-{
-  c->connect_timeout = to;
-}
+client_set_connect_timeout(struct client *c, int to);
 
-static inline
+extern
 void
-client_set_io_timeout(struct client *c, int to)
-{
-  c->io_timeout = to;
-}
+client_set_io_timeout(struct client *c, int to);
 
-static inline
+extern
 void
-client_set_close_on_error(struct client *c, int enable)
-{
-  c->close_on_error = enable;
-}
+client_set_close_on_error(struct client *c, int enable);
 
-static inline
+extern
 void
-client_set_noreply(struct client *c, int enable)
-{
-  c->noreply = enable;
-  if (enable)
-    client_set_close_on_error(c, 1);
-}
+client_set_noreply(struct client *c, int enable);
 
 extern
 int

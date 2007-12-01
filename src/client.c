@@ -179,6 +179,153 @@ server_destroy(struct server *s)
 }
 
 
+struct client
+{
+  struct server *servers;
+  int server_count;
+  int server_capacity;
+
+  char *prefix;
+  size_t prefix_len;
+
+  int key_step;
+  int connect_timeout;          /* 1/1000 sec.  */
+  int io_timeout;               /* 1/1000 sec.  */
+  int close_on_error;
+  int noreply;
+};
+
+
+struct client *
+client_init()
+{
+  struct client *c = malloc(sizeof(struct client));
+  if (! c)
+    return NULL;
+
+  c->servers = NULL;
+  c->server_capacity = 0;
+  c->server_count = 0;
+
+  c->connect_timeout = 250;
+  c->io_timeout = 1000;
+  c->prefix = NULL;
+  c->prefix_len = 0;
+  /* Keys are interleaved with spaces.  */
+  c->key_step = 2;
+  c->close_on_error = 1;
+  c->noreply = 0;
+
+  return c;
+}
+
+
+void
+client_destroy(struct client *c)
+{
+  int i;
+
+  for (i = 0; i < c->server_count; ++i)
+    server_destroy(&c->servers[i]);
+
+  free(c->servers);
+  free(c->prefix);
+  free(c);
+}
+
+
+void
+client_set_connect_timeout(struct client *c, int to)
+{
+  c->connect_timeout = to;
+}
+
+
+void
+client_set_io_timeout(struct client *c, int to)
+{
+  c->io_timeout = to;
+}
+
+
+void
+client_set_close_on_error(struct client *c, int enable)
+{
+  c->close_on_error = enable;
+}
+
+
+void
+client_set_noreply(struct client *c, int enable)
+{
+  c->noreply = enable;
+  if (enable)
+    client_set_close_on_error(c, 1);
+}
+
+
+int
+client_add_server(struct client *c, const char *host, size_t host_len,
+                  const char *port, size_t port_len)
+{
+  int res;
+
+  if (c->server_count == c->server_capacity)
+    {
+      int capacity = (c->server_capacity > 0 ? c->server_capacity * 2 : 1);
+      struct server *s =
+        (struct server *) realloc(c->servers,
+                                  capacity * sizeof(struct server));
+      if (! s)
+        return MEMCACHED_FAILURE;
+
+      c->servers = s;
+      c->server_capacity = capacity;
+    }
+
+  res = server_init(&c->servers[c->server_count], c,
+                    host, host_len, port, port_len);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
+  ++c->server_count;
+
+  return MEMCACHED_SUCCESS;
+}
+
+
+int
+client_set_prefix(struct client *c, const char *ns, size_t ns_len)
+{
+  char *s;
+
+  if (ns_len == 0)
+    {
+      free(c->prefix);
+      c->prefix = NULL;
+      c->prefix_len = 0;
+      /* Keys are interleaved with spaces.  */
+      c->key_step = 2;
+      return MEMCACHED_SUCCESS;
+    }
+
+  s = (char *) realloc(c->prefix, ns_len + 1);
+  if (! s)
+    return MEMCACHED_FAILURE;
+
+  /* Keys are interleaved with spaces and prefix.  */
+  c->key_step = 3;
+
+  memcpy(s, ns, ns_len);
+  s[ns_len] = '\0';
+
+  c->prefix = s;
+  c->prefix_len = ns_len;
+
+  return MEMCACHED_SUCCESS;
+}
+
+
 static inline
 ssize_t
 read_restart(int fd, void *buf, size_t size)
@@ -786,99 +933,6 @@ process_commands(struct client *c)
     }
 
   return result;
-}
-
-
-void
-client_init(struct client *c)
-{
-  c->servers = NULL;
-  c->server_capacity = 0;
-  c->server_count = 0;
-
-  c->connect_timeout = 250;
-  c->io_timeout = 1000;
-  c->prefix = NULL;
-  c->prefix_len = 0;
-  /* Keys are interleaved with spaces.  */
-  c->key_step = 2;
-  c->close_on_error = 1;
-  c->noreply = 0;
-}
-
-
-void
-client_destroy(struct client *c)
-{
-  int i;
-
-  for (i = 0; i < c->server_count; ++i)
-    server_destroy(&c->servers[i]);
-
-  free(c->servers);
-  free(c->prefix);
-}
-
-
-int
-client_add_server(struct client *c, const char *host, size_t host_len,
-                  const char *port, size_t port_len)
-{
-  int res;
-
-  if (c->server_count == c->server_capacity)
-    {
-      int capacity = (c->server_capacity > 0 ? c->server_capacity * 2 : 1);
-      struct server *s =
-        (struct server *) realloc(c->servers,
-                                  capacity * sizeof(struct server));
-      if (! s)
-        return MEMCACHED_FAILURE;
-
-      c->servers = s;
-      c->server_capacity = capacity;
-    }
-
-  res = server_init(&c->servers[c->server_count], c,
-                    host, host_len, port, port_len);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
-
-  ++c->server_count;
-
-  return MEMCACHED_SUCCESS;
-}
-
-
-int
-client_set_prefix(struct client *c, const char *ns, size_t ns_len)
-{
-  char *s;
-
-  if (ns_len == 0)
-    {
-      free(c->prefix);
-      c->prefix = NULL;
-      c->prefix_len = 0;
-      /* Keys are interleaved with spaces.  */
-      c->key_step = 2;
-      return MEMCACHED_SUCCESS;
-    }
-
-  s = (char *) realloc(c->prefix, ns_len + 1);
-  if (! s)
-    return MEMCACHED_FAILURE;
-
-  /* Keys are interleaved with spaces and prefix.  */
-  c->key_step = 3;
-
-  memcpy(s, ns, ns_len);
-  s[ns_len] = '\0';
-
-  c->prefix = s;
-  c->prefix_len = ns_len;
-
-  return MEMCACHED_SUCCESS;
 }
 
 

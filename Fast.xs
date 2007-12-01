@@ -238,8 +238,9 @@ new(class, conf)
     PREINIT:
         Cache_Memcached_Fast *memd;
     CODE:
-        New(0, memd, 1, Cache_Memcached_Fast); /* FIXME: check OOM.  */
-        client_init(memd);
+        memd = client_init();
+        if (! memd)
+          croak("Not enough memory");
         if (! SvROK(conf) || SvTYPE(SvRV(conf)) != SVt_PVHV)
           croak("Not a hash reference");
         parse_config(memd, (HV *) SvRV(conf));
@@ -254,7 +255,6 @@ DESTROY(memd)
     PROTOTYPE: $
     CODE:
         client_destroy(memd);
-        Safefree(memd);
 
 
 bool
