@@ -27,15 +27,21 @@ typedef size_t value_size_type;
 #define FMT_VALUE_SIZE "%zu"
 
 
-typedef void *(*alloc_value_func)(void *alloc_value_arg, int key_index,
-                                  flags_type flags,
-                                  value_size_type value_size);
-
-
-typedef void (*invalidate_value_func)(void *arg);
-
-
 typedef char *(*get_key_func)(void *arg, int key_index, size_t *key_len);
+
+
+typedef void *(*alloc_value_func)(void *arg, value_size_type value_size);
+typedef void (*store_value_func)(void *arg, int key_index, flags_type flags);
+typedef void (*free_value_func)(void *arg);
+
+struct value_object
+{
+  alloc_value_func alloc;
+  store_value_func store;
+  free_value_func free;
+
+  void *arg;
+};
 
 
 #endif // ! SERVER_H

@@ -102,18 +102,13 @@ struct xs_skey_result
 
 static
 void *
-skey_alloc(void *arg, int key_index, flags_type flags,
-           value_size_type value_size)
+skey_alloc(void *arg, value_size_type value_size)
 {
   struct xs_skey_result *skey_res;
   char *res;
 
-  /* Suppress warning about unused key_index.  */
-  if (key_index) {}
-
   skey_res = (struct xs_skey_result *) arg;
 
-  skey_res->flags = flags;
   skey_res->sv = newSVpvn("", 0);
   res = SvGROW(skey_res->sv, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
@@ -125,7 +120,22 @@ skey_alloc(void *arg, int key_index, flags_type flags,
 
 static
 void
-skey_invalidate(void *arg)
+skey_store(void *arg, int key_index, flags_type flags)
+{
+  struct xs_skey_result *skey_res;
+
+  /* Suppress warning about unused key_index.  */
+  if (key_index) {}
+
+  skey_res = (struct xs_skey_result *) arg;
+
+  skey_res->flags = flags;
+}
+
+
+static
+void
+skey_free(void *arg)
 {
   struct xs_skey_result *skey_res;
 
@@ -138,6 +148,7 @@ skey_invalidate(void *arg)
 
 struct xs_mkey_result
 {
+  SV *sv;
   AV *key_val;
   AV *flags;
   I32 ax;
@@ -168,28 +179,17 @@ get_key(void *arg, int key_index, size_t *key_len)
 
 static
 void *
-mkey_alloc(void *arg, int key_index, flags_type flags,
-           value_size_type value_size)
+mkey_alloc(void *arg, value_size_type value_size)
 {
-  I32 ax;
   struct xs_mkey_result *mkey_res;
-  SV *key_sv, *val_sv;
   char *res;
 
   mkey_res = (struct xs_mkey_result *) arg;
 
-  ax = mkey_res->ax;
-  key_sv = ST(mkey_res->stack_offset + key_index);
-  SvREFCNT_inc(key_sv);
-  av_push(mkey_res->key_val, key_sv);
-
-  val_sv = newSVpvn("", 0);
-  res = SvGROW(val_sv, value_size + 1); /* FIXME: check OOM.  */
+  mkey_res->sv = newSVpvn("", 0);
+  res = SvGROW(mkey_res->sv, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
-  SvCUR_set(val_sv, value_size);
-  av_push(mkey_res->key_val, val_sv);
-
-  av_push(mkey_res->flags, newSVuv(flags));
+  SvCUR_set(mkey_res->sv, value_size);
 
   return (void *) res;
 }
@@ -197,16 +197,33 @@ mkey_alloc(void *arg, int key_index, flags_type flags,
 
 static
 void
-mkey_invalidate(void *arg)
+mkey_store(void *arg, int key_index, flags_type flags)
+{
+  I32 ax;
+  struct xs_mkey_result *mkey_res;
+  SV *key_sv;
+
+  mkey_res = (struct xs_mkey_result *) arg;
+
+  ax = mkey_res->ax;
+  key_sv = ST(mkey_res->stack_offset + key_index);
+  SvREFCNT_inc(key_sv);
+  av_push(mkey_res->key_val, key_sv);
+  av_push(mkey_res->key_val, mkey_res->sv);
+
+  av_push(mkey_res->flags, newSVuv(flags));
+}
+
+
+static
+void
+mkey_free(void *arg)
 {
   struct xs_mkey_result *mkey_res;
 
   mkey_res = (struct xs_mkey_result *) arg;
 
-  /* Release last value.  */
-  SvREFCNT_dec(av_pop(mkey_res->key_val));
-  SvREFCNT_dec(av_pop(mkey_res->key_val));
-  SvREFCNT_dec(av_pop(mkey_res->flags));
+  SvREFCNT_dec(mkey_res->sv);
 }
 
 
@@ -281,11 +298,12 @@ _xs_get(memd, skey)
         const char *key;
         STRLEN key_len;
         struct xs_skey_result skey_res;
+        struct value_object object =
+            { skey_alloc, skey_store, skey_free, &skey_res };
     PPCODE:
         key = SvPV(skey, key_len);
         skey_res.sv = NULL;
-        client_get(memd, key, key_len,
-                   skey_alloc, skey_invalidate, &skey_res);
+        client_get(memd, key, key_len, &object);
         if (skey_res.sv != NULL)
           {
             dXSTARG;
@@ -302,6 +320,8 @@ _xs_mget(memd, ...)
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;
+        struct value_object object =
+            { mkey_alloc, mkey_store, mkey_free, &mkey_res };
         int key_count;
     PPCODE:
         key_count = items - 1;
@@ -312,8 +332,7 @@ _xs_mget(memd, ...)
         av_extend(mkey_res.key_val, key_count * 2);
         av_extend(mkey_res.flags, key_count);
         if (key_count > 0)
-          client_mget(memd, key_count, get_key,
-                      mkey_alloc, mkey_invalidate, &mkey_res);
+          client_mget(memd, key_count, get_key, &object);
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
