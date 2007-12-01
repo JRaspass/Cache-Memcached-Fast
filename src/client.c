@@ -12,7 +12,7 @@
 
 
 #ifndef MAX_IOVEC
-#define MAX_IOVEC 1024
+#define MAX_IOVEC  1024
 #endif
 
 
@@ -20,7 +20,7 @@
 #define REPLY_BUF_SIZE  1024
 
 
-static char eol[2] = "\r\n";
+static const char eol[2] = "\r\n";
 
 
 struct get_result_state

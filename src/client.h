@@ -68,6 +68,8 @@ void
 client_set_noreply(struct client *c, int enable)
 {
   c->noreply = enable;
+  if (enable)
+    client_set_close_on_error(c, 1);
 }
 
 extern

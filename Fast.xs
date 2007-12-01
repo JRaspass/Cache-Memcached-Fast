@@ -86,12 +86,8 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
   ps = hv_fetch(conf, "noreply", 7, 0);
   if (ps)
     {
-      int noreply;
-
-      noreply = SvTRUE(*ps);
-      client_set_noreply(memd, noreply);
-      if (noreply)
-        client_set_close_on_error(memd, 1);
+      /* This may set 'close_on_error'.  */
+      client_set_noreply(memd, SvTRUE(*ps));
     }
 }
 
