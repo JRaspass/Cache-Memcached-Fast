@@ -22,3 +22,5 @@ BEGIN {
 
 
 - Try to execute command before calling select().
+
+- Use better rounding in flush_all().

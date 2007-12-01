@@ -10,7 +10,6 @@ lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
 src/genparser.pl
 src/reply.kw
-src/server.h
 src/client.h
 src/client.c
 src/connect.h
