@@ -23,31 +23,31 @@
 static const char eol[2] = "\r\n";
 
 
-struct get_result_state
+struct value_state
 {
   alloc_value_func alloc_value;
   invalidate_value_func invalidate_value;
   void *value_arg;
 
-  void *value;
-  value_size_type value_size;
+  void *ptr;
+  value_size_type size;
 };
 
 
 static inline
 void
-get_result_state_reset(struct get_result_state *state,
-                       alloc_value_func alloc_value,
-                       invalidate_value_func invalidate_value,
-                       void *value_arg)
+value_state_reset(struct value_state *state,
+                  alloc_value_func alloc_value,
+                  invalidate_value_func invalidate_value,
+                  void *value_arg)
 {
   state->alloc_value = alloc_value;
   state->invalidate_value = invalidate_value;
   state->value_arg = value_arg;
 
 #if 0 /* No need to initialize the following.  */
-  state->value = NULL;
-  state->value_size = 0;
+  state->ptr = NULL;
+  state->size = 0;
 #endif
 }
 
@@ -98,7 +98,7 @@ struct command_state
 
   int active;
 
-  struct get_result_state get_result;
+  struct value_state value;
 };
 
 
@@ -296,13 +296,13 @@ read_value(struct command_state *state)
   size_t remains;
 
   size = state->end - state->pos;
-  if (size > state->get_result.value_size)
-    size = state->get_result.value_size;
+  if (size > state->value.size)
+    size = state->value.size;
   if (size > 0)
     {
-      memcpy(state->get_result.value, state->pos, size);
-      state->get_result.value_size -= size;
-      state->get_result.value += size;
+      memcpy(state->value.ptr, state->pos, size);
+      state->value.size -= size;
+      state->value.ptr += size;
       state->pos += size;
     }
 
@@ -314,11 +314,11 @@ read_value(struct command_state *state)
       state->pos = memmove(state->buf, state->pos, remains);
       state->end = state->buf + remains;
 
-      iov[0].iov_base = state->get_result.value;
-      iov[0].iov_len = state->get_result.value_size;
+      iov[0].iov_base = state->value.ptr;
+      iov[0].iov_len = state->value.size;
       iov[1].iov_base = state->end;
       iov[1].iov_len = REPLY_BUF_SIZE - remains;
-      piov = &iov[state->get_result.value_size > 0 ? 0 : 1];
+      piov = &iov[state->value.size > 0 ? 0 : 1];
 
       do
         {
@@ -327,14 +327,14 @@ read_value(struct command_state *state)
           res = readv_restart(state->fd, piov, iov + 2 - piov);
           if (res <= 0)
             {
-              state->get_result.value = iov[0].iov_base;
-              state->get_result.value_size = iov[0].iov_len;
+              state->value.ptr = iov[0].iov_base;
+              state->value.size = iov[0].iov_len;
               state->end = iov[1].iov_base;
 
               if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
                 return MEMCACHED_EAGAIN;
 
-              state->get_result.invalidate_value(state->get_result.value_arg);
+              state->value.invalidate_value(state->value.value_arg);
               return MEMCACHED_CLOSED;
             }
 
@@ -356,7 +356,7 @@ read_value(struct command_state *state)
 
   if (memcmp(state->pos, eol, sizeof(eol)) != 0)
     {
-      state->get_result.invalidate_value(state->get_result.value_arg);
+      state->value.invalidate_value(state->value.value_arg);
       return MEMCACHED_UNKNOWN;
     }
   state->pos += sizeof(eol);
@@ -421,14 +421,14 @@ parse_get_reply(struct command_state *state)
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  value = state->get_result.alloc_value(state->get_result.value_arg,
-                                        state->key_index - 1,
-                                        flags, value_size);
+  value = state->value.alloc_value(state->value.value_arg,
+                                   state->key_index - 1,
+                                   flags, value_size);
   if (! value)
     return MEMCACHED_FAILURE;
 
-  state->get_result.value = value;
-  state->get_result.value_size = value_size;
+  state->value.ptr = value;
+  state->value.size = value_size;
 
   state->phase = PHASE_VALUE;
 
@@ -1065,8 +1065,7 @@ client_get(struct client *c, const char *key, size_t key_len,
   iov_push(state, STR_WITH_LEN("\r\n"));
 
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1, parse_get_reply);
-  get_result_state_reset(&state->get_result,
-                         alloc_value, invalidate_value, arg);
+  value_state_reset(&state->value, alloc_value, invalidate_value, arg);
 
   return process_commands(c);
 }
@@ -1132,8 +1131,7 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 
           command_state_reset(state, (c->prefix_len ? 3 : 2), key_count,
                               parse_get_reply);
-          get_result_state_reset(&state->get_result,
-                                 alloc_value, invalidate_value, arg);
+          value_state_reset(&state->value, alloc_value, invalidate_value, arg);
         }
     }
 
