@@ -397,7 +397,7 @@ parse_key(struct command_state *state)
           ++state->pos;
         }
 
-      if (key_pos == key_end)
+      if (key_pos == key_end && *state->pos == ' ')
         break;
 
       prefix_key = (char *) key->iov_base;
