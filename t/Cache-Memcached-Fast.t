@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 37;
+use Test::More tests => 35;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -17,7 +17,7 @@ BEGIN { use_ok('Cache::Memcached::Fast') };
 use Cache::Memcached::Fast;
 
 my $memd = Cache::Memcached::Fast->new({
-    servers => ['localhost:11211'], #['localhost:11211', 'moonlight:50000'],
+    servers => ['localhost:11211', '127.0.0.1:11211'],
     namespace => 'Cache::Memcached::Fast::',
 #    connect_timeout => 0.26,
 #    select_timeout => 1.01,
@@ -69,6 +69,7 @@ is($$res1{key3}, "val3");
 ok($memd->delete("key4", 3));
 ok(not $memd->delete("no_such_key"));
 
+$memd->delete("key5");
 ok(not $memd->replace("key5", "x"));
 ok($memd->add("key5", "x"));
 ok(not $memd->add("key5", "x"));
@@ -76,10 +77,8 @@ ok($memd->append("key5", "a"));
 ok($memd->prepend("key5", "b"));
 is($memd->get("key5"), "bxa");
 
-ok($memd->flush_all(2));
-is(keys %{$memd->get_multi(map { "key$_" } (1, 2, 3, 5))}, 4);
-sleep(2.2);
-is(keys %{$memd->get_multi(map { "key$_" } (1, 2, 3, 5))}, 0);
+ok($memd->flush_all(1));
+sleep(1.2);
 
 undef $memd;
 

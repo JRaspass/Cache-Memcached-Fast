@@ -873,27 +873,10 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
 
 static
 int
-client_get_server_index(struct client *c, const char *key, size_t key_len)
+get_server_fd(struct client *c, int index)
 {
-  int index;
   struct server *s;
   struct command_state *state;
-
-  if (c->server_count == 0)
-    return -1;
-
-  if (c->server_count == 1)
-    {
-      index = 0;
-    }
-  else
-    {
-      /* FIXME: implement multiple servers.  */
-      if (key || key_len)
-        {}
-
-      index = 0;
-    }
 
   s = &c->servers[index];
   state = &s->cmd_state;
@@ -901,12 +884,38 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
     state->fd = client_connect_inet(s->host, s->port, 1, c->connect_timeout);
 
   if (state->fd == -1)
+    client_mark_failed(c, index);
+
+  return state->fd;
+}
+
+
+static
+int
+client_get_server_index(struct client *c, const char *key, size_t key_len)
+{
+  int index, fd;
+
+  if (c->server_count == 0)
+    return -1;
+
+  if (c->server_count == 1 || key_len == 0)
     {
-      client_mark_failed(c, index);
-      return -1;
+      index = 0;
+    }
+  else
+    {
+      /* FIXME: implement better hash function.  */
+
+      //index = key[key_len - 1] % c->server_count;
+
+      if (key || key_len) {}
+      index = 0;
     }
 
-  return index;
+  fd = get_server_fd(c, index);
+
+  return (fd >= 0 ? index : -1);
 }
 
 
@@ -1009,9 +1018,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                       (use_noreply ? NULL : parse_set_reply));
 
-  res = process_commands(c);
-
-  return res;
+  return process_commands(c);
 }
 
 
@@ -1047,9 +1054,7 @@ client_get(struct client *c, const char *key, size_t key_len,
   get_result_state_reset(&state->get_result,
                          alloc_value, invalidate_value, arg);
 
-  res = process_commands(c);
-
-  return res;
+  return process_commands(c);
 }
 
 
@@ -1058,47 +1063,67 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
             alloc_value_func alloc_value,
             invalidate_value_func invalidate_value, void *arg)
 {
-  size_t request_size =
-    (sizeof(struct iovec) * (key_count * (c->prefix_len ? 3 : 2) + 2));
+  size_t min_request_size = (sizeof(struct iovec) * 2);
   struct command_state *state;
-  int server_index, res;
   int i;
 
-  /* FIXME: implement per-key dispatch.  */
-  server_index = client_get_server_index(c, NULL, 0);
-  if (server_index == -1)
-    return MEMCACHED_CLOSED;
-
-  state = &c->servers[server_index].cmd_state;
-
-  res = iov_buf_extend(state, request_size);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
-
-  state->iov_count = 0;
-
-  iov_push(state, STR_WITH_LEN("get"));
   for (i = 0; i < key_count; ++i)
     {
       char *key;
       size_t key_len;
+      size_t size;
+      int server_index, res;
+
+      key = get_key(arg, i, &key_len);
+
+      server_index = client_get_server_index(c, key, key_len);
+      if (server_index == -1)
+        continue;
+
+      state = &c->servers[server_index].cmd_state;
+
+      size = (state->iov_buf_size
+              + sizeof(struct iovec) * (c->prefix_len ? 3 : 2));
+      if (! state->active)
+        size += min_request_size;
+
+      res = iov_buf_extend(state, size);
+      if (res != MEMCACHED_SUCCESS)
+        {
+          state->active = 0;
+          continue;
+        }
+
+      if (! state->active)
+        {
+          state->active = 1;
+          state->iov_count = 0;
+
+          iov_push(state, STR_WITH_LEN("get"));
+        }
 
       iov_push(state, STR_WITH_LEN(" "));
       if (c->prefix_len)
         iov_push(state, c->prefix, c->prefix_len);
-      key = get_key(arg, i, &key_len);
       iov_push(state, (void *) key, key_len);
     }
-  iov_push(state, STR_WITH_LEN("\r\n"));
 
-  command_state_reset(state, (c->prefix_len ? 3 : 2), key_count,
-                      c->prefix_len, parse_get_reply);
-  get_result_state_reset(&state->get_result,
-                         alloc_value, invalidate_value, arg);
+  for (i = 0; i < c->server_count; ++i)
+    {
+      state = &c->servers[i].cmd_state;
 
-  res = process_commands(c);
+      if (state->active)
+        {
+          iov_push(state, STR_WITH_LEN("\r\n"));
 
-  return res;
+          command_state_reset(state, (c->prefix_len ? 3 : 2), key_count,
+                              c->prefix_len, parse_get_reply);
+          get_result_state_reset(&state->get_result,
+                                 alloc_value, invalidate_value, arg);
+        }
+    }
+
+  return process_commands(c);
 }
 
 
@@ -1141,9 +1166,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1, c->prefix_len,
                       (use_noreply ? NULL : parse_delete_reply));
 
-  res = process_commands(c);
-
-  return res;
+  return process_commands(c);
 }
 
 
@@ -1153,34 +1176,45 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
   int use_noreply = (noreply && c->noreply);
   static const size_t request_size =
     (sizeof(struct iovec) * 1 + sizeof("flush_all 4294967295 noreply\r\n"));
-  struct command_state *state;
-  struct iovec *buf_iov;
-  char *buf;
-  int server_index, res;
+  double ddelay = delay, delay_step = 0.0;
+  int i;
 
-  /* FIXME: loop over all servers, distribute the delay.  */
-  server_index = client_get_server_index(c, NULL, 0);
-  if (server_index == -1)
-    return MEMCACHED_CLOSED;
+  if (c->server_count > 1)
+    delay_step = ddelay / (c->server_count - 1);
+  ddelay += delay_step;
 
-  state = &c->servers[server_index].cmd_state;
+  for (i = 0; i < c->server_count; ++i)
+    {
+      struct command_state *state;
+      struct iovec *buf_iov;
+      char *buf;
+      int fd, res;
 
-  res = iov_buf_extend(state, request_size);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
+      ddelay -= delay_step;
 
-  state->iov_count = 0;
+      fd = get_server_fd(c, i);
+      if (fd == -1)
+        continue;
 
-  buf_iov = &state->iov_buf[state->iov_count];
-  iov_push(state, NULL, 0);
-  buf = (char *) &state->iov_buf[state->iov_count];
-  buf_iov->iov_base = buf;
-  buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
-                             delay, (use_noreply ? " noreply" : ""));
+      state = &c->servers[i].cmd_state;
 
-  command_state_reset(state, 0, 0, c->prefix_len,
-                      (use_noreply ? NULL : parse_ok_reply));
-  res = process_commands(c);
+      res = iov_buf_extend(state, request_size);
+      if (res != MEMCACHED_SUCCESS)
+        continue;
 
-  return res;
+      state->iov_count = 0;
+
+      buf_iov = &state->iov_buf[state->iov_count];
+      iov_push(state, NULL, 0);
+      buf = (char *) &state->iov_buf[state->iov_count];
+      buf_iov->iov_base = buf;
+      buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
+                                 (delay_type) ddelay,
+                                 (use_noreply ? " noreply" : ""));
+
+      command_state_reset(state, 0, 0, c->prefix_len,
+                          (use_noreply ? NULL : parse_ok_reply));
+    }
+
+  return process_commands(c);
 }
