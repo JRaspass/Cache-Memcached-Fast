@@ -62,7 +62,7 @@ enum command_phase
 
 struct command_state
 {
-  const struct client *client;
+  struct client *client;
   int fd;
 
   /*
@@ -85,8 +85,11 @@ struct command_state
   int iov_count;
   int write_offset;
   int key_offset;
+  struct iovec *key;
   int key_count;
   int key_index;
+  int key_head;
+  int key_tail;
 
   parse_reply_func parse_reply;
 
@@ -99,7 +102,7 @@ struct command_state
 static inline
 void
 command_state_init(struct command_state *state,
-                   const struct client *c)
+                   struct client *c)
 {
   state->client = c;
   state->fd = -1;
@@ -130,11 +133,13 @@ command_state_reset(struct command_state *state, int key_offset,
   state->phase = PHASE_SEND;
   state->iov = state->iov_buf;
   state->write_offset = 0;
-  state->key_index = 0;
+  state->key_head = state->key_tail = -1;
   state->iov_count = 0;
   state->active = 1;
 
 #if 0 /* No need to initialize the following.  */
+  state->key = NULL;
+  state->key_index = 0;
   state->pos = state->end = state->eol = state->buf;
   state->match = NO_MATCH;
 #endif
@@ -151,7 +156,7 @@ struct server
 
 static inline
 int
-server_init(struct server *s, const struct client *c,
+server_init(struct server *s, struct client *c,
             const char *host, size_t host_len,
             const char *port, size_t port_len)
 {
@@ -180,6 +185,12 @@ server_destroy(struct server *s)
 }
 
 
+struct key_node
+{
+  int next;
+};
+
+
 struct client
 {
   struct server *servers;
@@ -194,7 +205,27 @@ struct client
   int io_timeout;               /* 1/1000 sec.  */
   int close_on_error;
   int noreply;
+
+  struct key_node *key_list;
+  int key_list_count;
+  int key_list_capacity;
 };
+
+
+static inline
+int
+get_key_index(struct command_state *state)
+{
+  return state->key_head;
+}
+
+
+static inline
+void
+next_key_index(struct command_state *state)
+{
+  state->key_head = state->client->key_list[state->key_head].next;
+}
 
 
 struct client *
@@ -205,8 +236,7 @@ client_init()
     return NULL;
 
   c->servers = NULL;
-  c->server_capacity = 0;
-  c->server_count = 0;
+  c->server_count = c->server_capacity = 0;
 
   c->connect_timeout = 250;
   c->io_timeout = 1000;
@@ -216,6 +246,9 @@ client_init()
   c->key_step = 2;
   c->close_on_error = 1;
   c->noreply = 0;
+
+  c->key_list = NULL;
+  c->key_list_count = c->key_list_capacity = 0;
 
   return c;
 }
@@ -231,6 +264,7 @@ client_destroy(struct client *c)
 
   free(c->servers);
   free(c->prefix);
+  free(c->key_list);
   free(c);
 }
 
@@ -376,21 +410,18 @@ static
 int
 parse_key(struct command_state *state)
 {
-  struct iovec *key;
   char *key_pos;
 
   /* Skip over the prefix.  */
   state->pos += state->client->prefix_len;
 
-  key = &state->iov_buf[state->key_offset
-                        + state->key_index * state->client->key_step];
-  key_pos = (char *) key->iov_base;
+  key_pos = (char *) state->key->iov_base;
   while (state->key_count > 1)
     {
       char *key_end, *prefix_key;
       size_t prefix_len;
 
-      key_end = (char *) key->iov_base + key->iov_len;
+      key_end = (char *) state->key->iov_base + state->key->iov_len;
       while (key_pos != key_end && *state->pos == *key_pos)
         {
           ++key_pos;
@@ -400,7 +431,7 @@ parse_key(struct command_state *state)
       if (key_pos == key_end && *state->pos == ' ')
         break;
 
-      prefix_key = (char *) key->iov_base;
+      prefix_key = (char *) state->key->iov_base;
       prefix_len = key_pos - prefix_key;
       /*
         TODO: Below it might be faster to compare the tail of the key
@@ -408,14 +439,15 @@ parse_key(struct command_state *state)
       */
       do
         {
-          ++state->key_index;
-          key += state->client->key_step;
+          next_key_index(state);
+          state->key += state->client->key_step;
         }
       while (--state->key_count > 1
-             && (key->iov_len < prefix_len
-                 || memcmp(key->iov_base, prefix_key, prefix_len) != 0));
+             && (state->key->iov_len < prefix_len
+                 || memcmp(state->key->iov_base,
+                           prefix_key, prefix_len) != 0));
 
-      key_pos = (char *) key->iov_base + prefix_len;
+      key_pos = (char *) state->key->iov_base + prefix_len;
     }
 
   if (state->key_count == 1)
@@ -425,7 +457,9 @@ parse_key(struct command_state *state)
     }
 
   --state->key_count;
-  ++state->key_index;
+  state->key += state->client->key_step;
+  state->key_index = get_key_index(state);
+  next_key_index(state);
 
   return MEMCACHED_SUCCESS;
 }
@@ -506,7 +540,7 @@ read_value(struct command_state *state)
   state->eol = state->pos;
 
   state->value.object->store(state->value.object->arg,
-                             state->key_index - 1, state->value.flags);
+                             state->key_index, state->value.flags);
 
   return MEMCACHED_SUCCESS;
 }
@@ -778,6 +812,7 @@ process_command(struct command_state *state)
             return MEMCACHED_SUCCESS;
 
           state->pos = state->end = state->eol = state->buf;
+          state->key = &state->iov_buf[state->key_offset];
 
           state->phase = PHASE_RECEIVE;
 
@@ -974,11 +1009,7 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
   else
     {
       /* FIXME: implement better hash function.  */
-
-      //index = key[key_len - 1] % c->server_count;
-
-      if (key || key_len) {}
-      index = 0;
+      index = (key_len + (size_t) key[key_len - 1]) % c->server_count;
     }
 
   fd = get_server_fd(c, index);
@@ -1018,6 +1049,43 @@ iov_push(struct command_state *state, void *buf, size_t buf_size)
 }
 
 
+static
+int
+push_key(struct command_state *state)
+{
+  struct key_node *node;
+  struct client *c;
+
+  c = state->client;
+  if (c->key_list_count == c->key_list_capacity)
+    {
+      int capacity = (c->key_list_capacity > 0 ? c->key_list_capacity * 2 : 1);
+      struct key_node *list =
+        (struct key_node *) realloc(c->key_list,
+                                    sizeof(struct key_node) * capacity);
+      if (! list)
+        return MEMCACHED_FAILURE;
+
+      c->key_list = list;
+      c->key_list_capacity = capacity;
+    }
+
+  if (state->key_tail != -1)
+    c->key_list[state->key_tail].next = c->key_list_count;
+  else
+    state->key_head = c->key_list_count;
+
+  state->key_tail = c->key_list_count;
+
+  node = &c->key_list[state->key_tail];
+  node->next = -1;
+
+  ++c->key_list_count;
+
+  return MEMCACHED_SUCCESS;
+}
+
+
 #define STR_WITH_LEN(str) (str), (sizeof(str) - 1)
 
 
@@ -1035,6 +1103,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
   struct iovec *buf_iov;
   char *buf;
   int server_index, res;
+
+  c->key_list_count = 0;
 
   server_index = client_get_server_index(c, key, key_len);
   if (server_index == -1)
@@ -1073,6 +1143,11 @@ client_set(struct client *c, enum set_cmd_e cmd,
   if (c->prefix_len)
     iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
+
+  res = push_key(state);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
   buf_iov = &state->iov_buf[state->iov_count];
   iov_push(state, NULL, 0);
   iov_push(state, (void *) value, value_size);
@@ -1097,6 +1172,8 @@ client_get(struct client *c, const char *key, size_t key_len,
   struct command_state *state;
   int server_index, res;
 
+  c->key_list_count = 0;
+
   server_index = client_get_server_index(c, key, key_len);
   if (server_index == -1)
     return MEMCACHED_CLOSED;
@@ -1113,6 +1190,11 @@ client_get(struct client *c, const char *key, size_t key_len,
   if (c->prefix_len)
     iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
+
+  res = push_key(state);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
   iov_push(state, STR_WITH_LEN("\r\n"));
 
   return process_commands(c);
@@ -1126,6 +1208,8 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
   size_t min_request_size = (sizeof(struct iovec) * 2);
   struct command_state *state;
   int i;
+
+  c->key_list_count = 0;
 
   for (i = 0; i < key_count; ++i)
     {
@@ -1167,6 +1251,13 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
       if (c->prefix_len)
         iov_push(state, c->prefix, c->prefix_len);
       iov_push(state, (void *) key, key_len);
+
+      res = push_key(state);
+      if (res != MEMCACHED_SUCCESS)
+        {
+          state->active = 0;
+          continue;
+        }
     }
 
   for (i = 0; i < c->server_count; ++i)
@@ -1197,6 +1288,8 @@ client_delete(struct client *c, const char *key, size_t key_len,
   char *buf;
   int server_index, res;
 
+  c->key_list_count = 0;
+
   server_index = client_get_server_index(c, key, key_len);
   if (server_index == -1)
     return MEMCACHED_CLOSED;
@@ -1213,6 +1306,11 @@ client_delete(struct client *c, const char *key, size_t key_len,
   if (c->prefix_len)
     iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
+
+  res = push_key(state);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
   buf_iov = &state->iov_buf[state->iov_count];
   iov_push(state, NULL, 0);
   buf = (char *) &state->iov_buf[state->iov_count];
