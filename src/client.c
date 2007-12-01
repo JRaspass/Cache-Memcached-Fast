@@ -900,8 +900,9 @@ process_commands(struct client *c)
         {
           struct command_state *state = &c->servers[i].cmd_state;
 
-          if (FD_ISSET(state->fd, &read_set)
-              || FD_ISSET(state->fd, &write_set))
+          if (state->active
+              && (FD_ISSET(state->fd, &read_set)
+                  || FD_ISSET(state->fd, &write_set)))
             {
               res = process_command(state);
               switch (res)
