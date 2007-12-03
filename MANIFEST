@@ -5,6 +5,7 @@ typemap
 Fast.xs
 ppport.h
 README
+script/benchmark.pl
 t/Cache-Memcached-Fast.t
 lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
