@@ -339,6 +339,37 @@ _xs_mget(memd, ...)
         XSRETURN(2);
 
 
+void
+incr(memd, skey, ...)
+        Cache_Memcached_Fast *  memd
+        SV *                    skey
+    ALIAS:
+        decr  =  CMD_DECR
+    PROTOTYPE: $$;$
+    PREINIT:
+        const char *key;
+        STRLEN key_len;
+        arith_type arg = 1, result;
+        int noreply, res;
+    PPCODE:
+        if (items > 2 && SvOK(ST(2)))
+          arg = SvUV(ST(2));
+        key = SvPV(skey, key_len);
+        noreply = (GIMME_V == G_VOID);
+        res = client_arith(memd, ix, key, key_len, arg, &result, noreply);
+        if (! noreply && res == MEMCACHED_SUCCESS)
+          {
+            dXSTARG;
+
+            /*
+               NOTE: arith_type is at least 64 bit, but Perl UV is 32
+               bit.
+            */
+            PUSHu(result);
+            XSRETURN(1);
+          }
+
+
 bool
 delete(memd, skey, ...)
         Cache_Memcached_Fast *  memd

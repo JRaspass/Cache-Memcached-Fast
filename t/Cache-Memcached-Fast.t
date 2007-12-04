@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 35;
+use Test::More tests => 39;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -58,6 +58,12 @@ ok($memd->set("zero", ""));
 is($memd->get("zero"), "");
 
 
+$memd->set("arith", 10);
+is($memd->incr("arith", 5), 15);
+is($memd->decr("arith"), 14);
+is($memd->get("arith"), 14);
+
+
 $res1 = $memd->get_multi("key_no_such_key", "key1", "key_no_such_key",
                          "key2", "key_no_such_key", "key_no_such_key",
                          "key3", "key_no_such_key", "key2", "key_no_such_key");
@@ -86,6 +92,7 @@ undef $memd;
 if (1) {
    ok(1);
    ok(1);
+   ok(1);
 } else {
     my $memd_noreply = Cache::Memcached::Fast->new({
         servers => ['localhost:11211'],
@@ -95,6 +102,7 @@ if (1) {
     });
 
     $memd_noreply->flush_all;
+
     $memd_noreply->add("k", "v");
     $memd_noreply->set("k", "v");
     $memd_noreply->replace("k", "v");
@@ -103,5 +111,11 @@ if (1) {
     is($memd_noreply->get("k"), "_v_");
     $memd_noreply->delete("k");
     is($memd_noreply->get("k"), undef);
+
+    $memd_noreply->set("arith", 10);
+    $memd_noreply->incr("arith", 5);
+    $memd_noreply->decr("arith");
+    is($memd_noreply->get("arith"), 14);
+
     $memd_noreply->flush_all;
 }

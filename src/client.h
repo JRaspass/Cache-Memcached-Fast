@@ -18,6 +18,8 @@ enum server_status {
 
 enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND };
 
+enum arith_cmd_e { CMD_INCR, CMD_DECR };
+
 
 typedef unsigned int flags_type;
 #define FMT_FLAGS "%u"
@@ -30,6 +32,9 @@ typedef unsigned int delay_type;
 
 typedef size_t value_size_type;
 #define FMT_VALUE_SIZE "%zu"
+
+typedef unsigned long long arith_type;
+#define FMT_ARITH "%llu"
 
 
 typedef char *(*get_key_func)(void *arg, int key_index, size_t *key_len);
@@ -97,6 +102,12 @@ extern
 int
 client_mget(struct client *c, int key_count, get_key_func get_key,
             struct value_object *o);
+
+extern
+int
+client_arith(struct client *c, enum arith_cmd_e cmd,
+             const char *key, size_t key_len,
+             arith_type arg, arith_type *result, int noreply);
 
 extern
 int

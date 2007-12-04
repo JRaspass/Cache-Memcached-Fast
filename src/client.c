@@ -49,6 +49,20 @@ value_state_reset(struct value_state *state, struct value_object *o)
 }
 
 
+struct arith_state
+{
+  arith_type *result;
+};
+
+
+static inline
+void
+arith_state_reset(struct arith_state *state, arith_type *result)
+{
+  state->result = result;
+}
+
+
 struct command_state;
 typedef int (*parse_reply_func)(struct command_state *state);
 
@@ -98,7 +112,11 @@ struct command_state
 
   parse_reply_func parse_reply;
 
-  struct value_state value;
+  union
+  {
+    struct value_state value;
+    struct arith_state arith;
+  };
 };
 
 
@@ -680,6 +698,46 @@ parse_delete_reply(struct command_state *state)
     default:
       return MEMCACHED_UNKNOWN;
     }
+}
+
+
+static
+int
+parse_arith_reply(struct command_state *state)
+{
+  int res, match_count;
+  arith_type arith;
+
+  switch (state->match)
+    {
+    case MATCH_NOT_FOUND:
+      res = swallow_eol(state, 0, 1);
+
+      return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+
+    default:
+      return MEMCACHED_UNKNOWN;
+
+    case MATCH_0: case MATCH_1: case MATCH_2: case MATCH_3: case MATCH_4:
+    case MATCH_5: case MATCH_6: case MATCH_7: case MATCH_8: case MATCH_9:
+      break;
+    }
+
+  --state->pos;
+
+  res = sscanf(state->pos, FMT_ARITH "%n", &arith, &match_count);
+  if (res != 1)
+    return MEMCACHED_UNKNOWN;
+
+  state->pos += match_count;
+
+  res = swallow_eol(state, 1, 1);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
+  *state->arith.result = arith;
+
+  return MEMCACHED_SUCCESS;
 }
 
 
@@ -1298,6 +1356,65 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
     }
 
   return process_commands(c);
+}
+
+
+int
+client_arith(struct client *c, enum arith_cmd_e cmd,
+             const char *key, size_t key_len,
+             arith_type arg, arith_type *result, int noreply)
+{
+  int use_noreply = (noreply && c->noreply);
+  size_t request_size =
+    (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
+     + sizeof(" 18446744073709551616 noreply\r\n"));
+  struct command_state *state;
+  struct iovec *buf_iov;
+  char *buf;
+  int server_index, res;
+
+  client_reset_for_command(c);
+
+  server_index = client_get_server_index(c, key, key_len);
+  if (server_index == -1)
+    return MEMCACHED_CLOSED;
+
+  state = &c->servers[server_index].cmd_state;
+  command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
+                      (use_noreply ? NULL : parse_arith_reply));
+  arith_state_reset(&state->arith, result);
+
+  res = iov_buf_extend(state, request_size);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
+  switch (cmd)
+    {
+    case CMD_INCR:
+      iov_push(state, STR_WITH_LEN("incr "));
+      break;
+
+    case CMD_DECR:
+      iov_push(state, STR_WITH_LEN("decr "));
+      break;
+    }
+  if (c->prefix_len)
+    iov_push(state, c->prefix, c->prefix_len);
+  iov_push(state, (void *) key, key_len);
+
+  res = push_key(state, 0);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
+  buf_iov = &state->iov_buf[state->iov_count];
+  iov_push(state, NULL, 0);
+  buf = (char *) &state->iov_buf[state->iov_count];
+  buf_iov->iov_base = buf;
+  buf_iov->iov_len = sprintf(buf, " " FMT_ARITH "%s\r\n", arg,
+                             (use_noreply ? " noreply" : ""));
+
+  return process_commands(c);
+
 }
 
 
