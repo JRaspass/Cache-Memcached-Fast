@@ -6,13 +6,15 @@ use strict;
 
 use FindBin;
 
-@ARGV == 1 or @ARGV == 2
-    or die "Usage: $FindBin::Script HOST:PORT [COUNT]\n";
+@ARGV >= 1
+    or die "Usage: $FindBin::Script HOST:PORT... [COUNT]\n";
 
 # Note that it's better to run the test over the wire, because for
 # localhost the task may become CPU bound.
-my $addr = $ARGV[0];
-my $count = $ARGV[1] || 100_000;
+
+my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 100_000);
+
+my @addrs = @ARGV;
 
 my $max_keys = 5000;
 my $keys_multi = 100;
@@ -25,14 +27,14 @@ use Benchmark qw(:hireswallclock timethese cmpthese);
 
 
 my $new = new Cache::Memcached::Fast {
-    servers   => [$addr],
+    servers   => [@addrs],
     namespace => 'Cache::Memcached::New',
     noreply   => 1,
 };
 
 
 my $old = new Cache::Memcached {
-    servers   => [$addr],
+    servers   => [@addrs],
     namespace => 'Cache::Memcached::Old',
 };
 $old->enable_compress(0);
