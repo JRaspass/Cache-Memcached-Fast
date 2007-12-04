@@ -40,6 +40,11 @@ my $old = new Cache::Memcached {
 $old->enable_compress(0);
 
 
+sub get_key {
+    int(rand($max_keys));
+}
+
+
 sub compare {
     my ($method, $keys, $value, $noreply) = @_;
 
@@ -52,23 +57,22 @@ sub compare {
     }
 
     my $res;
-    my @params;
 
-    @params = map { int(rand($max_keys)) } (1 .. $keys);
-    push @params, $value if defined $value;
+    my $params = sub {
+        my @params = map { get_key() } (1 .. $keys);
+        push @params, $value if defined $value;
+        return @params;
+    };
 
     my @test = (
-        "Old $title"  => sub { $res = $old->$method(@params) },
-        "New $title"  => sub { $res = $new->$method(@params) },
+        "Old $title"  => sub { $res = $old->$method(&$params) },
+        "New $title"  => sub { $res = $new->$method(&$params) },
     );
-
-    @params = map { int(rand($max_keys)) } (1 .. $keys);
-    push @params, $value if defined $value;
 
     if ($noreply) {
         push @test, (
-             "Old $title noreply"  => sub { $old->$method(@params) },
-             "New $title noreply"  => sub { $new->$method(@params) },
+             "Old $title noreply"  => sub { $old->$method(&$params) },
+             "New $title noreply"  => sub { $new->$method(&$params) },
         );
     }
 
@@ -82,18 +86,18 @@ sub compare_multi {
     my $method_multi = "${method}_multi";
 
     my $res;
-    my @params = (int(rand($max_keys)));
-    my @params_multi = map { int(rand($max_keys)) } (1 .. $keys);
+
+    my @keys = map { int(rand($max_keys)) } (1 .. $keys);
 
     my @test = (
         "Old $method x $keys"
-                => sub { $res = $old->$method(@params) for (1 .. $keys) },
+                => sub { $res = $old->$method($_) foreach (@keys) },
         "New $method x $keys"
-                => sub { $res = $new->$method(@params) for (1 .. $keys) },
+                => sub { $res = $new->$method($_) foreach (@keys) },
         "Old $method_multi($keys)"
-                => sub { $res = $old->$method_multi(@params_multi) },
+                => sub { $res = $old->$method_multi(@keys) },
         "New $method_multi($keys)"
-                => sub { $res = $new->$method_multi(@params_multi) },
+                => sub { $res = $new->$method_multi(@keys) },
     );
 
     cmpthese(timethese(int($count / $keys), {@test}));
