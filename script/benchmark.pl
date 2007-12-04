@@ -16,7 +16,7 @@ my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 100_000);
 
 my @addrs = @ARGV;
 
-my $max_keys = 5000;
+my $max_keys = $count / 2;
 my $keys_multi = 100;
 my $value = 'x' x 40;
 
