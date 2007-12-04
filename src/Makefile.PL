@@ -10,7 +10,8 @@ WriteMakefile(
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
-    OBJECT            => 'parse_keyword$(OBJ_EXT) $(O_FILES)',
+    OBJECT            => 'parse_keyword$(OBJ_EXT) compute_crc32$(OBJ_EXT)
+                          $(O_FILES)',
 );
 
 sub MY::top_targets {
@@ -27,5 +28,8 @@ libclient$(LIB_EXT): $(OBJECT)
 
 parse_keyword.c parse_keyword.h :: genparser.pl reply.kw
 	$(PERL) genparser.pl reply.kw parse_keyword.c parse_keyword.h
+
+compute_crc32.c compute_crc32.h :: gencrc32.pl
+	$(PERL) gencrc32.pl compute_crc32.c compute_crc32.h
 '
 }

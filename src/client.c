@@ -1,6 +1,7 @@
 #include "client.h"
 #include "connect.h"
 #include "parse_keyword.h"
+#include "hash_crc32.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/uio.h>
@@ -1082,8 +1083,7 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
     }
   else
     {
-      /* FIXME: implement better hash function.  */
-      index = (key_len + (size_t) key[key_len - 1]) % c->server_count;
+      index = hash_crc32(key, key_len) % c->server_count;
     }
 
   fd = get_server_fd(c, index);

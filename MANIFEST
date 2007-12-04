@@ -9,9 +9,11 @@ script/benchmark.pl
 t/Cache-Memcached-Fast.t
 lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
+src/gencrc32.pl
 src/genparser.pl
 src/reply.kw
 src/client.h
 src/client.c
 src/connect.h
 src/connect.c
+src/hash_crc32.h
