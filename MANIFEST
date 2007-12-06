@@ -1,0 +1,8 @@
+Changes
+Makefile.PL
+MANIFEST
+Memcached1.xs
+ppport.h
+README
+t/Cache-Memcached1.t
+lib/Cache/Memcached1.pm
