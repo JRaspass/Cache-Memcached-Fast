@@ -408,3 +408,35 @@ flush_all(memd, ...)
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:
         RETVAL
+
+
+HV *
+_xs_rvav2rvhv(array)
+        AV *                    array
+    PROTOTYPE: $
+    PREINIT:
+        I32 max_index, i;
+    CODE:
+        RETVAL = newHV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV*)RETVAL);
+        max_index = av_len(array);
+        if ((max_index & 1) != 1)
+          croak("Even sized list expected");
+        i = 0;
+        while (i <= max_index)
+          {
+            SV **pkey, **pval;
+            HE *he;
+
+            pkey = av_fetch(array, i++, 0);
+            pval = av_fetch(array, i++, 0);
+            if (! (pkey && pval))
+              croak("Undefined values in the list");
+            SvREFCNT_inc(*pval);
+            he = hv_store_ent(RETVAL, *pkey, *pval, 0);
+            if (! he)
+              SvREFCNT_dec(*pval);
+          }
+    OUTPUT:
+        RETVAL

@@ -14,49 +14,51 @@ XSLoader::load('Cache::Memcached::Fast', $VERSION);
 # Preloaded methods go here.
 
 
+# BIG FAT WARNING: Perl assignment copies the value, so below we try
+# to avoid any copying.
+
+
 sub set {
-    my ($self, $key, $val, $exptime) = @_;
     my $flags = 0;
 
     # FIXME: set $flags here.
 
-    return _xs_set($self, $key, $val, $flags, $exptime);
+    splice(@_, 3, 0, $flags);
+    return _xs_set(@_);
 }
 
 
 sub add {
-    my ($self, $key, $val, $exptime) = @_;
     my $flags = 0;
 
     # FIXME: set $flags here.
 
-    return _xs_add($self, $key, $val, $flags, $exptime);
+    splice(@_, 3, 0, $flags);
+    return _xs_add(@_);
 }
 
 
 sub replace {
-    my ($self, $key, $val, $exptime) = @_;
     my $flags = 0;
 
     # FIXME: set $flags here.
 
-    return _xs_replace($self, $key, $val, $flags, $exptime);
+    splice(@_, 3, 0, $flags);
+    return _xs_replace(@_);
 }
 
 
 sub append {
-    my ($self, $key, $val, $exptime) = @_;
-
     # append() does not affect flags.
-    return _xs_append($self, $key, $val, 0, $exptime);
+    splice(@_, 3, 0, 0);
+    return _xs_append(@_);
 }
 
 
 sub prepend {
-    my ($self, $key, $val, $exptime) = @_;
-
     # prepend() does not affect flags.
-    return _xs_prepend($self, $key, $val, 0, $exptime);
+    splice(@_, 3, 0, 0);
+    return _xs_prepend(@_);
 }
 
 
@@ -74,8 +76,7 @@ sub get_multi {
 
     # FIXME: process $flags here.
 
-    my %res = @$key_val;
-    return \%res;
+    return _xs_rvav2rvhv($key_val);
 }
 
 

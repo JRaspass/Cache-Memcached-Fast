@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 39;
+use Test::More tests => 43;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -85,6 +85,18 @@ is($memd->get("key5"), "bxa");
 
 ok($memd->flush_all(1));
 sleep(1.2);
+
+
+my $key = "key_ref";
+my $value = "value ref check";
+ok($memd->set($key, $value));
+my $h = $memd->get_multi($key);
+is($$h{$key}, $value);
+my $old_key = $key;
+substr($key, 3, 4, "");
+is($$h{$old_key}, $value);
+is($$h{$key}, undef);
+
 
 undef $memd;
 
