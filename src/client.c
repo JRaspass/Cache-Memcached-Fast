@@ -1289,7 +1289,8 @@ int
 client_mget(struct client *c, int key_count, get_key_func get_key,
             struct value_object *o)
 {
-  size_t min_request_size = (sizeof(struct iovec) * 2);
+  size_t min_request_size =
+    (sizeof(struct iovec) * ((c->prefix_len ? 3 : 2) + 2));
   struct command_state *state;
   int i;
 
@@ -1310,10 +1311,11 @@ client_mget(struct client *c, int key_count, get_key_func get_key,
 
       state = &c->servers[server_index].cmd_state;
 
-      size = (state->iov_buf_size
-              + sizeof(struct iovec) * (c->prefix_len ? 3 : 2));
-      if (! is_active(state))
-        size += min_request_size;
+      if (is_active(state))
+        size = (sizeof(struct iovec)
+                * (state->iov_count + (c->prefix_len ? 3 : 2) + 1));
+      else
+        size = min_request_size;
 
       res = iov_buf_extend(state, size);
       if (res != MEMCACHED_SUCCESS)
