@@ -5,8 +5,6 @@
   every call skip what's pending until request is pushed (and reply is
   got).
 
-- Move the tree into separate repository.
-
 - Improve make files: libclient.a should not be installed (does it
   now?).
 
