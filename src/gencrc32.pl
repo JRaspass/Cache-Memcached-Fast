@@ -79,7 +79,7 @@ $prototype
 
   while (s < end)
     {
-      unsigned int index = (crc32 ^ (unsigned int) *s) & 0x000000ffU;
+      unsigned int index = (crc32 ^ (unsigned char) *s) & 0x000000ffU;
       crc32 = (crc32 >> 8) ^ crc32lookup[index];
       ++s;
     }
