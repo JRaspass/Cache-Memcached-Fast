@@ -1,3 +1,6 @@
+use warnings;
+use strict;
+
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Cache-Memcached-Fast.t'
 
@@ -5,7 +8,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 43;
+use Test::More tests => 49;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -97,6 +100,15 @@ substr($key, 3, 4, "");
 is($$h{$old_key}, $value);
 is($$h{$key}, undef);
 
+
+$memd->set("cas", "value");
+my $cas_res = $memd->gets("cas");
+isa_ok($cas_res, "ARRAY");
+is (scalar @$cas_res, 2);
+is($$cas_res[1], "value");
+ok($memd->cas("cas", $$cas_res[0], "new value"));
+ok(! $memd->cas("cas", @$cas_res));
+is($memd->get("cas"), "new value");
 
 undef $memd;
 

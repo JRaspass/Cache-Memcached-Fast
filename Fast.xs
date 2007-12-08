@@ -104,6 +104,7 @@ struct xs_skey_result
 {
   SV *sv;
   flags_type flags;
+  cas_type cas;
 };
 
 
@@ -127,16 +128,18 @@ skey_alloc(void *arg, value_size_type value_size)
 
 static
 void
-skey_store(void *arg, int key_index, flags_type flags)
+skey_store(void *arg, int key_index, flags_type flags,
+           int use_cas, cas_type cas)
 {
   struct xs_skey_result *skey_res;
 
-  /* Suppress warning about unused key_index.  */
-  if (key_index) {}
+  /* Suppress warning about unused key_index and use_cas.  */
+  if (key_index || use_cas) {}
 
   skey_res = (struct xs_skey_result *) arg;
 
   skey_res->flags = flags;
+  skey_res->cas = cas;
 }
 
 
@@ -204,7 +207,8 @@ mkey_alloc(void *arg, value_size_type value_size)
 
 static
 void
-mkey_store(void *arg, int key_index, flags_type flags)
+mkey_store(void *arg, int key_index, flags_type flags,
+           int use_cas, cas_type cas)
 {
   I32 ax;
   struct xs_mkey_result *mkey_res;
@@ -216,7 +220,18 @@ mkey_store(void *arg, int key_index, flags_type flags)
   key_sv = ST(mkey_res->stack_offset + key_index);
   SvREFCNT_inc(key_sv);
   av_push(mkey_res->key_val, key_sv);
-  av_push(mkey_res->key_val, mkey_res->sv);
+  if (! use_cas)
+    {
+      av_push(mkey_res->key_val, mkey_res->sv);
+    }
+  else
+    {
+      AV *cas_val = newAV();
+      av_extend(cas_val, 1);
+      av_push(cas_val, newSVuv(cas));
+      av_push(cas_val, mkey_res->sv);
+      av_push(mkey_res->key_val, (SV *) cas_val);
+    }
 
   av_push(mkey_res->flags, newSVuv(flags));
 }
@@ -269,7 +284,7 @@ _xs_set(memd, skey, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
         SV *                    sval
-        unsigned int            flags
+        U32                     flags
     ALIAS:
         _xs_add      =  CMD_ADD
         _xs_replace  =  CMD_REPLACE
@@ -281,7 +296,8 @@ _xs_set(memd, skey, sval, flags, ...)
         STRLEN key_len;
         const void *buf;
         STRLEN buf_len;
-        int exptime = 0, noreply, res;
+        exptime_type exptime = 0;
+        int noreply, res;
     CODE:
         if (items > 4 && SvOK(ST(4)))
           exptime = SvIV(ST(4));
@@ -296,10 +312,41 @@ _xs_set(memd, skey, sval, flags, ...)
         RETVAL
 
 
+bool
+_xs_cas(memd, skey, cas, sval, flags, ...)
+        Cache_Memcached_Fast *  memd
+        SV *                    skey
+        U32                     cas
+        SV *                    sval
+        U32                     flags
+    PROTOTYPE: $$$$$;$
+    PREINIT:
+        const char *key;
+        STRLEN key_len;
+        const void *buf;
+        STRLEN buf_len;
+        exptime_type exptime = 0;
+        int noreply, res;
+    CODE:
+        if (items > 4 && SvOK(ST(4)))
+          exptime = SvIV(ST(4));
+        key = SvPV(skey, key_len);
+        buf = (void *) SvPV(sval, buf_len);
+        noreply = (GIMME_V == G_VOID);
+        res = client_cas(memd, key, key_len, cas, flags, exptime,
+                         buf, buf_len, noreply);
+        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
+        RETVAL = (res == MEMCACHED_SUCCESS);
+    OUTPUT:
+        RETVAL
+
+
 void
 _xs_get(memd, skey)
         Cache_Memcached_Fast *  memd
         SV *                    skey
+    ALIAS:
+        _xs_gets  =  CMD_GETS
     PROTOTYPE: $$
     PREINIT:
         const char *key;
@@ -310,12 +357,23 @@ _xs_get(memd, skey)
     PPCODE:
         key = SvPV(skey, key_len);
         skey_res.sv = NULL;
-        client_get(memd, key, key_len, &object);
+        client_get(memd, ix, key, key_len, &object);
         if (skey_res.sv != NULL)
           {
             dXSTARG;
 
-            PUSHs(sv_2mortal(skey_res.sv));
+            if (ix == CMD_GET)
+              {
+                PUSHs(sv_2mortal(skey_res.sv));
+              }
+            else
+              {
+                AV *cas_val = newAV();
+                av_extend(cas_val, 1);
+                av_push(cas_val, newSVuv(skey_res.cas));
+                av_push(cas_val, skey_res.sv);
+                PUSHs(sv_2mortal(newRV_noinc((SV *) cas_val)));
+              }
             PUSHu(skey_res.flags);
             XSRETURN(2);
           }
@@ -324,6 +382,8 @@ _xs_get(memd, skey)
 void
 _xs_mget(memd, ...)
         Cache_Memcached_Fast *  memd
+    ALIAS:
+        _xs_mgets  =  CMD_GETS
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;
@@ -339,7 +399,7 @@ _xs_mget(memd, ...)
         av_extend(mkey_res.key_val, key_count * 2);
         av_extend(mkey_res.flags, key_count);
         if (key_count > 0)
-          client_mget(memd, key_count, get_key, &object);
+          client_mget(memd, ix, key_count, get_key, &object);
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
@@ -385,7 +445,7 @@ delete(memd, skey, ...)
     PREINIT:
         const char *key;
         STRLEN key_len;
-        unsigned int delay = 0;
+        delay_type delay = 0;
         int noreply, res;
     CODE:
         if (items > 2 && SvOK(ST(2)))
@@ -404,7 +464,7 @@ flush_all(memd, ...)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $;$
     PREINIT:
-        unsigned int delay = 0;
+        delay_type delay = 0;
         int noreply, res;
     CODE:
         if (items > 1 && SvOK(ST(1)))

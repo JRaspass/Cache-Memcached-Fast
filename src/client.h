@@ -18,6 +18,8 @@ enum server_status {
 
 enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND };
 
+enum get_cmd_e { CMD_GET, CMD_GETS };
+
 enum arith_cmd_e { CMD_INCR, CMD_DECR };
 
 
@@ -33,6 +35,9 @@ typedef unsigned int delay_type;
 typedef size_t value_size_type;
 #define FMT_VALUE_SIZE "%zu"
 
+typedef unsigned long long cas_type;
+#define FMT_CAS "%llu"
+
 typedef unsigned long long arith_type;
 #define FMT_ARITH "%llu"
 
@@ -40,7 +45,8 @@ typedef unsigned long long arith_type;
 typedef char *(*get_key_func)(void *arg, int key_index, size_t *key_len);
 
 typedef void *(*alloc_value_func)(void *arg, value_size_type value_size);
-typedef void (*store_value_func)(void *arg, int key_index, flags_type flags);
+typedef void (*store_value_func)(void *arg, int key_index, flags_type flags,
+                                 int use_cas, cas_type cas);
 typedef void (*free_value_func)(void *arg);
 
 struct value_object
@@ -95,13 +101,19 @@ client_set(struct client *c, enum set_cmd_e cmd,
 
 extern
 int
-client_get(struct client *c, const char *key, size_t key_len,
-           struct value_object *o);
+client_cas(struct client *c, const char *key, size_t key_len,
+           cas_type cas, flags_type flags, exptime_type exptime,
+           const void *value, value_size_type value_size, int noreply);
 
 extern
 int
-client_mget(struct client *c, int key_count, get_key_func get_key,
-            struct value_object *o);
+client_get(struct client *c, enum get_cmd_e cmd,
+           const char *key, size_t key_len, struct value_object *o);
+
+extern
+int
+client_mget(struct client *c, enum get_cmd_e cmd,
+            int key_count, get_key_func get_key, struct value_object *o);
 
 extern
 int

@@ -28,6 +28,16 @@ sub set {
 }
 
 
+sub cas {
+    my $flags = 0;
+
+    # FIXME: set $flags here.
+
+    splice(@_, 4, 0, $flags);
+    return _xs_cas(@_);
+}
+
+
 sub add {
     my $flags = 0;
 
@@ -73,6 +83,24 @@ sub get {
 
 sub get_multi {
     my ($key_val, $flags) = _xs_mget(@_);
+
+    # FIXME: process $flags here.
+
+    return _xs_rvav2rvhv($key_val);
+}
+
+
+sub gets {
+    my ($val, $flags) = _xs_gets(@_);
+
+    # FIXME: process $flags here.
+
+    return $val;
+}
+
+
+sub gets_multi {
+    my ($key_val, $flags) = _xs_mgets(@_);
 
     # FIXME: process $flags here.
 
