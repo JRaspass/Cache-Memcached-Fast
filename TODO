@@ -24,6 +24,6 @@ BEGIN {
 
 - Use better rounding in flush_all().
 
-- Disable noreply in benchmark.pl before shipping.
+- Disable noreply in benchmark.pl, remove append/prepend before shipping.
 
 - Set $! on errors.

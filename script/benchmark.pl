@@ -46,7 +46,7 @@ sub get_key {
 
 
 sub compare {
-    my ($method, $keys, $value, $noreply) = @_;
+    my ($method, $keys, $noreply, $value, $cas) = @_;
 
     my $title = "$method";
     if (defined $value) {
@@ -60,6 +60,7 @@ sub compare {
 
     my $params = sub {
         my @params = map { get_key() } (1 .. $keys);
+        push @params, 0 if $cas;
         push @params, $value if defined $value;
         return @params;
     };
@@ -104,14 +105,23 @@ sub compare_multi {
 }
 
 
+use constant norepy => 1;
+use constant cas => 1;
+
 my @methods = (
-    [add        => \&compare, 1, $value, 1],
-    [set        => \&compare, 1, $value, 1],
-    [replace    => \&compare, 1, $value, 1],
+    [add        => \&compare, 1, norepy, $value],
+    [set        => \&compare, 1, norepy, $value],
+    [append     => \&compare, 1, norepy, $value],
+    [prepend    => \&compare, 1, norepy, $value],
+    [replace    => \&compare, 1, norepy, $value],
+    [cas        => \&compare, 1, norepy, $value, cas],
     [get        => \&compare, 1],
     [get_multi  => \&compare, $keys_multi],
+    [gets       => \&compare, 1],
+    [gets_multi => \&compare, $keys_multi],
     [get        => \&compare_multi, $keys_multi],
-    [delete     => \&compare, 1, undef, 1],
+    [gets       => \&compare_multi, $keys_multi],
+    [delete     => \&compare, 1, norepy],
 );
 
 
