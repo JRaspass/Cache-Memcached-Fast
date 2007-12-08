@@ -19,8 +19,8 @@ use Cache::Memcached::Fast;
 my $memd = Cache::Memcached::Fast->new({
     servers => ['localhost:11211', '127.0.0.1:11211', 'localhost:11211'],
     namespace => 'Cache::Memcached::Fast::',
-#    connect_timeout => 0.26,
-#    select_timeout => 1.01,
+    connect_timeout => 0.2,
+    io_timeout => 0.5,
     close_on_error => 0,
 });
 

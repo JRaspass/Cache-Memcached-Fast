@@ -11,6 +11,7 @@
 - Add doc section "Compatibility with Cache::Memcached".
 
 
+Use IO::Compress::Gzip.
 
 my $have_compress_zlib;
 

@@ -961,7 +961,10 @@ static
 int
 process_commands(struct client *c)
 {
+  struct timeval to, *pto;
   int result = MEMCACHED_FAILURE;
+
+  pto = c->io_timeout > 0 ? &to : NULL;
 
   while (1)
     {
@@ -991,7 +994,19 @@ process_commands(struct client *c)
         break;
 
       do
-        res = select(max_fd + 1, &read_set, &write_set, NULL, NULL);
+        {
+          /*
+            For maximum portability across systems that may or may not
+            modify the timeout argument we treat it as undefined after
+            the call, and reinitialize on every iteration.
+          */
+          if (pto)
+            {
+              pto->tv_sec = c->io_timeout / 1000;
+              pto->tv_usec = (c->io_timeout % 1000) * 1000;
+            }
+          res = select(max_fd + 1, &read_set, &write_set, NULL, pto);
+        }
       while (res == -1 && errno == EINTR);
 
       /*
@@ -1001,7 +1016,12 @@ process_commands(struct client *c)
       if (res <= 0)
         {
           for (i = 0; i < c->server_count; ++i)
-            client_mark_failed(c, i);
+            {
+              struct command_state *state = &c->servers[i].cmd_state;
+
+              if (is_active(state))
+                client_mark_failed(c, i);
+            }
 
           break;
         }

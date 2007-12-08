@@ -72,6 +72,13 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
       client_set_connect_timeout(memd, SvNV(*ps) * 1000.0);
     }
 
+  ps = hv_fetch(conf, "io_timeout", 10, 0);
+  if (ps)
+    {
+      client_set_io_timeout(memd, SvNV(*ps) * 1000.0);
+    }
+
+  /* For compatibility with Cache::Memcached.  */
   ps = hv_fetch(conf, "select_timeout", 14, 0);
   if (ps)
     {
