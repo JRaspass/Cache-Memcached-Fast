@@ -612,9 +612,40 @@ swallow_eol(struct command_state *state, int skip, int done)
 
 static
 int
+parse_ull(struct command_state *state, unsigned long long *result)
+{
+  unsigned long long res = 0;
+  const char *beg;
+
+  while (*state->pos == ' ')
+    ++state->pos;
+
+  beg = state->pos;
+
+  while (1)
+    {
+      switch (*state->pos)
+        {
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
+          res = res * 10 + (*state->pos - '0');
+          ++state->pos;
+          break;
+
+        default:
+          *result = res;
+          return (beg != state->pos ? MEMCACHED_SUCCESS : MEMCACHED_UNKNOWN);
+        }
+    }
+}
+
+
+static
+int
 parse_get_reply(struct command_state *state)
 {
-  int res, match_count;
+  unsigned long long num;
+  int res;
 
   switch (state->match)
     {
@@ -635,25 +666,23 @@ parse_get_reply(struct command_state *state)
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  if (! state->value.use_cas)
-    {
-      res = sscanf(state->pos, " " FMT_FLAGS " " FMT_VALUE_SIZE "%n",
-                   &state->value.flags, &state->value.size,
-                   &match_count);
-      if (res != 2)
-        return MEMCACHED_UNKNOWN;
-    }
-  else
-    {
-      res = sscanf(state->pos,
-                   " " FMT_FLAGS " " FMT_VALUE_SIZE " " FMT_CAS "%n",
-                   &state->value.flags, &state->value.size,
-                   &state->value.cas, &match_count);
-      if (res != 3)
-        return MEMCACHED_UNKNOWN;
-    }
+  res = parse_ull(state, &num);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+  state->value.flags = num;
 
-  state->pos += match_count;
+  res = parse_ull(state, &num);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+  state->value.size = num;
+
+  if (state->value.use_cas)
+    {
+      res = parse_ull(state, &num);
+      if (res != MEMCACHED_SUCCESS)
+        return res;
+      state->value.cas = num;
+    }
 
   res = swallow_eol(state, 0, 0);
   if (res != MEMCACHED_SUCCESS)
@@ -719,8 +748,8 @@ static
 int
 parse_arith_reply(struct command_state *state)
 {
-  int res, match_count;
-  arith_type arith;
+  unsigned long long num;
+  int res;
 
   switch (state->match)
     {
@@ -739,17 +768,14 @@ parse_arith_reply(struct command_state *state)
 
   --state->pos;
 
-  res = sscanf(state->pos, FMT_ARITH "%n", &arith, &match_count);
-  if (res != 1)
-    return MEMCACHED_UNKNOWN;
-
-  state->pos += match_count;
+  res = parse_ull(state, &num);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+  *state->arith.result = num;
 
   res = swallow_eol(state, 1, 1);
   if (res != MEMCACHED_SUCCESS)
     return res;
-
-  *state->arith.result = arith;
 
   return MEMCACHED_SUCCESS;
 }
