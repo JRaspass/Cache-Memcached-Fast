@@ -1000,17 +1000,67 @@ static
 int
 process_commands(struct client *c)
 {
-  struct timeval to, *pto;
+  struct timeval to, *pto = c->io_timeout > 0 ? &to : NULL;
   int result = MEMCACHED_FAILURE;
-
-  pto = c->io_timeout > 0 ? &to : NULL;
+  fd_set write_set, read_set;
+  int first_iter = 1;
 
   while (1)
     {
-      int i, max_fd, res;
-      fd_set write_set, read_set;
+      int max_fd, i, res;
 
       max_fd = -1;
+      for (i = 0; i < c->server_count; ++i)
+        {
+          struct command_state *state = &c->servers[i].cmd_state;
+
+          if (! is_active(state))
+            continue;
+
+          if (first_iter
+              || FD_ISSET(state->fd, &read_set)
+              || FD_ISSET(state->fd, &write_set))
+            {
+              res = process_command(state);
+              switch (res)
+                {
+                case MEMCACHED_SUCCESS:
+                  result = MEMCACHED_SUCCESS;
+                  deactivate(state);
+                  break;
+
+                case MEMCACHED_FAILURE:
+                  deactivate(state);
+                  break;
+
+                case MEMCACHED_ERROR:
+                  deactivate(state);
+                  if (c->close_on_error)
+                    client_mark_failed(c, i);
+                  break;
+
+                case MEMCACHED_UNKNOWN:
+                case MEMCACHED_CLOSED:
+                  deactivate(state);
+                  client_mark_failed(c, i);
+                  break;
+
+                case MEMCACHED_EAGAIN:
+                  if (max_fd < state->fd)
+                    max_fd = state->fd;
+                  break;
+                }
+            }
+          else
+            {
+              if (max_fd < state->fd)
+                max_fd = state->fd;
+            }
+        }
+
+      if (max_fd == -1)
+        break;
+
       FD_ZERO(&write_set);
       FD_ZERO(&read_set);
       for (i = 0; i < c->server_count; ++i)
@@ -1019,18 +1069,12 @@ process_commands(struct client *c)
 
           if (is_active(state))
             {
-              if (max_fd < state->fd)
-                max_fd = state->fd;
-
               if (state->phase == PHASE_SEND)
                 FD_SET(state->fd, &write_set);
               else
                 FD_SET(state->fd, &read_set);
             }
         }
-
-      if (max_fd == -1)
-        break;
 
       do
         {
@@ -1065,43 +1109,7 @@ process_commands(struct client *c)
           break;
         }
 
-      for (i = 0; i < c->server_count; ++i)
-        {
-          struct command_state *state = &c->servers[i].cmd_state;
-
-          if (is_active(state)
-              && (FD_ISSET(state->fd, &read_set)
-                  || FD_ISSET(state->fd, &write_set)))
-            {
-              res = process_command(state);
-              switch (res)
-                {
-                case MEMCACHED_EAGAIN:
-                  break;
-
-                case MEMCACHED_SUCCESS:
-                  result = MEMCACHED_SUCCESS;
-                  deactivate(state);
-                  break;
-
-                case MEMCACHED_FAILURE:
-                  deactivate(state);
-                  break;
-
-                case MEMCACHED_ERROR:
-                  deactivate(state);
-                  if (c->close_on_error)
-                    client_mark_failed(c, i);
-                  break;
-
-                case MEMCACHED_UNKNOWN:
-                case MEMCACHED_CLOSED:
-                  deactivate(state);
-                  client_mark_failed(c, i);
-                  break;
-                }
-            }
-        }
+      first_iter = 0;
     }
 
   return result;

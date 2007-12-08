@@ -20,8 +20,6 @@ BEGIN {
 }
 
 
-- Try to execute command before calling select().
-
 - Use better rounding in flush_all().
 
 - Disable noreply in benchmark.pl, remove append/prepend before shipping.
