@@ -3,10 +3,18 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+
+
+/*
+  http://www.opengroup.org/onlinepubs/009695399/basedefs/sys/un.h.html
+  says 92 is a rather safe value.
+*/
+#define SAFE_UNIX_PATH_MAX  92
 
 
 int
@@ -91,6 +99,36 @@ client_connect_inet(const char *host, const char *port, int stream,
     }
 
   freeaddrinfo(addr);
+
+  return fd;
+}
+
+
+int
+client_connect_unix(const char *path, size_t path_len)
+{
+  int fd, res, flags;
+  struct sockaddr_un sun;
+
+  if (path_len >= SAFE_UNIX_PATH_MAX)
+    return -1;
+
+  fd = socket(PF_UNIX, SOCK_STREAM, 0);
+  if (fd == -1)
+    return -1;
+
+  sun.sun_family = AF_UNIX;
+  memcpy(sun.sun_path, path, path_len);
+  sun.sun_path[path_len] = '\0';
+
+  res = connect(fd, (const struct sockaddr *) &sun, sizeof(sun));
+  if (res != 0)
+    return -1;
+
+  flags = fcntl(fd, F_GETFL);
+  res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+  if (res != 0)
+    return -1;
 
   return fd;
 }

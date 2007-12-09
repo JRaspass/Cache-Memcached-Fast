@@ -35,6 +35,7 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
           const char *host, *port;
           size_t host_len, port_len;
           STRLEN len;
+          int res;
 
           ps = av_fetch(a, i, 0);
           if (! ps)
@@ -45,13 +46,18 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
             NOTE: here we relay on the fact that host is zero-terminated.
           */
           port = strrchr(host, delim);
-          if (! port)
-            croak("Servers should be specified as 'host:port'");
-          host_len = port - host;
-          ++port;
-          port_len = len - host_len - 1;
-          if (client_add_server(memd, host, host_len, port, port_len)
-              != MEMCACHED_SUCCESS)
+          if (port)
+            {
+              host_len = port - host;
+              ++port;
+              port_len = len - host_len - 1;
+              res = client_add_server(memd, host, host_len, port, port_len);
+            }
+          else
+            {
+              res = client_add_server(memd, host, len, NULL, 0);
+            }
+          if (res != MEMCACHED_SUCCESS)
             croak("Not enough memory");
         }
     }

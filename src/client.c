@@ -150,6 +150,7 @@ command_state_destroy(struct command_state *state)
 struct server
 {
   char *host;
+  size_t host_len;
   char *port;
   struct command_state cmd_state;
 };
@@ -161,15 +162,28 @@ server_init(struct server *s, struct client *c,
             const char *host, size_t host_len,
             const char *port, size_t port_len)
 {
-  s->host = (char *) malloc(host_len + 1 + port_len + 1);
+  if (port)
+    s->host = (char *) malloc(host_len + 1 + port_len + 1);
+  else
+    s->host = (char *) malloc(host_len + 1);
+
   if (! s->host)
     return MEMCACHED_FAILURE;
 
-  s->port = s->host + host_len + 1;
   memcpy(s->host, host, host_len);
   s->host[host_len] = '\0';
-  memcpy(s->port, port, port_len);
-  s->port[port_len] = '\0';
+  s->host_len = host_len;
+
+  if (port)
+    {
+      s->port = s->host + host_len + 1;
+      memcpy(s->port, port, port_len);
+      s->port[port_len] = '\0';
+    }
+  else
+    {
+      s->port = NULL;
+    }
 
   command_state_init(&s->cmd_state, c);
 
@@ -1126,7 +1140,17 @@ get_server_fd(struct client *c, int index)
   s = &c->servers[index];
   state = &s->cmd_state;
   if (state->fd == -1)
-    state->fd = client_connect_inet(s->host, s->port, 1, c->connect_timeout);
+    {
+      if (s->port)
+        {
+          state->fd = client_connect_inet(s->host, s->port,
+                                          1, c->connect_timeout);
+        }
+      else
+        {
+          state->fd = client_connect_unix(s->host, s->host_len);
+        }
+    }
 
   if (state->fd == -1)
     client_mark_failed(c, index);
