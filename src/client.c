@@ -10,6 +10,8 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <signal.h>
 
 
 #ifndef MAX_IOVEC
@@ -450,6 +452,8 @@ readv_restart(int fd, const struct iovec *iov, int count)
 }
 
 
+#ifndef MSG_NOSIGNAL
+
 static inline
 ssize_t
 writev_restart(int fd, const struct iovec *iov, int count)
@@ -462,6 +466,28 @@ writev_restart(int fd, const struct iovec *iov, int count)
 
   return res;
 }
+
+#else  /* MSG_NOSIGNAL */
+
+static inline
+ssize_t
+writev_restart(int fd, const struct iovec *iov, int count)
+{
+  struct msghdr msg;
+  ssize_t res;
+
+  memset(&msg, 0, sizeof(msg));
+  msg.msg_iov = (struct iovec *) iov;
+  msg.msg_iovlen = count;
+
+  do
+    res = sendmsg(fd, &msg, MSG_NOSIGNAL);
+  while (res == -1 && errno == EINTR);
+
+  return res;
+}
+
+#endif /* MSG_NOSIGNAL */
 
 
 /*
@@ -1014,10 +1040,22 @@ static
 int
 process_commands(struct client *c)
 {
-  struct timeval to, *pto = c->io_timeout > 0 ? &to : NULL;
   int result = MEMCACHED_FAILURE;
+  struct timeval to, *pto = c->io_timeout > 0 ? &to : NULL;
   fd_set write_set, read_set;
   int first_iter = 1;
+
+#ifndef MSG_NOSIGNAL
+  struct sigaction orig, ignore;
+  int res;
+
+  ignore.sa_handler = SIG_IGN;
+  sigemptyset(&ignore.sa_mask);
+  ignore.sa_flags = 0;
+  res = sigaction(SIGPIPE, &ignore, &orig);
+  if (res == -1)
+    return result;
+#endif /* ! MSG_NOSIGNAL */
 
   while (1)
     {
@@ -1125,6 +1163,14 @@ process_commands(struct client *c)
 
       first_iter = 0;
     }
+
+#ifndef MSG_NOSIGNAL
+  /*
+    Ignore return value of sigaction(), there's nothing we can do in
+    the case of error.
+  */
+  sigaction(SIGPIPE, &orig, NULL);
+#endif /* ! MSG_NOSIGNAL */
 
   return result;
 }
