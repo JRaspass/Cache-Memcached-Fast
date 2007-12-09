@@ -8,52 +8,66 @@ use warnings;
 our $VERSION = '0.02';
 
 
+use Storable;
+
+use constant F_STORABLE => 0x1;
+
+
 require XSLoader;
 XSLoader::load('Cache::Memcached::Fast', $VERSION);
-
-# Preloaded methods go here.
 
 
 # BIG FAT WARNING: Perl assignment copies the value, so below we try
 # to avoid any copying.
 
 
-sub set {
+sub _pack_value {
     my $flags = 0;
+    my $val_ref;
 
-    # FIXME: set $flags here.
+    # We use $val_ref to avoid both modifying original argument and
+    # copying the value when it is not a reference.
+    if (ref($_[0])) {
+        $val_ref = \Storable::nfreeze($_[0]);
+        $flags |= F_STORABLE;
+    } else {
+        $val_ref = \$_[0];
+    }
 
-    splice(@_, 3, 0, $flags);
+    return ($$val_ref, $flags);
+}
+
+
+sub _unpack_value {
+    if ($_[1] & F_STORABLE) {
+        eval {
+            $_[0] = Storable::thaw($_[0]);
+        };
+        return $@ if $@;
+    }
+}
+
+
+sub set {
+    splice(@_, 2, 1, _pack_value($_[2]));
     return _xs_set(@_);
 }
 
 
 sub cas {
-    my $flags = 0;
-
-    # FIXME: set $flags here.
-
-    splice(@_, 4, 0, $flags);
+    splice(@_, 3, 1, _pack_value($_[3]));
     return _xs_cas(@_);
 }
 
 
 sub add {
-    my $flags = 0;
-
-    # FIXME: set $flags here.
-
-    splice(@_, 3, 0, $flags);
+    splice(@_, 2, 1, _pack_value($_[2]));
     return _xs_add(@_);
 }
 
 
 sub replace {
-    my $flags = 0;
-
-    # FIXME: set $flags here.
-
-    splice(@_, 3, 0, $flags);
+    splice(@_, 2, 1, _pack_value($_[2]));
     return _xs_replace(@_);
 }
 
@@ -75,7 +89,8 @@ sub prepend {
 sub get {
     my ($val, $flags) = _xs_get(@_);
 
-    # FIXME: process $flags here.
+    my $error = _unpack_value($val, $flags) if defined $val;
+    return if $error;
 
     return $val;
 }
@@ -84,7 +99,15 @@ sub get {
 sub get_multi {
     my ($key_val, $flags) = _xs_mget(@_);
 
-    # FIXME: process $flags here.
+    my $vi = 1;
+    foreach my $f (@$flags) {
+        my $error = _unpack_value($$key_val[$vi], $f);
+        if ($error) {
+            splice(@$key_val, $vi - 1, 2);
+        } else {
+            $vi += 2;
+        }
+    }
 
     return _xs_rvav2rvhv($key_val);
 }
@@ -93,7 +116,8 @@ sub get_multi {
 sub gets {
     my ($val, $flags) = _xs_gets(@_);
 
-    # FIXME: process $flags here.
+    my $error = _unpack_value($$val[1], $flags) if defined $val;
+    return if $error;
 
     return $val;
 }
@@ -102,7 +126,15 @@ sub gets {
 sub gets_multi {
     my ($key_val, $flags) = _xs_mgets(@_);
 
-    # FIXME: process $flags here.
+    my $vi = 1;
+    foreach my $f (@$flags) {
+        my $error = _unpack_value(${$$key_val[$vi]}[1], $f);
+        if ($error) {
+            splice(@$key_val, $vi - 1, 2);
+        } else {
+            $vi += 2;
+        }
+    }
 
     return _xs_rvav2rvhv($key_val);
 }

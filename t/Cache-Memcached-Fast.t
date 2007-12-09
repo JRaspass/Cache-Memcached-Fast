@@ -8,7 +8,7 @@ use strict;
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 49;
+use Test::More tests => 58;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
 #########################
@@ -32,8 +32,8 @@ isa_ok($memd, 'Cache::Memcached::Fast');
 ok($memd->flush_all);
 
 ok($memd->set("key1", "val1"));
-ok($memd->_xs_set("key2", "val2", 2));
-ok($memd->_xs_set("key3", "val3", 3, 10));
+ok($memd->set("key2", "val2"));
+ok($memd->set("key3", "val3", 10));
 ok(not $memd->set("key4", "x" x 2_000_000));
 ok($memd->set("key4", "x" x 1_000_000));
 
@@ -41,13 +41,11 @@ is($memd->get("no_such_key"), undef);
 is($memd->get("key2"), "val2");
 is($memd->get("key4"), "x" x 1_000_000);
 
-my ($val, $flags) = $memd->_xs_get("key3");
+my $val = $memd->get("key3");
 is($val, "val3");
-is($flags, 3);
 
-($val, $flags) = $memd->_xs_get("no_such_key");
+$val = $memd->get("no_such_key");
 is($val, undef);
-is($flags, undef);
 
 my $res1 = $memd->get_multi();
 is(scalar keys %$res1, 0);
@@ -109,6 +107,44 @@ is($$cas_res[1], "value");
 ok($memd->cas("cas", $$cas_res[0], "new value"));
 ok(! $memd->cas("cas", @$cas_res));
 is($memd->get("cas"), "new value");
+
+$h = $memd->gets_multi("no_such_key", "cas", "nothing");
+is(scalar keys %$h, 1);
+isa_ok($$h{cas}, "ARRAY");
+is (scalar @{$$h{cas}}, 2);
+is(${$$h{cas}}[1], "new value");
+
+
+my %hash = (
+   list => [ qw(a b) ],
+   hash => { a => 1 },
+   num  => 3,
+   str  => "test",
+);
+
+sub storable_ok {
+    my ($hash_ref) = @_;
+
+    ok(${$$hash_ref{list}}[0] eq 'a'
+       and ${$$hash_ref{list}}[1] eq 'b'
+       and ${$$hash_ref{hash}}{a} == 1
+       and $$hash_ref{num} == 3
+       and $$hash_ref{str} eq 'test');
+}
+
+$h = \%hash;
+ok($memd->set("hash", $h));
+storable_ok($h);
+my $hash_ref = $memd->get("hash");
+isa_ok($hash_ref, 'HASH');
+storable_ok($hash_ref);
+
+$memd->prepend("hash", "garbage");
+$h = $memd->get_multi("cas", "hash");
+is(scalar keys %$h, 1);
+ok(exists $$h{cas});
+ok(not exists $$h{hash});
+
 
 undef $memd;
 
