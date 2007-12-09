@@ -236,7 +236,7 @@ mkey_store(void *arg, int key_index, flags_type flags,
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(cas));
       av_push(cas_val, mkey_res->sv);
-      av_push(mkey_res->key_val, (SV *) cas_val);
+      av_push(mkey_res->key_val, newRV_noinc((SV *) cas_val));
     }
 
   av_push(mkey_res->flags, newSVuv(flags));
