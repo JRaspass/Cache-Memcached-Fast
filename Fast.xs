@@ -255,7 +255,7 @@ mkey_free(void *arg)
 }
 
 
-MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast
+MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast::_xs
 
 
 Cache_Memcached_Fast *
@@ -286,16 +286,16 @@ DESTROY(memd)
 
 
 bool
-_xs_set(memd, skey, sval, flags, ...)
+set(memd, skey, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
         SV *                    sval
         U32                     flags
     ALIAS:
-        _xs_add      =  CMD_ADD
-        _xs_replace  =  CMD_REPLACE
-        _xs_append   =  CMD_APPEND
-        _xs_prepend  =  CMD_PREPEND
+        add      =  CMD_ADD
+        replace  =  CMD_REPLACE
+        append   =  CMD_APPEND
+        prepend  =  CMD_PREPEND
     PROTOTYPE: $$$$;$
     PREINIT:
         const char *key;
@@ -319,7 +319,7 @@ _xs_set(memd, skey, sval, flags, ...)
 
 
 bool
-_xs_cas(memd, skey, cas, sval, flags, ...)
+cas(memd, skey, cas, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
         U32                     cas
@@ -348,11 +348,11 @@ _xs_cas(memd, skey, cas, sval, flags, ...)
 
 
 void
-_xs_get(memd, skey)
+get(memd, skey)
         Cache_Memcached_Fast *  memd
         SV *                    skey
     ALIAS:
-        _xs_gets  =  CMD_GETS
+        gets  =  CMD_GETS
     PROTOTYPE: $$
     PREINIT:
         const char *key;
@@ -386,10 +386,10 @@ _xs_get(memd, skey)
 
 
 void
-_xs_mget(memd, ...)
+mget(memd, ...)
         Cache_Memcached_Fast *  memd
     ALIAS:
-        _xs_mgets  =  CMD_GETS
+        mgets  =  CMD_GETS
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;
@@ -484,7 +484,7 @@ flush_all(memd, ...)
 
 
 HV *
-_xs_rvav2rvhv(array)
+_rvav2rvhv(array)
         AV *                    array
     PROTOTYPE: $
     PREINIT:

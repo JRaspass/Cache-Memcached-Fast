@@ -17,8 +17,30 @@ require XSLoader;
 XSLoader::load('Cache::Memcached::Fast', $VERSION);
 
 
+our $AUTOLOAD;
+
+
 # BIG FAT WARNING: Perl assignment copies the value, so below we try
 # to avoid any copying.
+
+
+use fields qw(_xs);
+
+
+sub new {
+    my $class = shift;
+
+    my $self = fields::new($class);
+    $self->{_xs} = new Cache::Memcached::Fast::_xs(@_);
+
+    return $self;
+}
+
+
+sub DESTROY {
+    # Do nothing.  Destructor is required for not to call destructor
+    # of Cache::Memcached::Fast::_xs via AUTOLOAD.
+}
 
 
 sub _pack_value {
@@ -49,45 +71,53 @@ sub _unpack_value {
 
 
 sub set {
-    splice(@_, 2, 1, _pack_value($_[2]));
-    return _xs_set(@_);
+    my Cache::Memcached::Fast $self = shift;
+    splice(@_, 1, 1, _pack_value($_[1]));
+    return $self->{_xs}->set(@_);
 }
 
 
 sub cas {
-    splice(@_, 3, 1, _pack_value($_[3]));
-    return _xs_cas(@_);
+    my Cache::Memcached::Fast $self = shift;
+    splice(@_, 2, 1, _pack_value($_[2]));
+    return $self->{_xs}->cas(@_);
 }
 
 
 sub add {
-    splice(@_, 2, 1, _pack_value($_[2]));
-    return _xs_add(@_);
+    my Cache::Memcached::Fast $self = shift;
+    splice(@_, 1, 1, _pack_value($_[1]));
+    return $self->{_xs}->add(@_);
 }
 
 
 sub replace {
-    splice(@_, 2, 1, _pack_value($_[2]));
-    return _xs_replace(@_);
+    my Cache::Memcached::Fast $self = shift;
+    splice(@_, 1, 1, _pack_value($_[1]));
+    return $self->{_xs}->replace(@_);
 }
 
 
 sub append {
+    my Cache::Memcached::Fast $self = shift;
     # append() does not affect flags.
-    splice(@_, 3, 0, 0);
-    return _xs_append(@_);
+    splice(@_, 2, 0, 0);
+    return $self->{_xs}->append(@_);
 }
 
 
 sub prepend {
+    my Cache::Memcached::Fast $self = shift;
     # prepend() does not affect flags.
-    splice(@_, 3, 0, 0);
-    return _xs_prepend(@_);
+    splice(@_, 2, 0, 0);
+    return $self->{_xs}->prepend(@_);
 }
 
 
 sub get {
-    my ($val, $flags) = _xs_get(@_);
+    my Cache::Memcached::Fast $self = shift;
+
+    my ($val, $flags) = $self->{_xs}->get(@_);
 
     my $error = _unpack_value($val, $flags) if defined $val;
     return if $error;
@@ -97,7 +127,9 @@ sub get {
 
 
 sub get_multi {
-    my ($key_val, $flags) = _xs_mget(@_);
+    my Cache::Memcached::Fast $self = shift;
+
+    my ($key_val, $flags) = $self->{_xs}->mget(@_);
 
     my $vi = 1;
     foreach my $f (@$flags) {
@@ -109,12 +141,14 @@ sub get_multi {
         }
     }
 
-    return _xs_rvav2rvhv($key_val);
+    return Cache::Memcached::Fast::_xs::_rvav2rvhv($key_val);
 }
 
 
 sub gets {
-    my ($val, $flags) = _xs_gets(@_);
+    my Cache::Memcached::Fast $self = shift;
+
+    my ($val, $flags) = $self->{_xs}->gets(@_);
 
     my $error = _unpack_value($$val[1], $flags) if defined $val;
     return if $error;
@@ -124,7 +158,9 @@ sub gets {
 
 
 sub gets_multi {
-    my ($key_val, $flags) = _xs_mgets(@_);
+    my Cache::Memcached::Fast $self = shift;
+
+    my ($key_val, $flags) = $self->{_xs}->mgets(@_);
 
     my $vi = 1;
     foreach my $f (@$flags) {
@@ -136,7 +172,14 @@ sub gets_multi {
         }
     }
 
-    return _xs_rvav2rvhv($key_val);
+    return Cache::Memcached::Fast::_xs::_rvav2rvhv($key_val);
+}
+
+
+sub AUTOLOAD {
+    my Cache::Memcached::Fast $self = shift;
+    my ($method) = $AUTOLOAD =~ /::([^:]+)$/;
+    return $self->{_xs}->$method(@_);
 }
 
 
