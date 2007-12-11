@@ -24,7 +24,7 @@ our $AUTOLOAD;
 
 # BIG FAT WARNING: Perl assignment copies the value, so below we try
 # to avoid any copying by passing references around.  Any code
-# modifications try to should preserve this.
+# modifications should try to preserve this.
 
 
 my %compress_algo;
