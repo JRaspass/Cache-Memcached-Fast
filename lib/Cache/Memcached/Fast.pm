@@ -67,6 +67,11 @@ sub new {
     $self->{compress_ratio} = $conf->{compress_ratio} || 0.8;
     $self->{compress_methods} =
       $compress_algo{lc($conf->{compress_algo} || 'gzip')};
+    unless ($self->{compress_methods}) {
+        carp "Compress algorithm '$conf->{compress_algo}' is not known to"
+            . " Cache::Memcached::Fast, disabling compression";
+        $self->{compress_threshold} = -1;
+    }
 
     $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
 
@@ -84,7 +89,8 @@ sub enable_compress {
     my Cache::Memcached::Fast $self = shift;
     my ($enable) = @_;
 
-    if ($self->{compress_threshold} > 0 xor $enable) {
+    if ($self->{compress_threshold} > 0
+        xor ($enable and $self->{compress_methods})) {
         $self->{compress_threshold} = -$self->{compress_threshold};
     }
 }
