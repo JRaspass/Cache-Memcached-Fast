@@ -25,6 +25,8 @@ my $memd = Cache::Memcached::Fast->new({
     connect_timeout => 0.2,
     io_timeout => 0.5,
     close_on_error => 0,
+    compress_threshold => 1000,
+#    compress_algo => 'deflate',
 });
 
 isa_ok($memd, 'Cache::Memcached::Fast');
@@ -34,7 +36,9 @@ ok($memd->flush_all);
 ok($memd->set("key1", "val1"));
 ok($memd->set("key2", "val2"));
 ok($memd->set("key3", "val3", 10));
+$memd->enable_compress(0);
 ok(not $memd->set("key4", "x" x 2_000_000));
+$memd->enable_compress(1);
 ok($memd->set("key4", "x" x 1_000_000));
 
 is($memd->get("no_such_key"), undef);

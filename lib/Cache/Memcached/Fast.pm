@@ -11,6 +11,7 @@ our $VERSION = '0.02';
 use Storable;
 
 use constant F_STORABLE => 0x1;
+use constant F_COMPRESS => 0x2;
 
 
 require XSLoader;
@@ -24,14 +25,48 @@ our $AUTOLOAD;
 # to avoid any copying.
 
 
-use fields qw(_xs);
+my %compress_algo;
+
+
+BEGIN {
+    my @algo = (
+        'Gzip'        =>  'Gunzip',
+        'Zip'         =>  'Unzip',
+        'Bzip2'       =>  'Bunzip2',
+        'Deflate'     =>  'Inflate',
+        'RawDeflate'  =>  'RawInflate',
+        'Lzop'        =>  'UnLzop',
+        'Lzf'         =>  'UnLzf',
+    );
+
+    while (my ($c, $u) = splice(@algo, 0, 2)) {
+        my $key = lc $c;
+        my $val = ["IO::Compress::$c", "IO::Compress::${c}::" . lc $c,
+                   "IO::Uncompress::$u", "IO::Uncompress::${u}::" . lc $u];
+        $compress_algo{$key} = $val;
+    }
+}
+
+
+use fields qw(
+    _xs
+    compress_threshold compress_ratio compress_methods
+);
 
 
 sub new {
     my $class = shift;
+    my ($conf) = @_;
 
     my $self = fields::new($class);
-    $self->{_xs} = new Cache::Memcached::Fast::_xs(@_);
+
+    # $conf->{compress_threshold} == 0 actually disables compression.
+    $self->{compress_threshold} = $conf->{compress_threshold} || -1;
+    $self->{compress_ratio} = $conf->{compress_ratio} || 0.8;
+    $self->{compress_methods} =
+      $compress_algo{lc($conf->{compress_algo} || 'gzip')};
+
+    $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
 
     return $self;
 }
@@ -43,7 +78,19 @@ sub DESTROY {
 }
 
 
+sub enable_compress {
+    my Cache::Memcached::Fast $self = shift;
+    my ($enable) = @_;
+
+    if ($self->{compress_threshold} > 0 xor $enable) {
+        $self->{compress_threshold} = -$self->{compress_threshold};
+    }
+}
+
+
 sub _pack_value {
+    my Cache::Memcached::Fast $self = shift;
+
     my $flags = 0;
     my $val_ref;
 
@@ -56,11 +103,44 @@ sub _pack_value {
         $val_ref = \$_[0];
     }
 
+    use bytes;
+    my $len = length $$val_ref;
+    if ($self->{compress_threshold} > 0
+        and $len >= $self->{compress_threshold}) {
+        my $methods = $self->{compress_methods};
+        if (eval "require $$methods[0]") {
+            no strict 'refs';
+            my $res = &{$$methods[1]}($val_ref, \my $compressed);
+            if ($res
+                and length $compressed <= $len * $self->{compress_ratio}) {
+                $val_ref = \$compressed;
+                $flags |= F_COMPRESS;
+            }
+        } else {
+            warn "Can't find module $$methods[0]";
+            $self->enable_compress(0);
+        }
+    }
+
     return ($$val_ref, $flags);
 }
 
 
 sub _unpack_value {
+    my Cache::Memcached::Fast $self = shift;
+
+    if ($_[1] & F_COMPRESS) {
+        my $methods = $self->{compress_methods};
+        if (eval "require $$methods[2]") {
+            no strict 'refs';
+            my $res = &{$$methods[3]}(\$_[0], \my $uncompressed);
+            return "Error while uncompressing" unless $res;
+            $_[0] = $uncompressed;
+        } else {
+            return "Can't find module $$methods[2]";
+        }
+    }
+
     if ($_[1] & F_STORABLE) {
         eval {
             $_[0] = Storable::thaw($_[0]);
@@ -72,28 +152,28 @@ sub _unpack_value {
 
 sub set {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 1, 1, _pack_value($_[1]));
+    splice(@_, 1, 1, _pack_value($self, $_[1]));
     return $self->{_xs}->set(@_);
 }
 
 
 sub cas {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 2, 1, _pack_value($_[2]));
+    splice(@_, 2, 1, _pack_value($self, $_[2]));
     return $self->{_xs}->cas(@_);
 }
 
 
 sub add {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 1, 1, _pack_value($_[1]));
+    splice(@_, 1, 1, _pack_value($self, $_[1]));
     return $self->{_xs}->add(@_);
 }
 
 
 sub replace {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 1, 1, _pack_value($_[1]));
+    splice(@_, 1, 1, _pack_value($self, $_[1]));
     return $self->{_xs}->replace(@_);
 }
 
@@ -119,7 +199,7 @@ sub get {
 
     my ($val, $flags) = $self->{_xs}->get(@_);
 
-    my $error = _unpack_value($val, $flags) if defined $val;
+    my $error = _unpack_value($self, $val, $flags) if defined $val;
     return if $error;
 
     return $val;
@@ -133,7 +213,7 @@ sub get_multi {
 
     my $vi = 1;
     foreach my $f (@$flags) {
-        my $error = _unpack_value($$key_val[$vi], $f);
+        my $error = _unpack_value($self, $$key_val[$vi], $f);
         if ($error) {
             splice(@$key_val, $vi - 1, 2);
         } else {
@@ -150,7 +230,7 @@ sub gets {
 
     my ($val, $flags) = $self->{_xs}->gets(@_);
 
-    my $error = _unpack_value($$val[1], $flags) if defined $val;
+    my $error = _unpack_value($self, $$val[1], $flags) if defined $val;
     return if $error;
 
     return $val;
@@ -164,7 +244,7 @@ sub gets_multi {
 
     my $vi = 1;
     foreach my $f (@$flags) {
-        my $error = _unpack_value(${$$key_val[$vi]}[1], $f);
+        my $error = _unpack_value($self, ${$$key_val[$vi]}[1], $f);
         if ($error) {
             splice(@$key_val, $vi - 1, 2);
         } else {
