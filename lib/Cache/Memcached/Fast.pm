@@ -8,6 +8,7 @@ use warnings;
 our $VERSION = '0.02';
 
 
+use Carp;
 use Storable;
 
 use constant F_STORABLE => 0x1;
@@ -22,7 +23,8 @@ our $AUTOLOAD;
 
 
 # BIG FAT WARNING: Perl assignment copies the value, so below we try
-# to avoid any copying.
+# to avoid any copying by passing references around.  Any code
+# modifications try to should preserve this.
 
 
 my %compress_algo;
@@ -117,7 +119,7 @@ sub _pack_value {
                 $flags |= F_COMPRESS;
             }
         } else {
-            warn "Can't find module $$methods[0]";
+            carp "Can't find module $$methods[0]";
             $self->enable_compress(0);
         }
     }
