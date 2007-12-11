@@ -11,6 +11,7 @@
 
 
 typedef struct client Cache_Memcached_Fast;
+typedef SV *SVREF;
 
 
 static
@@ -228,14 +229,14 @@ mkey_store(void *arg, int key_index, flags_type flags,
   av_push(mkey_res->key_val, key_sv);
   if (! use_cas)
     {
-      av_push(mkey_res->key_val, mkey_res->sv);
+      av_push(mkey_res->key_val, newRV_noinc(mkey_res->sv));
     }
   else
     {
       AV *cas_val = newAV();
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(cas));
-      av_push(cas_val, mkey_res->sv);
+      av_push(cas_val, newRV_noinc(mkey_res->sv));
       av_push(mkey_res->key_val, newRV_noinc((SV *) cas_val));
     }
 
@@ -289,7 +290,7 @@ bool
 set(memd, skey, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
-        SV *                    sval
+        SVREF                   sval
         U32                     flags
     ALIAS:
         add      =  CMD_ADD
@@ -323,7 +324,7 @@ cas(memd, skey, cas, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
         U32                     cas
-        SV *                    sval
+        SVREF                   sval
         U32                     flags
     PROTOTYPE: $$$$$;$
     PREINIT:
@@ -370,14 +371,14 @@ get(memd, skey)
 
             if (ix == CMD_GET)
               {
-                PUSHs(sv_2mortal(skey_res.sv));
+                PUSHs(sv_2mortal(newRV_noinc(skey_res.sv)));
               }
             else
               {
                 AV *cas_val = newAV();
                 av_extend(cas_val, 1);
                 av_push(cas_val, newSVuv(skey_res.cas));
-                av_push(cas_val, skey_res.sv);
+                av_push(cas_val, newRV_noinc(skey_res.sv));
                 PUSHs(sv_2mortal(newRV_noinc((SV *) cas_val)));
               }
             PUSHu(skey_res.flags);

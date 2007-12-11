@@ -122,7 +122,7 @@ sub _pack_value {
         }
     }
 
-    return ($$val_ref, $flags);
+    return ($val_ref, $flags);
 }
 
 
@@ -133,20 +133,22 @@ sub _unpack_value {
         my $methods = $self->{compress_methods};
         if (eval "require $$methods[2]") {
             no strict 'refs';
-            my $res = &{$$methods[3]}(\$_[0], \my $uncompressed);
-            return "Error while uncompressing" unless $res;
-            $_[0] = $uncompressed;
+            my $res = &{$$methods[3]}($_[0], \my $uncompressed);
+            return unless $res;
+            $_[0] = \$uncompressed;
         } else {
-            return "Can't find module $$methods[2]";
+            return;
         }
     }
 
     if ($_[1] & F_STORABLE) {
         eval {
-            $_[0] = Storable::thaw($_[0]);
+            $_[0] = \Storable::thaw(${$_[0]});
         };
-        return $@ if $@;
+        return if $@;
     }
+
+    return 1;
 }
 
 
@@ -181,7 +183,7 @@ sub replace {
 sub append {
     my Cache::Memcached::Fast $self = shift;
     # append() does not affect flags.
-    splice(@_, 2, 0, 0);
+    splice(@_, 1, 1, \$_[1], 0);
     return $self->{_xs}->append(@_);
 }
 
@@ -189,7 +191,7 @@ sub append {
 sub prepend {
     my Cache::Memcached::Fast $self = shift;
     # prepend() does not affect flags.
-    splice(@_, 2, 0, 0);
+    splice(@_, 1, 1, \$_[1], 0);
     return $self->{_xs}->prepend(@_);
 }
 
@@ -199,10 +201,11 @@ sub get {
 
     my ($val, $flags) = $self->{_xs}->get(@_);
 
-    my $error = _unpack_value($self, $val, $flags) if defined $val;
-    return if $error;
-
-    return $val;
+    if (defined $val and _unpack_value($self, $val, $flags)) {
+        return $$val;
+    } else {
+        return undef;
+    }
 }
 
 
@@ -213,11 +216,11 @@ sub get_multi {
 
     my $vi = 1;
     foreach my $f (@$flags) {
-        my $error = _unpack_value($self, $$key_val[$vi], $f);
-        if ($error) {
-            splice(@$key_val, $vi - 1, 2);
-        } else {
+        if (_unpack_value($self, $$key_val[$vi], $f)) {
+            $$key_val[$vi] = ${$$key_val[$vi]};
             $vi += 2;
+        } else {
+            splice(@$key_val, $vi - 1, 2);
         }
     }
 
@@ -230,10 +233,11 @@ sub gets {
 
     my ($val, $flags) = $self->{_xs}->gets(@_);
 
-    my $error = _unpack_value($self, $$val[1], $flags) if defined $val;
-    return if $error;
-
-    return $val;
+    if (defined $val and _unpack_value($self, $$val[1], $flags)) {
+        return [$$val[0], ${$$val[1]}];
+    } else {
+        return undef;
+    }
 }
 
 
@@ -244,11 +248,11 @@ sub gets_multi {
 
     my $vi = 1;
     foreach my $f (@$flags) {
-        my $error = _unpack_value($self, ${$$key_val[$vi]}[1], $f);
-        if ($error) {
-            splice(@$key_val, $vi - 1, 2);
-        } else {
+        if (_unpack_value($self, ${$$key_val[$vi]}[1], $f)) {
+            ${$$key_val[$vi]}[1] = ${${$$key_val[$vi]}[1]};
             $vi += 2;
+        } else {
+            splice(@$key_val, $vi - 1, 2);
         }
     }
 
