@@ -245,7 +245,8 @@ sub gets {
     my ($val, $flags) = $self->{_xs}->gets(@_);
 
     if (defined $val and _unpack_value($self, $$val[1], $flags)) {
-        return [$$val[0], ${$$val[1]}];
+        $$val[1] = ${$$val[1]};
+        return $val;
     } else {
         return undef;
     }
