@@ -9,9 +9,6 @@ use FindBin;
 @ARGV >= 1
     or die "Usage: $FindBin::Script HOST:PORT... [COUNT]\n";
 
-# Note that it's better to run the test over the wire, because for
-# localhost the task may become CPU bound.
-
 my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 100_000);
 
 my @addrs = @ARGV;
@@ -26,10 +23,14 @@ use Cache::Memcached;
 use Benchmark qw(:hireswallclock timethese cmpthese);
 
 
+use constant NOREPLY => 1;
+use constant CAS => 1;
+
+
 my $new = new Cache::Memcached::Fast {
     servers   => [@addrs],
     namespace => 'Cache::Memcached::New',
-    noreply   => 1,
+    noreply   => NOREPLY,
 };
 
 
@@ -105,23 +106,20 @@ sub compare_multi {
 }
 
 
-use constant norepy => 1;
-use constant cas => 1;
-
 my @methods = (
-    [add        => \&compare, 1, norepy, $value],
-    [set        => \&compare, 1, norepy, $value],
-    [append     => \&compare, 1, norepy, $value],
-    [prepend    => \&compare, 1, norepy, $value],
-    [replace    => \&compare, 1, norepy, $value],
-    [cas        => \&compare, 1, norepy, $value, cas],
+    [add        => \&compare, 1, NOREPLY, $value],
+    [set        => \&compare, 1, NOREPLY, $value],
+    [append     => \&compare, 1, NOREPLY, $value],
+    [prepend    => \&compare, 1, NOREPLY, $value],
+    [replace    => \&compare, 1, NOREPLY, $value],
+    [cas        => \&compare, 1, NOREPLY, $value, CAS],
     [get        => \&compare, 1],
     [get_multi  => \&compare, $keys_multi],
     [gets       => \&compare, 1],
     [gets_multi => \&compare, $keys_multi],
     [get        => \&compare_multi, $keys_multi],
     [gets       => \&compare_multi, $keys_multi],
-    [delete     => \&compare, 1, norepy],
+    [delete     => \&compare, 1, NOREPLY],
 );
 
 
