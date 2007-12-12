@@ -27,6 +27,8 @@ my $memd = Cache::Memcached::Fast->new({
     close_on_error => 0,
     compress_threshold => 1000,
 #    compress_algo => 'deflate',
+    max_failures => 3,
+    failure_timeout => 2,
 });
 
 isa_ok($memd, 'Cache::Memcached::Fast');

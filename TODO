@@ -10,18 +10,12 @@
 
 - Add doc section "Compatibility with Cache::Memcached".
 
-
-Use IO::Compress::Gzip.
-
-my $have_compress_zlib;
-
-BEGIN {
-    $have_compress_zlib = eval { use Compress::Zlib; 1; };
-}
-
+- Move "require $compress_module" close to the place where name is set.
 
 - Use better rounding in flush_all().
 
 - Disable noreply in benchmark.pl, remove append/prepend before shipping.
 
 - Set $! on errors.
+
+- Add libketama.

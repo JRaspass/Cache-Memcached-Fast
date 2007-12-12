@@ -92,6 +92,18 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
       client_set_io_timeout(memd, SvNV(*ps) * 1000.0);
     }
 
+  ps = hv_fetch(conf, "max_failures", 12, 0);
+  if (ps)
+    {
+      client_set_max_failures(memd, SvIV(*ps));
+    }
+
+  ps = hv_fetch(conf, "failure_timeout", 15, 0);
+  if (ps)
+    {
+      client_set_failure_timeout(memd, SvIV(*ps));
+    }
+
   ps = hv_fetch(conf, "close_on_error", 14, 0);
   if (ps)
     {

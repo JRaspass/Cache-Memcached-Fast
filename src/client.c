@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <signal.h>
+#include <time.h>
 
 
 #ifndef MAX_IOVEC
@@ -154,6 +155,8 @@ struct server
   char *host;
   size_t host_len;
   char *port;
+  int failure_count;
+  time_t failure_expires;
   struct command_state cmd_state;
 };
 
@@ -186,6 +189,9 @@ server_init(struct server *s, struct client *c,
     {
       s->port = NULL;
     }
+
+  s->failure_count = 0;
+  s->failure_expires = 0;
 
   command_state_init(&s->cmd_state, c);
 
@@ -221,6 +227,8 @@ struct client
   int key_step;
   int connect_timeout;          /* 1/1000 sec.  */
   int io_timeout;               /* 1/1000 sec.  */
+  int max_failures;
+  int failure_timeout;          /* 1 sec.  */
   int close_on_error;
   int noreply;
 
@@ -305,6 +313,8 @@ client_init()
   c->prefix_len = 0;
   /* Keys are interleaved with spaces.  */
   c->key_step = 2;
+  c->max_failures = 0;
+  c->failure_timeout = 0;
   c->close_on_error = 1;
   c->noreply = 0;
 
@@ -343,6 +353,20 @@ void
 client_set_io_timeout(struct client *c, int to)
 {
   c->io_timeout = to;
+}
+
+
+void
+client_set_max_failures(struct client *c, int f)
+{
+  c->max_failures = f;
+}
+
+
+void
+client_set_failure_timeout(struct client *c, int to)
+{
+  c->failure_timeout = to;
 }
 
 
@@ -1033,6 +1057,24 @@ client_mark_failed(struct client *c, int server_index)
       close(s->cmd_state.fd);
       s->cmd_state.fd = -1;
     }
+
+  if (c->max_failures > 0)
+    {
+      time_t now = time(NULL);
+      if (s->failure_expires < now)
+        s->failure_count = 0;
+      ++s->failure_count;
+      /*
+        Set timeout on first failure, and on max_failures.  The idea
+        is that if max_failures had happened during failure_timeout,
+        we do not retry in another failure_timeout seconds.  This is
+        not entirely true: we remember the time of the first failure,
+        but for exact accounting we would have to keep time of each
+        failure.  However such exact measurement is not necessary.
+      */
+      if (s->failure_count == 1 || s->failure_count == c->max_failures)
+        s->failure_expires = now + c->failure_timeout;
+    }
 }
 
 
@@ -1184,6 +1226,19 @@ get_server_fd(struct client *c, int index)
   struct command_state *state;
 
   s = &c->servers[index];
+
+  /*
+    Do not try to try reconnect if had max_failures and
+    failure_expires time is not reached yet.
+  */
+  if (c->max_failures > 0 && s->failure_count >= c->max_failures)
+    {
+      if (time(NULL) <= s->failure_expires)
+        return -1;
+      else
+        s->failure_count = 0;
+    }
+
   state = &s->cmd_state;
   if (state->fd == -1)
     {

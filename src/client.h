@@ -86,6 +86,14 @@ client_set_io_timeout(struct client *c, int to);
 
 extern
 void
+client_set_max_failures(struct client *c, int f);
+
+extern
+void
+client_set_failure_timeout(struct client *c, int to);
+
+extern
+void
 client_set_close_on_error(struct client *c, int enable);
 
 extern
