@@ -863,7 +863,7 @@ address.
 Michael Monashev, E<lt>postmaster@softsearch.ruE<gt> - project
 management, design suggestions, testing.
 
-Development sponsored by "Monashev" Co. Ltd.
+Development sponsored by S<Monashev Co. Ltd.>
 
 
 =head1 WARRANTY
