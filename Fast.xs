@@ -460,6 +460,8 @@ bool
 delete(memd, skey, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
+    ALIAS:
+        remove  =  1
     PROTOTYPE: $$;$
     PREINIT:
         const char *key;
@@ -467,6 +469,8 @@ delete(memd, skey, ...)
         delay_type delay = 0;
         int noreply, res;
     CODE:
+        /* Suppress warning about unused ix.  */
+        if (ix) {}
         if (items > 2 && SvOK(ST(2)))
           delay = SvUV(ST(2));
         key = SvPV(skey, key_len);
