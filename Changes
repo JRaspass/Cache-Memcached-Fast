@@ -1,6 +1,42 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.02  2007-12-13
+        - first public release.
+
+        Changes since 0.01:
+
+        Fully restartable code was replaced with classic
+        fill-the-buffer-first approach: it turned out that
+        restartability doesn't add much advantage.  Lots of beautiful
+        and ugly code gone away.
+
+        Added support for multiple servers (select machine, CRC32,
+        timeouts).
+
+        Added script/compare.pl to compare this module to the original
+        Cache::Memcached, and also to measure speed in general.
+
+        Added Unix socket support, SIGPIPE handling (proper ignoring
+        actually ;)).
+
+        Added support for serialization of Perl data structures, and
+        for compression.
+
+        New commands: incr, decr, gets, gets_multi, cas,
+        enable_compression, remove (alias to delete).
+
+        New client parameters: connect_timeout, io_timeout (aka
+        select_timeout), compress_threshold, compress_ratio,
+        compress_algo, max_failure, failure_timeout.
+
+        Finally added documentation!
+
+        There's also support for 'noreply'-enabled memcached, but
+        those patches are not (yet) accepted to mainline, so 'noreply'
+        is not an official feature and is not documented.
+
+
 0.01  2007-11-26
         - first internal release.
 

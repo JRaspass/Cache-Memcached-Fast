@@ -1,3 +1,6 @@
+# See the end of the file for copyright and license.
+#
+
 =head1 NAME
 
 Cache::Memcached::Fast - Perl client for
@@ -15,6 +18,7 @@ L<memcached|http://www.danga.com/memcached/>, in C language
       io_timeout => 0.5,
       close_on_error => 1,
       compress_threshold => 100_000,
+      compress_ratio => 0.9,
       compress_algo => 'deflate',
       max_failures => 3,
       failure_timeout => 2,
@@ -37,7 +41,7 @@ L<memcached|http://www.danga.com/memcached/>, in C language
   $memd->incr('nkey', 10);
   print "OK\n" if $memd->decr('nkey', 3) == 12;
 
-  # Retrive values.
+  # Retrieve values.
   my $val = $memd->get('skey');
   print "OK\n" if $val eq 'This is a value.';
   my $href = $memd->get_multi('hash', 'nkey');
@@ -63,14 +67,15 @@ L<memcached|http://www.danga.com/memcached/>, in C language
 =head1 DESCRIPTION
 
 B<Cache::Memcahced::Fast> is a Perl client for memcached, a memory
-cache daemon.  Client core is implemented in C and tries hard to
-minimize number of system calls and to avoid any key/value copying for
-speed.
+cache daemon (L<http://www.danga.com/memcached/>).  Module core is
+implemented in C and tries hard to minimize number of system calls and
+to avoid any key/value copying for speed.
 
 API is largely compatible with L<Cache::Memcached|Cache::Memcached>,
-most users may start using this module by installing it and adding
-I<"::Fast"> to the old name in their scripts (see L<"Compatibility
-with Cache::Memcached"> below for full details).
+original pure Perl client, most users of the original module may start
+using this module by installing it and adding I<"::Fast"> to the old
+name in their scripts (see L<"Compatibility with Cache::Memcached">
+below for full details).
 
 
 =head2 Export
@@ -150,7 +155,7 @@ client parameters.  Currently recognized keys are:
 
   servers => [('localhost:11211') x 2, '192.168.254.2:50000',
               '/path/to/unix.sock']
-  (defalut: none)
+  (default: none)
 
 The value is a reference to an array of server addresses.  Each
 address is either I<host:port> for network TCP connections, or
@@ -159,7 +164,7 @@ F</path/to/unix.sock> for local Unix socket connections.
 
 =item I<namespace>
 
-  namspace => 'my::'
+  namespace => 'my::'
   (default: '')
 
 The value is a scalar that will be prepended to all key names passed
@@ -177,7 +182,7 @@ complete.  Applies only to network connections.
 
 Note that network connect process consists of several steps:
 destination host address lookup, which may return several addresses in
-general case (expecially for IPv6, see
+general case (especially for IPv6, see
 L<http://people.redhat.com/drepper/linux-rfc3484.html> and
 L<http://people.redhat.com/drepper/userapi-ipv6.html>), then the
 attempt to connect to one of those addresses.  I<connect_timeout>
@@ -197,7 +202,7 @@ communicating with the server(s).
 Note that for commands that communicate with more than one server
 (like L<get_multi>) the timeout applies per server set, not per each
 server.  Thus it won't expire if one server is quick enough to
-communicate, eevn if others are silent.  But if some servers are dead
+communicate, even if others are silent.  But if some servers are dead
 those alive will finish communication, and then dead servers would
 timeout.
 
@@ -205,7 +210,7 @@ timeout.
 =item I<close_on_error>
 
   close_on_error => 0
-  (defalut: enabled)
+  (default: enabled)
 
 The value is a boolean which enables (true) or disables (false)
 I<close_on_error> mode.  When enabled, any error response from the
@@ -239,8 +244,8 @@ Consider the following:
 =back
 
 But the client expects one reply per command, so after sending the
-next command it willthink that the second 'ERROR' is a reply for this
-new command.  This menas that all replies would shift, including
+next command it will think that the second 'ERROR' is a reply for this
+new command.  This means that all replies would shift, including
 replies for L<get> commands!  By closing the connection we avoid such
 possibility.
 
@@ -266,7 +271,7 @@ Negative value disables compression.
   compress_ratio => 0.6
   (default: 0.8)
 
-Tha value is a fractional number between 0 and 1.  When
+The value is a fractional number between 0 and 1.  When
 L<compress_threshold> triggers the compression, compressed size should
 be less or equal to S<original-size * I<compress_ratio>>.  Otherwise
 the data will be stored uncompressed.
@@ -289,8 +294,8 @@ will be disabled.
   max_failures => 3
   (default: 0)
 
-The value is a non-negative integer.  When positive, if there happend
-I<max_falures> in I<failure_timeout> seconds, the client does not try
+The value is a non-negative integer.  When positive, if there happened
+I<max_failures> in I<failure_timeout> seconds, the client does not try
 to connect to this particular server for another I<failure_timeout>
 seconds.  Value of zero disables this behaviour.
 
@@ -345,7 +350,8 @@ sub DESTROY {
 
   $memd->enable_compress($enable);
 
-Enable compression when boolean I<$enable> is true, disable when false.
+Enable compression when boolean I<$enable> is true, disable when
+false.
 
 Note that you can enable compression only when you set
 L<compress_threshold> to some positive value and L<compress_algo>
@@ -435,10 +441,10 @@ sub _unpack_value {
   $memd->set($key, $value);
   $memd->set($key, $value, $expiration_time);
 
-Store the I<$value> on the server under the I<$key>.  I<$key> should be a
-scalar.  I<$value> should be defined and may be of any Perl data type.
-When it is a reference, the referenced Perl data structure will be
-transparently serialized with L<Storable|Storable> module.
+Store the I<$value> on the server under the I<$key>.  I<$key> should
+be a scalar.  I<$value> should be defined and may be of any Perl data
+type.  When it is a reference, the referenced Perl data structure will
+be transparently serialized with L<Storable|Storable> module.
 
 Optional I<$expiration_time> is a positive integer number of seconds
 after which the value will expire and wouldn't be accessible any
@@ -458,13 +464,14 @@ sub set {
 =item C<cas>
 
   $memd->cas($key, $cas, $value);
-  $memd->cas($key, $cas, $value, $exiration_time);
+  $memd->cas($key, $cas, $value, $expiration_time);
 
-Store the I<$value> on the server under the I<$key>, but only if CAS value
-associated with this key is equal to I<$cas>.  I<$cas> is an opaque object
-returned with L<gets> or L<gets_multi>.
+Store the I<$value> on the server under the I<$key>, but only if CAS
+value associated with this key is equal to I<$cas>.  I<$cas> is an
+opaque object returned with L<gets> or L<gets_multi>.
 
-See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters description.
+See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters
+description.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -480,12 +487,13 @@ sub cas {
 =item C<add>
 
   $memd->add($key, $value);
-  $memd->add($key, $value, $exiration_time);
+  $memd->add($key, $value, $expiration_time);
 
-Store the I<$value> on the server under the I<$key>, but only if the key
-B<doesn't> exists on the server.
+Store the I<$value> on the server under the I<$key>, but only if the
+key B<doesn't> exists on the server.
 
-See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters description.
+See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters
+description.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -501,12 +509,13 @@ sub add {
 =item C<replace>
 
  $memd->replace($key, $value);
- $memd->replace($key, $value, $exiration_time);
+ $memd->replace($key, $value, $expiration_time);
 
-Store the I<$value> on the server under the I<$key>, but only if the key
-B<does> exists on the server.
+Store the I<$value> on the server under the I<$key>, but only if the
+key B<does> exists on the server.
 
-See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters description.
+See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters
+description.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -526,8 +535,8 @@ sub replace {
 B<Append> the I<$value> to the current value on the server under the
 I<$key>.
 
-I<$key> and I<$value> should be scalars, as well as current value on the
-server.  C<append> doesn't affect expiration time of the value.
+I<$key> and I<$value> should be scalars, as well as current value on
+the server.  C<append> doesn't affect expiration time of the value.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -548,8 +557,8 @@ sub append {
 B<Prepend> the I<$value> to the current value on the server under the
 I<$key>.
 
-I<$key> and I<$value> should be scalars, as well as current value on the
-server.  C<append> doesn't affect expiration time of the value.
+I<$key> and I<$value> should be scalars, as well as current value on
+the server.  C<append> doesn't affect expiration time of the value.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -567,9 +576,9 @@ sub prepend {
 
   $memd->get($key);
 
-Retrive the value for a I<$key>.  I<$key> should be a scalar.
+Retrieve the value for a I<$key>.  I<$key> should be a scalar.
 
-I<Return:> value accociated with the I<$key>, or I<undef>.
+I<Return:> value associated with the I<$key>, or I<undef>.
 
 =cut
 
@@ -590,10 +599,11 @@ sub get {
 
   $memd->get_multi(@keys);
 
-Retrive several values associated with I<@keys>.  I<@keys> should be an
-array of scalars.
+Retrieve several values associated with I<@keys>.  I<@keys> should be
+an array of scalars.
 
-I<Return:> reference to hash, where I<$$href{$key}> holds corresponding value.
+I<Return:> reference to hash, where I<$$href{$key}> holds
+corresponding value.
 
 =cut
 
@@ -620,10 +630,11 @@ sub get_multi {
 
   $memd->gets($key);
 
-Retrive the value and its CAS for a I<$key>.  I<$key> should be a scalar.
+Retrieve the value and its CAS for a I<$key>.  I<$key> should be a
+scalar.
 
-I<Return:> reference to an array I<[$cas, $value]>.  You may conveniently pass
-it back to L<cas> with
+I<Return:> reference to an array I<[$cas, $value]>.  You may
+conveniently pass it back to L<cas> with
 
   my $cas_val = $memd->gets($key);
   # Update value.
@@ -650,11 +661,11 @@ sub gets {
 
   $memd->gets_multi(@keys);
 
-Retrive several values and their CASs associated with I<@keys>.  I<@keys>
-should be an array of scalars.
+Retrieve several values and their CASs associated with I<@keys>.
+I<@keys> should be an array of scalars.
 
-I<Return:> reference to hash, where I<$$href{$key}> holds a reference to an
-array I<[$cas, $value]>.  Compare with L<gets>.
+I<Return:> reference to hash, where I<$$href{$key}> holds a reference
+to an array I<[$cas, $value]>.  Compare with L<gets>.
 
 =cut
 
@@ -685,7 +696,7 @@ sub gets_multi {
 Delete I<$key> and its value from the cache.  I<$delay> is an optional
 non-negative integer number of seconds to delay the operation.  During
 this time L<add> and L<replace> commands will be rejected by the
-server.  When ommited, zero is assumed, i.e. delete immediatly.
+server.  When omitted, zero is assumed, i.e. delete immediately.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -695,12 +706,12 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
   $memd->flush_all;
   $memd->flush_all($delay);
 
-Flush all caches the client knowns about.  I<$delay> is an optional
+Flush all caches the client knows about.  I<$delay> is an optional
 non-negative integer number of seconds to delay the operation.  The
 delay will be distributed across the servers.  For instance, when you
 have three servers, and call C<flush_all(30)>, the servers would get
-30, 15, 0 seconds delays respectively.  When ommited, zero is assumed,
-i.e. flush immediatly.
+30, 15, 0 seconds delays respectively.  When omitted, zero is assumed,
+i.e. flush immediately.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
@@ -722,15 +733,20 @@ __END__
 =head2 Compatibility with Cache::Memcached
 
 This module is designed to be a drop in replacement for
-L<Cache::Memcached|Cache::Memcached>.  Internally
-Cache::Memcached::Fast uses the same hash function as
-Cache::Memcached, and thus should distribute the keys across several
-servers the same way.  So both modules may be used interchangeably.
-Most users should be able to use this module after replacing
-I<"Cache::Memcached"> with I<"Cache::Memcached::Fast">, without
-further code modifications.  However, as of this release, the
-following features of Cache::Memcached are not supported by
-Cache::Memcached::Fast (and some of them will never be):
+L<Cache::Memcached|Cache::Memcached>.  Where constructor parameters
+are the same as in Cache::Memcached, the default values are also the
+same, and new parameters are disabled by default (the exception is
+L<close_on_error>, which is absent in Cache::Memcached and enabled by
+default in this module).  Internally Cache::Memcached::Fast uses the
+same hash function as Cache::Memcached, and thus should distribute the
+keys across several servers the same way.  So both modules may be used
+interchangeably.  Most users of the original module should be able to
+use this module after replacing I<"Cache::Memcached"> with
+I<"Cache::Memcached::Fast">, without further code modifications.
+However, as of this release, the following features of
+Cache::Memcached are not supported by Cache::Memcached::Fast (and some
+of them will never be):
+
 
 =head3 Constructor parameters
 
@@ -759,7 +775,7 @@ and L<failure_timeout> are used.
 =item I<readonly>
 
 Not supported.  Easy to add.  However I'm not sure about the demand
-fot it, and it will slow down things a bit (because from design point
+for it, and it will slow down things a bit (because from design point
 of view it's better to add it on Perl side rather than on XS side).
 
 
