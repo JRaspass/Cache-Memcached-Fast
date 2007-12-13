@@ -45,7 +45,7 @@ L<memcached|http://www.danga.com/memcached/>, in C language
   my $val = $memd->get('skey');
   print "OK\n" if $val eq 'This is a value.';
   my $href = $memd->get_multi('hash', 'nkey');
-  print "OK\n" if $$href{hash}->{b} == 2 and $$href{nkey} == 12;
+  print "OK\n" if $href->{hash}->{b} == 2 and $href->{nkey} == 12;
 
   # Do atomic test-and-set operations.
   my $cas_val = $memd->gets('nkey');
@@ -69,7 +69,8 @@ L<memcached|http://www.danga.com/memcached/>, in C language
 B<Cache::Memcahced::Fast> is a Perl client for memcached, a memory
 cache daemon (L<http://www.danga.com/memcached/>).  Module core is
 implemented in C and tries hard to minimize number of system calls and
-to avoid any key/value copying for speed.
+to avoid any key/value copying for speed.  As a result, it has very
+low CPU consumption.
 
 API is largely compatible with L<Cache::Memcached|Cache::Memcached>,
 original pure Perl client, most users of the original module may start
@@ -177,8 +178,8 @@ interference with each other.
   connect_timeout => 0.7
   (default: 0.25 seconds)
 
-The value is a rational number of seconds to wait for connect to
-complete.  Applies only to network connections.
+The value is a rational number of seconds to wait for connection to
+establish.  Applies only to network connections.
 
 Note that network connect process consists of several steps:
 destination host address lookup, which may return several addresses in
@@ -214,28 +215,28 @@ timeout.
 
 The value is a boolean which enables (true) or disables (false)
 I<close_on_error> mode.  When enabled, any error response from the
-memcached server would make client to close the connection.  Note that
+memcached server would make client close the connection.  Note that
 such "error response" is different from "negative response".  The
 latter means the server processed the command and yield negative
 result.  The former means the server failed to process the command for
 some reason.  I<close_on_error> is enabled by default for safety.
-Consider the following:
+Consider the following scenario:
 
 =over
 
-=item 1 client want to set some value, but mistakenly sends malformed
+=item 1 Client want to set some value, but mistakenly sends malformed
         command (this can't happen with current module of course ;)):
 
   set key 10\r\n
   value_data\r\n
 
-=item 2 memcahced server reads first line, 'set key 10', and can't
+=item 2 Memcahced server reads first line, 'set key 10', and can't
         parse it, because there's wrong number of tokens in it.  So it
         sends
 
   ERROR\r\n
 
-=item 3 then the server reads 'value_data' while it is in
+=item 3 Then the server reads 'value_data' while it is in
         accept-command state!  It can't parse it either (hopefully),
         and sends again
 
@@ -250,7 +251,7 @@ replies for L<get> commands!  By closing the connection we avoid such
 possibility.
 
 When connection dies, or the client receives the reply that it can't
-understand, it closes its end regardless the I<close_on_error>
+understand, it closes the socket regardless the I<close_on_error>
 setting.
 
 
@@ -268,12 +269,12 @@ Negative value disables compression.
 
 =item I<compress_ratio>
 
-  compress_ratio => 0.6
+  compress_ratio => 0.9
   (default: 0.8)
 
 The value is a fractional number between 0 and 1.  When
 L<compress_threshold> triggers the compression, compressed size should
-be less or equal to S<original-size * I<compress_ratio>>.  Otherwise
+be less or equal to S<(original-size * I<compress_ratio>)>.  Otherwise
 the data will be stored uncompressed.
 
 
@@ -467,8 +468,9 @@ sub set {
   $memd->cas($key, $cas, $value, $expiration_time);
 
 Store the I<$value> on the server under the I<$key>, but only if CAS
-value associated with this key is equal to I<$cas>.  I<$cas> is an
-opaque object returned with L<gets> or L<gets_multi>.
+(I<Consistent Access Storage>) value associated with this key is equal
+to I<$cas>.  I<$cas> is an opaque object returned with L<gets> or
+L<gets_multi>.
 
 See L<set> for I<$key>, I<$value>, I<$expiration_time> parameters
 description.
@@ -602,7 +604,7 @@ sub get {
 Retrieve several values associated with I<@keys>.  I<@keys> should be
 an array of scalars.
 
-I<Return:> reference to hash, where I<$$href{$key}> holds
+I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds
 corresponding value.
 
 =cut
@@ -634,7 +636,7 @@ Retrieve the value and its CAS for a I<$key>.  I<$key> should be a
 scalar.
 
 I<Return:> reference to an array I<[$cas, $value]>.  You may
-conveniently pass it back to L<cas> with
+conveniently pass it back to L<cas> with I<@$res>:
 
   my $cas_val = $memd->gets($key);
   # Update value.
@@ -664,8 +666,8 @@ sub gets {
 Retrieve several values and their CASs associated with I<@keys>.
 I<@keys> should be an array of scalars.
 
-I<Return:> reference to hash, where I<$$href{$key}> holds a reference
-to an array I<[$cas, $value]>.  Compare with L<gets>.
+I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds a
+reference to an array I<[$cas, $value]>.  Compare with L<gets>.
 
 =cut
 
@@ -791,17 +793,17 @@ any compatibility on I<debug> level.
 
 =over
 
-=item Note on keys
+=item Passing keys
 
 Every key should be a scalar.  The syntax when key is a reference to
-an array I<[$key, $precomputed_hash]> is not supported.
+an array I<[$precomputed_hash, $key]> is not supported.
 
 
 =item C<set_servers>
 
 Not supported.  It is planned to add consistent hashing and server
-add/remove.  In the meanwhile server set should not change after
-client object construction.
+addition/removal.  Meanwhile server set should not change after client
+object construction.
 
 
 =item C<set_debug>
@@ -861,7 +863,7 @@ address.
 Michael Monashev, E<lt>postmaster@softsearch.ruE<gt> - project
 management, design suggestions, testing.
 
-Development sponsored by Michael Monashev.
+Development sponsored by "Monashev" Co. Ltd.
 
 
 =head1 WARRANTY
