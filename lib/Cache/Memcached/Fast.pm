@@ -178,8 +178,10 @@ interference with each other.
   connect_timeout => 0.7
   (default: 0.25 seconds)
 
-The value is a rational number of seconds to wait for connection to
-establish.  Applies only to network connections.
+The value is a non-negative rational number of seconds to wait for
+connection to establish.  Applies only to network connections.  Zero
+disables timeout, but keep in mind that operating systems have their
+own heuristic connect timeout.
 
 Note that network connect process consists of several steps:
 destination host address lookup, which may return several addresses in
@@ -197,8 +199,8 @@ I<connect_timeout> seconds, but this is unavoidable.
   io_timeout => 0.5
   (default: 1.0 seconds)
 
-The value is a rational number of seconds to wait before giving up on
-communicating with the server(s).
+The value is a non-negative rational number of seconds to wait before
+giving up on communicating with the server(s).  Zero disables timeout.
 
 Note that for commands that communicate with more than one server
 (like L<get_multi>) the timeout applies per server set, not per each
