@@ -582,7 +582,7 @@ sub prepend {
 
 Retrieve the value for a I<$key>.  I<$key> should be a scalar.
 
-I<Return:> value associated with the I<$key>, or I<undef>.
+I<Return:> value associated with the I<$key>, or nothing.
 
 =cut
 
@@ -594,7 +594,7 @@ sub get {
     if (defined $val and _unpack_value($self, $val, $flags)) {
         return $$val;
     } else {
-        return undef;
+        return;
     }
 }
 
@@ -637,13 +637,15 @@ sub get_multi {
 Retrieve the value and its CAS for a I<$key>.  I<$key> should be a
 scalar.
 
-I<Return:> reference to an array I<[$cas, $value]>.  You may
-conveniently pass it back to L<cas> with I<@$res>:
+I<Return:> reference to an array I<[$cas, $value]>, or nothing.  You
+may conveniently pass it back to L<cas> with I<@$res>:
 
   my $cas_val = $memd->gets($key);
   # Update value.
-  $$cas_val[1] = 3;
-  $memd->cas($key, @$cas_val);
+  if (defined $cas_val) {
+      $$cas_val[1] = 3;
+      $memd->cas($key, @$cas_val);
+  }
 
 =cut
 
@@ -656,7 +658,7 @@ sub gets {
         $$val[1] = ${$$val[1]};
         return $val;
     } else {
-        return undef;
+        return;
     }
 }
 
