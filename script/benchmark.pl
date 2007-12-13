@@ -1,5 +1,12 @@
 #! /usr/bin/perl
 #
+# Copyright (C) 2007 by Tomash Brechko.  All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the same terms as Perl itself, either Perl version 5.8.8
+# or, at your option, any later version of Perl 5 you may have
+# available.
+#
 use warnings;
 use strict;
 
@@ -23,7 +30,7 @@ use Cache::Memcached;
 use Benchmark qw(:hireswallclock timethese cmpthese);
 
 
-use constant NOREPLY => 1;
+use constant NOREPLY => 0;
 use constant CAS => 1;
 
 
@@ -106,19 +113,20 @@ sub compare_multi {
 }
 
 
+# Cache::Memcached doesn't support append/prepend, cas, gets, gets_multi yet.
 my @methods = (
     [add        => \&compare, 1, NOREPLY, $value],
     [set        => \&compare, 1, NOREPLY, $value],
-    [append     => \&compare, 1, NOREPLY, $value],
-    [prepend    => \&compare, 1, NOREPLY, $value],
+#    [append     => \&compare, 1, NOREPLY, $value],
+#    [prepend    => \&compare, 1, NOREPLY, $value],
     [replace    => \&compare, 1, NOREPLY, $value],
-    [cas        => \&compare, 1, NOREPLY, $value, CAS],
+#    [cas        => \&compare, 1, NOREPLY, $value, CAS],
     [get        => \&compare, 1],
     [get_multi  => \&compare, $keys_multi],
-    [gets       => \&compare, 1],
-    [gets_multi => \&compare, $keys_multi],
+#    [gets       => \&compare, 1],
+#    [gets_multi => \&compare, $keys_multi],
     [get        => \&compare_multi, $keys_multi],
-    [gets       => \&compare_multi, $keys_multi],
+#    [gets       => \&compare_multi, $keys_multi],
     [delete     => \&compare, 1, NOREPLY],
 );
 

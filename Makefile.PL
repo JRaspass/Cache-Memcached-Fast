@@ -7,7 +7,7 @@ WriteMakefile(
     VERSION_FROM      => 'lib/Cache/Memcached/Fast.pm', # finds $VERSION
     PREREQ_PM         => {'Test::More'  =>  0}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Cache/Memcached/Fast.pm', # retrieve abstract from module
+      (ABSTRACT_FROM  => 'lib/Cache/Memcached/Fast.pm',
        AUTHOR         => 'Tomash Brechko <tomash.brechko@gmail.com>') : ()),
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
