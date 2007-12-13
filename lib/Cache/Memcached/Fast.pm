@@ -204,24 +204,13 @@ sub prepend {
 }
 
 
-sub rget {
+sub get {
     my Cache::Memcached::Fast $self = shift;
 
     my ($val, $flags) = $self->{_xs}->get(@_);
 
     if (defined $val and _unpack_value($self, $val, $flags)) {
-        return $val;
-    } else {
-        return undef;
-    }
-}
-
-
-sub get {
-    my $val_ref = rget(@_);
-
-    if (defined $val_ref) {
-        return $$val_ref;
+        return $$val;
     } else {
         return undef;
     }
