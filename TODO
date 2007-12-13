@@ -19,3 +19,7 @@
 - Set $! on errors.
 
 - Add libketama.
+
+- Infect the code with the license statement.
+
+- Write documentation.

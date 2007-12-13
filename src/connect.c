@@ -75,12 +75,16 @@ client_connect_inet(const char *host, const char *port, int stream,
 
       FD_ZERO(&write_set);
       FD_SET(fd, &write_set);
-      if (pto)
+      do
         {
-          pto->tv_sec = timeout / 1000;
-          pto->tv_usec = (timeout % 1000) * 1000;
+          if (pto)
+            {
+              pto->tv_sec = timeout / 1000;
+              pto->tv_usec = (timeout % 1000) * 1000;
+            }
+          res = select(fd + 1, NULL, &write_set, NULL, pto);
         }
-      res = select(fd + 1, NULL, &write_set, NULL, pto);
+      while (res == -1 && errno == EINTR);
       if (res <= 0)
         {
           close(fd);
