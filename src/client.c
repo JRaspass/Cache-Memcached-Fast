@@ -314,7 +314,7 @@ client_init()
   /* Keys are interleaved with spaces.  */
   c->key_step = 2;
   c->max_failures = 0;
-  c->failure_timeout = 0;
+  c->failure_timeout = 10;
   c->close_on_error = 1;
   c->noreply = 0;
 
