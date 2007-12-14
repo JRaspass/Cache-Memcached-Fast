@@ -25,7 +25,7 @@ typedef SV *SVREF;
 
 static
 void
-add_server(Cache_Memcached_Fast *memd, SV *addr_sv, int weight)
+add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight)
 {
   static const int delim = ':';
   const char *host, *port;
@@ -33,7 +33,7 @@ add_server(Cache_Memcached_Fast *memd, SV *addr_sv, int weight)
   STRLEN len;
   int res;
 
-  if (weight <= 0)
+  if (weight <= 0.0)
     croak("Server weight should be positive");
 
   host = SvPV(addr_sv, len);
@@ -63,7 +63,7 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
 {
   if (! SvROK(sv))
     {
-      add_server(memd, sv, 1);
+      add_server(memd, sv, 1.0);
     }
   else
     {
@@ -73,14 +73,14 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
           {
             HV *hv = (HV *) SvRV(sv);
             SV **addr_sv, **weight_sv;
-            int weight = 1;
+            double weight = 1.0;
 
             addr_sv = hv_fetch(hv, "address", 7, 0);
             if (! addr_sv)
               croak("server should have { address => $addr }");
             weight_sv = hv_fetch(hv, "weight", 6, 0);
             if (weight_sv)
-              weight = SvIV(*weight_sv);
+              weight = SvNV(*weight_sv);
             add_server(memd, *addr_sv, weight);
           }
           break;
@@ -89,14 +89,14 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
           {
             AV *av = (AV *) SvRV(sv);
             SV **addr_sv, **weight_sv;
-            int weight = 1;
+            double weight = 1.0;
 
             addr_sv = av_fetch(av, 0, 0);
             if (! addr_sv)
               croak("server should be [$addr, $weight]");
             weight_sv = av_fetch(av, 1, 0);
             if (weight_sv)
-              weight = SvIV(*weight_sv);
+              weight = SvNV(*weight_sv);
             add_server(memd, *addr_sv, weight);
           }
           break;

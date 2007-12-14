@@ -93,7 +93,7 @@ client_destroy(struct client *c);
 extern
 int
 client_add_server(struct client *c, const char *host, size_t host_len,
-                  const char *port, size_t port_len, int weight);
+                  const char *port, size_t port_len, double weight);
 
 extern
 int

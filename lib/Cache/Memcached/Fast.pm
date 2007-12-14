@@ -11,7 +11,7 @@ L<memcached|http://www.danga.com/memcached/>, in C language
   use Cache::Memcached::Fast;
 
   my $memd = new Cache::Memcached::Fast({
-      servers => [ { address => 'localhost:11211', weight => 2 },
+      servers => [ { address => 'localhost:11211', weight => 2.5 },
                    '192.168.254.2:11211',
                    { address => '/path/to/unix.sock' } ],
       namespace => 'my:',
@@ -155,7 +155,7 @@ client parameters.  Currently recognized keys are:
 
 =item I<servers>
 
-  servers => [ { address => 'localhost:11211', weight => 2 },
+  servers => [ { address => 'localhost:11211', weight => 2.5 },
                '192.168.254.2:11211',
                { address => '/path/to/unix.sock' } ],
   (default: none)
@@ -164,14 +164,13 @@ The value is a reference to an array of server addresses.  Each
 address is either a scalar, a hash reference, or an array reference
 (for compatibility with Cache::Memcached, deprecated).  If hash
 reference, the keys are I<address> (scalar) and I<weight> (positive
-integer).  The server address is in the form I<host:port> for network
-TCP connections, or F</path/to/unix.sock> for local Unix socket
-connections.  When weight is not given, 1 is assumed.  Client will
-distribute keys across servers proportionally to server weights.
+rational number).  The server address is in the form I<host:port> for
+network TCP connections, or F</path/to/unix.sock> for local Unix
+socket connections.  When weight is not given, 1 is assumed.  Client
+will distribute keys across servers proportionally to server weights.
 
-Note that the amount of memory used for internal server structures is
-proportional to the sum of server weights, so try to keep weights as
-low as possible.
+If you want to get key distribution compatible with Cache::Memcached,
+all server weights should be integer.
 
 
 =item I<namespace>

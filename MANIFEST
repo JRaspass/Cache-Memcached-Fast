@@ -16,4 +16,5 @@ src/client.h
 src/client.c
 src/connect.h
 src/connect.c
-src/hash_crc32.h
+src/dispatch_key.c
+src/dispatch_key.h
