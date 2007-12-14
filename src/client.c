@@ -366,6 +366,8 @@ client_destroy(struct client *c)
   for (i = 0; i < c->server_count; ++i)
     server_destroy(&c->servers[i]);
 
+  dispatch_destroy(&c->dispatch);
+
   free(c->servers);
   free(c->prefix);
   free(c->key_list);

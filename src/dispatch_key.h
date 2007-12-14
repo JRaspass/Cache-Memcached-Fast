@@ -46,6 +46,10 @@ dispatch_init(struct dispatch_state *state);
 
 extern
 void
+dispatch_destroy(struct dispatch_state *state);
+
+extern
+void
 dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points);
 
 extern

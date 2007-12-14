@@ -242,6 +242,13 @@ dispatch_init(struct dispatch_state *state)
 
 
 void
+dispatch_destroy(struct dispatch_state *state)
+{
+  free(state->bins);
+}
+
+
+void
 dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points)
 {
   state->ketama_points = ketama_points;
