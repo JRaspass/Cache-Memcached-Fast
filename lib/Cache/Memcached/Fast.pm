@@ -11,8 +11,9 @@ L<memcached|http://www.danga.com/memcached/>, in C language
   use Cache::Memcached::Fast;
 
   my $memd = new Cache::Memcached::Fast({
-      servers => [('localhost:11211') x 2, '192.168.254.2:11211',
-                  '/path/to/unix.sock'],
+      servers => [ { address => 'localhost:11211', weight => 2 },
+                   '192.168.254.2:11211',
+                   { address => '/path/to/unix.sock' } ],
       namespace => 'my:',
       connect_timeout => 0.2,
       io_timeout => 0.5,
@@ -154,13 +155,23 @@ client parameters.  Currently recognized keys are:
 
 =item I<servers>
 
-  servers => [('localhost:11211') x 2, '192.168.254.2:50000',
-              '/path/to/unix.sock']
+  servers => [ { address => 'localhost:11211', weight => 2 },
+               '192.168.254.2:11211',
+               { address => '/path/to/unix.sock' } ],
   (default: none)
 
 The value is a reference to an array of server addresses.  Each
-address is either I<host:port> for network TCP connections, or
-F</path/to/unix.sock> for local Unix socket connections.
+address is either a scalar, a hash reference, or an array reference
+(for compatibility with Cache::Memcached, deprecated).  If hash
+reference, the keys are I<address> (scalar) and I<weight> (positive
+integer).  The server address is in the form I<host:port> for network
+TCP connections, or F</path/to/unix.sock> for local Unix socket
+connections.  When weight is not given, 1 is assumed.  Client will
+distribute keys across servers proportionally to server weights.
+
+Note that the amount of memory used for internal server structures is
+proportional to the sum of server weights, so try to keep weights as
+low as possible.
 
 
 =item I<namespace>
@@ -758,20 +769,6 @@ of them will never be):
 
 =over
 
-=item I<servers>
-
-The syntax
-
-  servers => [['host:port', $weight]]
-
-is not supported.  You may workaround this by adding the server
-several times with the syntax
-
-  servers => [('host:port') x $weight]
-
-or just wait for server weight support, which is planned.
-
-
 =item I<no_rehash>
 
 Current implementation never rehashes keys, instead L<max_failures>
@@ -805,9 +802,8 @@ an array I<[$precomputed_hash, $key]> is not supported.
 
 =item C<set_servers>
 
-Not supported.  It is planned to add consistent hashing and server
-addition/removal.  Meanwhile server set should not change after client
-object construction.
+Not supported.  Server set should not change after client object
+construction.
 
 
 =item C<set_debug>

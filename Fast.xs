@@ -25,6 +25,92 @@ typedef SV *SVREF;
 
 static
 void
+add_server(Cache_Memcached_Fast *memd, SV *addr_sv, int weight)
+{
+  static const int delim = ':';
+  const char *host, *port;
+  size_t host_len, port_len;
+  STRLEN len;
+  int res;
+
+  if (weight <= 0)
+    croak("Server weight should be positive");
+
+  host = SvPV(addr_sv, len);
+  /*
+    NOTE: here we relay on the fact that host is zero-terminated.
+  */
+  port = strrchr(host, delim);
+  if (port)
+    {
+      host_len = port - host;
+      ++port;
+      port_len = len - host_len - 1;
+      res = client_add_server(memd, host, host_len, port, port_len, weight);
+    }
+  else
+    {
+      res = client_add_server(memd, host, len, NULL, 0, weight);
+    }
+  if (res != MEMCACHED_SUCCESS)
+    croak("Not enough memory");
+}
+
+
+static
+void
+parse_server(Cache_Memcached_Fast *memd, SV *sv)
+{
+  if (! SvROK(sv))
+    {
+      add_server(memd, sv, 1);
+    }
+  else
+    {
+      switch (SvTYPE(SvRV(sv)))
+        {
+        case SVt_PVHV:
+          {
+            HV *hv = (HV *) SvRV(sv);
+            SV **addr_sv, **weight_sv;
+            int weight = 1;
+
+            addr_sv = hv_fetch(hv, "address", 7, 0);
+            if (! addr_sv)
+              croak("server should have { address => $addr }");
+            weight_sv = hv_fetch(hv, "weight", 6, 0);
+            if (weight_sv)
+              weight = SvIV(*weight_sv);
+            add_server(memd, *addr_sv, weight);
+          }
+          break;
+
+        case SVt_PVAV:
+          {
+            AV *av = (AV *) SvRV(sv);
+            SV **addr_sv, **weight_sv;
+            int weight = 1;
+
+            addr_sv = av_fetch(av, 0, 0);
+            if (! addr_sv)
+              croak("server should be [$addr, $weight]");
+            weight_sv = av_fetch(av, 1, 0);
+            if (weight_sv)
+              weight = SvIV(*weight_sv);
+            add_server(memd, *addr_sv, weight);
+          }
+          break;
+
+        default:
+          croak("Not a hash or array reference");
+          break;
+        }
+    }
+}
+
+
+static
+void
 parse_config(Cache_Memcached_Fast *memd, HV *conf)
 {
   SV **ps;
@@ -41,34 +127,11 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
       max_index = av_len(a);
       for (i = 0; i <= max_index; ++i)
         {
-          static const int delim = ':';
-          const char *host, *port;
-          size_t host_len, port_len;
-          STRLEN len;
-          int res;
-
           ps = av_fetch(a, i, 0);
           if (! ps)
             continue;
-          /* TODO: parse [host, weight].  */
-          host = SvPV(*ps, len);
-          /*
-            NOTE: here we relay on the fact that host is zero-terminated.
-          */
-          port = strrchr(host, delim);
-          if (port)
-            {
-              host_len = port - host;
-              ++port;
-              port_len = len - host_len - 1;
-              res = client_add_server(memd, host, host_len, port, port_len);
-            }
-          else
-            {
-              res = client_add_server(memd, host, len, NULL, 0);
-            }
-          if (res != MEMCACHED_SUCCESS)
-            croak("Not enough memory");
+
+          parse_server(memd, *ps);
         }
     }
 

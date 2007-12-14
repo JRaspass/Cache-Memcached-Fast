@@ -1,7 +1,7 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.02  2007-12-13
+0.02  2007-12-14
         - first public release.
 
         Changes since 0.01:
@@ -31,6 +31,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
         compress_algo, max_failure, failure_timeout.
 
         Finally added documentation!
+
+        Added support for server weights.
 
         There's also support for 'noreply'-enabled memcached, but
         those patches are not (yet) accepted to mainline, so 'noreply'

@@ -244,6 +244,10 @@ struct client
   int server_count;
   int server_capacity;
 
+  int *bins;               /* Array of indexes into servers array.  */
+  int bins_count;
+  int bins_capacity;
+
   char *prefix;
   size_t prefix_len;
 
@@ -330,6 +334,9 @@ client_init()
   c->servers = NULL;
   c->server_count = c->server_capacity = 0;
 
+  c->bins = NULL;
+  c->bins_count = c->bins_capacity = 0;
+
   c->connect_timeout = 250;
   c->io_timeout = 1000;
   c->prefix = NULL;
@@ -411,13 +418,16 @@ client_set_noreply(struct client *c, int enable)
 
 int
 client_add_server(struct client *c, const char *host, size_t host_len,
-                  const char *port, size_t port_len)
+                  const char *port, size_t port_len, int weight)
 {
   int res;
 
+  if (weight <= 0)
+    return MEMCACHED_FAILURE;
+
   if (c->server_count == c->server_capacity)
     {
-      int capacity = (c->server_capacity > 0 ? c->server_capacity * 2 : 1);
+      int capacity = (c->server_capacity > 0 ? c->server_capacity + 1 : 1);
       struct server *s =
         (struct server *) realloc(c->servers,
                                   capacity * sizeof(struct server));
@@ -432,6 +442,22 @@ client_add_server(struct client *c, const char *host, size_t host_len,
                     host, host_len, port, port_len);
   if (res != MEMCACHED_SUCCESS)
     return res;
+
+  if (c->bins_count == c->bins_capacity)
+    {
+      int capacity =
+        (c->bins_capacity > 0 ? c->bins_capacity + weight : weight);
+      int *b = (int *) realloc(c->bins, capacity * sizeof(int));
+
+      if (! b)
+        return MEMCACHED_FAILURE;
+
+      c->bins = b;
+      c->bins_capacity = capacity;
+    }
+
+  while (weight-- > 0)
+    c->bins[c->bins_count++] = c->server_count;
 
   ++c->server_count;
 
@@ -1292,13 +1318,14 @@ client_get_server_index(struct client *c, const char *key, size_t key_len)
   if (c->server_count == 0)
     return -1;
 
-  if (c->server_count == 1 || key_len == 0)
+  if (c->server_count == 1)
     {
       index = 0;
     }
   else
     {
-      index = hash_crc32(key, key_len) % c->server_count;
+      int bin_index = hash_crc32(key, key_len) % c->bins_count;
+      index = c->bins[bin_index];
     }
 
   fd = get_server_fd(c, index);
