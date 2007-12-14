@@ -163,6 +163,7 @@ command_state_init(struct command_state *state,
   state->fd = -1;
   state->iov_buf = NULL;
   state->iov_buf_size = 0;
+  state->generation = 0;
 }
 
 
@@ -351,7 +352,7 @@ client_init()
   c->key_list = NULL;
   c->key_list_count = c->key_list_capacity = 0;
 
-  c->generation = 0;
+  c->generation = 1;            /* Different from initial command state.  */
 
   return c;
 }
