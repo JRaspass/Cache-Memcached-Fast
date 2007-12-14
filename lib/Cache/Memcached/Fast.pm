@@ -333,11 +333,14 @@ B<Ketama> consistent hashing algorithm
 (L<http://www.last.fm/user/RJ/journal/2007/04/10/392555/>), and
 specifies the number of points the server with weight 1 will be mapped
 to.  Thus each server will be mapped to S<I<ketama_points> *
-I<weight>> points in continuum.  Note that memory consumption for
-internal server structures will be proportional to sum of such
-products.
+I<weight>> points in continuum.  Larger value will result in more
+uniform distribution.  Note that the number of internal bin
+structures, and hence memory consumption, will be proportional to sum
+of such products.  But bin structures themselves are small (two
+integers each), so you probably shouldn't worry.
 
-Zero value disables the Ketama algorithm.  See also L<weight>.
+Zero value disables the Ketama algorithm.  See also server weight in
+L<servers> above.
 
 
 =back
