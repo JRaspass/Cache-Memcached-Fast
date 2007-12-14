@@ -60,11 +60,6 @@ my $gen_comment = <<"EOF";
 */
 EOF
 
-(my $prototype = <<"EOF") =~ s/\n\Z//;
-unsigned int
-compute_crc32(const char *s, size_t len)
-EOF
-
 
 open(my $fc, '>', $file_c)
   or die "open(> $file_c): $!";
@@ -79,10 +74,12 @@ static const unsigned int crc32lookup[256] = {
 };
 
 
-$prototype
+unsigned int
+compute_crc32_add(unsigned int crc32, const char *s, size_t len)
 {
   const char *end = s + len;
-  unsigned int crc32 = ~@{[ sprintf("0x%08xU", $init) ]};
+
+  crc32 = ~crc32;
 
   while (s < end)
     {
@@ -115,7 +112,16 @@ $gen_comment
 
 
 extern
-$prototype;
+unsigned int
+compute_crc32_add(unsigned int crc32, const char *s, size_t len);
+
+
+static inline
+unsigned int
+compute_crc32(const char *s, size_t len)
+{
+  return compute_crc32_add(@{[ sprintf("0x%08xU", $init) ]}, s, len);
+}
 
 
 #endif /* ! $guard */

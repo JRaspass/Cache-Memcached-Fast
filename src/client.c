@@ -108,6 +108,9 @@ enum command_phase
 };
 
 
+struct client;
+
+
 struct command_state
 {
   struct client *client;
@@ -369,6 +372,19 @@ client_destroy(struct client *c)
 }
 
 
+int
+client_set_ketama_points(struct client *c, int ketama_points)
+{
+  /* Should be called before we added any server.  */
+  if (c->server_count > 0 || ketama_points < 0)
+    return MEMCACHED_FAILURE;
+
+  dispatch_set_ketama_points(&c->dispatch, ketama_points);
+
+  return MEMCACHED_SUCCESS;
+}
+
+
 void
 client_set_connect_timeout(struct client *c, int to)
 {
@@ -440,7 +456,8 @@ client_add_server(struct client *c, const char *host, size_t host_len,
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  res = dispatch_add_server(&c->dispatch, weight, c->server_count);
+  res = dispatch_add_server(&c->dispatch, host, host_len, port, port_len,
+                            weight, c->server_count);
   if (res == -1)
     return MEMCACHED_FAILURE;
 

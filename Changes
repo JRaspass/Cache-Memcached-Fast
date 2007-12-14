@@ -34,6 +34,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Added support for server weights.
 
+        Added the Ketama consistent hashing algorithm.
+
         There's also support for 'noreply'-enabled memcached, but
         those patches are not (yet) accepted to mainline, so 'noreply'
         is not an official feature and is not documented.

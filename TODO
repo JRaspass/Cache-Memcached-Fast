@@ -10,11 +10,10 @@
 
 - Move "require $compress_module" close to the place where name is set.
 
-- Use better rounding in flush_all().
+- Use better rounding in flush_all(), replace (int) (double + 0.5)
+  with rounding function.
 
 - Set $! on errors.
-
-- Add libketama.
 
 - Better result value: distinct between negative outcome (false) and
   failure (undef).  flush_all() should return true only on success

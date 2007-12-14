@@ -90,6 +90,13 @@ extern
 void
 client_destroy(struct client *c);
 
+/*
+  client_set_ketama_points() should be called before adding any server.
+*/
+extern
+int
+client_set_ketama_points(struct client *c, int ketama_points);
+
 extern
 int
 client_add_server(struct client *c, const char *host, size_t host_len,

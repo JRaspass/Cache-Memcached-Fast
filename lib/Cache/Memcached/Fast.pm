@@ -23,6 +23,7 @@ L<memcached|http://www.danga.com/memcached/>, in C language
       compress_algo => 'deflate',
       max_failures => 3,
       failure_timeout => 2,
+      ketama_points => 150,
   });
 
   # Store scalars.
@@ -320,6 +321,23 @@ seconds.  Value of zero disables this behaviour.
 
 The value is a positive integer number of seconds.  See
 L<max_failures>.
+
+
+=item I<ketama_points>
+
+  ketama_points => 150
+  (default: 0)
+
+The value is a non-negative integer.  When positive, enables the
+B<Ketama> consistent hashing algorithm
+(L<http://www.last.fm/user/RJ/journal/2007/04/10/392555/>), and
+specifies the number of points the server with weight 1 will be mapped
+to.  Thus each server will be mapped to S<I<ketama_points> *
+I<weight>> points in continuum.  Note that memory consumption for
+internal server structures will be proportional to sum of such
+products.
+
+Zero value disables the Ketama algorithm.  See also L<weight>.
 
 
 =back

@@ -23,6 +23,7 @@
 
 #include "dispatch_key.h"
 #include "compute_crc32.h"
+#include <string.h>
 #include <stdlib.h>
 
 
@@ -36,9 +37,30 @@ struct dispatch_continuum_point
 };
 
 
+static inline
+int
+extend_bins(struct dispatch_state *state, int add)
+{
+  int capacity =
+    (state->bins_capacity > 0 ? state->bins_capacity + add : add);
+  struct dispatch_continuum_point *b =
+    (struct dispatch_continuum_point *)
+      realloc(state->bins,
+              capacity * sizeof(struct dispatch_continuum_point));
+
+  if (! b)
+    return -1;
+
+  state->bins = b;
+  state->bins_capacity = capacity;
+
+  return 0;
+}
+
+
 static
 int
-dispatch_find_server_index(struct dispatch_state *state, unsigned int point)
+dispatch_find_bin(struct dispatch_state *state, unsigned int point)
 {
   struct dispatch_continuum_point *left, *right;
 
@@ -53,18 +75,19 @@ dispatch_find_server_index(struct dispatch_state *state, unsigned int point)
       else if (middle->point > point)
         right = middle;
       else
-        return middle->index;
+        return (middle - state->bins);
     }
 
+  /* Wrap around.  */
   if (left == state->bins + state->bins_count)
     left = state->bins;
 
-  return left->index;
+  return (left - state->bins);
 }
 
 
 static inline
-void
+int
 compatible_add_server(struct dispatch_state *state, double weight, int index)
 {
   /*
@@ -75,6 +98,13 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
   int i;
   double scale;
 
+  if (state->bins_count == state->bins_capacity)
+    {
+      int res = extend_bins(state, 1);
+      if (res == -1)
+        return -1;
+    }
+
   state->total_weight += weight;
   scale = (1 - weight / state->total_weight);
   for (i = 0; i < state->bins_count; ++i)
@@ -82,6 +112,10 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
 
   state->bins[state->bins_count].point = DISPATCH_MAX_POINT;
   state->bins[state->bins_count].index = index;
+
+  ++state->bins_count;
+
+  return 0;
 }
 
 
@@ -100,13 +134,100 @@ compatible_get_server(struct dispatch_state *state,
     occupies the space proportional to its weight, we get the same
     server index.
   */
+  int bin;
   unsigned int crc32 = compute_crc32(key, key_len);
   unsigned int hash = ((crc32 >> 16) & 0x00007fff);
   unsigned int point = hash % (unsigned int) (state->total_weight + 0.5);
 
   point = (double) point / state->total_weight * DISPATCH_MAX_POINT;
 
-  return dispatch_find_server_index(state, point);
+  bin = dispatch_find_bin(state, point);
+  return state->bins[bin].index;
+}
+
+
+static inline
+int
+ketama_crc32_add_server(struct dispatch_state *state,
+                        const char *host, size_t host_len,
+                        const char *port, size_t port_len,
+                        double weight, int index)
+{
+  static const char delim = '\0';
+  unsigned int crc32;
+  int count, i;
+
+  count = (state->ketama_points * weight + 0.5);
+
+  if (state->bins_count + count > state->bins_capacity)
+    {
+      int add = state->bins_count + count - state->bins_capacity;
+      int res = extend_bins(state, add);
+      if (res == -1)
+        return -1;
+    }
+
+  crc32 = compute_crc32(host, host_len);
+  crc32 = compute_crc32_add(crc32, &delim, 1);
+  crc32 = compute_crc32_add(crc32, port, port_len);
+
+  for (i = 0; i < count; ++i)
+    {
+      unsigned int point =
+        compute_crc32_add(crc32, (const char *) &i, sizeof(i));
+      int bin;
+
+      if (state->bins_count > 0)
+        {
+          bin = dispatch_find_bin(state, point);
+
+          /* Check if we wrapped around but actually have new max point.  */
+          if (bin == 0 && point > state->bins[0].point)
+            {
+              bin = state->bins_count;
+            }
+          else
+            {
+              if (point == state->bins[bin].point)
+                {
+                  /*
+                    Even if there's a server for the same point
+                    already, we have to add ours, because the first
+                    one may be removed later.  But we add ours after
+                    the first server for not to change key
+                    distribution.
+                  */
+                  ++bin;
+                }
+
+              /* Move the tail one position forward.  */
+              memmove(state->bins + bin + 1, state->bins + bin,
+                      (state->bins_count - bin) * sizeof(*state->bins));
+            }
+        }
+      else
+        {
+          bin = 0;
+        }
+
+      state->bins[bin].point = point;
+      state->bins[bin].index = index;
+
+      ++state->bins_count;
+    }
+
+  return 0;
+}
+
+
+static inline
+int
+ketama_crc32_get_server(struct dispatch_state *state,
+                        const char *key, size_t key_len)
+{
+  unsigned int point = compute_crc32(key, key_len);
+  int bin = dispatch_find_bin(state, point);
+  return state->bins[bin].index;
 }
 
 
@@ -116,33 +237,28 @@ dispatch_init(struct dispatch_state *state)
   state->bins = NULL;
   state->bins_count = state->bins_capacity = 0;
   state->total_weight = 0.0;
+  state->ketama_points = 0;
+}
+
+
+void
+dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points)
+{
+  state->ketama_points = ketama_points;
 }
 
 
 int
-dispatch_add_server(struct dispatch_state *state, double weight, int index)
+dispatch_add_server(struct dispatch_state *state,
+                    const char *host, size_t host_len,
+                    const char *port, size_t port_len,
+                    double weight, int index)
 {
-  if (state->bins_count == state->bins_capacity)
-    {
-      int capacity =
-        (state->bins_capacity > 0 ? state->bins_capacity + 1 : 1);
-      struct dispatch_continuum_point *b =
-        (struct dispatch_continuum_point *)
-          realloc(state->bins,
-                  capacity * sizeof(struct dispatch_continuum_point));
-
-      if (! b)
-        return -1;
-
-      state->bins = b;
-      state->bins_capacity = capacity;
-    }
-
-  compatible_add_server(state, weight, index);
-
-  ++state->bins_count;
-
-  return 0;
+  if (state->ketama_points > 0)
+    return ketama_crc32_add_server(state, host, host_len, port, port_len,
+                                   weight, index);
+  else
+    return compatible_add_server(state, weight, index);
 }
 
 
@@ -158,6 +274,9 @@ dispatch_key(struct dispatch_state *state, const char *key, size_t key_len)
     }
   else
     {
-      return compatible_get_server(state, key, key_len);
+      if (state->ketama_points > 0)
+        return ketama_crc32_get_server(state, key, key_len);
+      else
+        return compatible_get_server(state, key, key_len);
     }
 }

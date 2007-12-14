@@ -35,8 +35,8 @@ struct dispatch_state
   struct dispatch_continuum_point *bins;
   int bins_count;
   int bins_capacity;
-
   double total_weight;
+  int ketama_points;
 };
 
 
@@ -45,8 +45,15 @@ void
 dispatch_init(struct dispatch_state *state);
 
 extern
+void
+dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points);
+
+extern
 int
-dispatch_add_server(struct dispatch_state *state, double weight, int index);
+dispatch_add_server(struct dispatch_state *state,
+                    const char *host, size_t host_len,
+                    const char *port, size_t port_len,
+                    double weight, int index);
 
 extern
 int

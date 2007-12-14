@@ -115,6 +115,14 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
 {
   SV **ps;
 
+  ps = hv_fetch(conf, "ketama_points", 13, 0);
+  if (ps)
+    {
+      int res = client_set_ketama_points(memd, SvIV(*ps));
+      if (res != MEMCACHED_SUCCESS)
+        croak("client_set_ketama() failed");
+    }
+
   ps = hv_fetch(conf, "servers", 7, 0);
   if (ps)
     {
