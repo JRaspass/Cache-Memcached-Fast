@@ -25,3 +25,5 @@
 - stats() command.
 
 - UDP (?).
+
+- Test case should be split into several files.

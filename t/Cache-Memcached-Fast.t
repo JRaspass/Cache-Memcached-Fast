@@ -1,6 +1,9 @@
 use warnings;
 use strict;
 
+# TODO: the test is messy.  It should be split into several files.
+
+
 use Test::More tests => 58;
 BEGIN { use_ok('Cache::Memcached::Fast') };
 
