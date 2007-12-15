@@ -1,7 +1,7 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.02  2007-12-14
+0.02  2007-12-15
         - first public release.
 
         Changes since 0.01:
@@ -35,6 +35,9 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Added support for server weights.
 
         Added the Ketama consistent hashing algorithm.
+
+        Added default tests as generated with Module::Starter.  Main
+        test case is still messy, should be split into several tests.
 
         There's also support for 'noreply'-enabled memcached, but
         those patches are not (yet) accepted to mainline, so 'noreply'
