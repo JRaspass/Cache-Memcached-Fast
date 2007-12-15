@@ -1822,7 +1822,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
       buf = (char *) &state->iov_buf[state->iov_count];
       buf_iov->iov_base = buf;
       buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
-                                 (delay_type) ddelay,
+                                 (delay_type) (ddelay + 0.5),
                                  (use_noreply ? " noreply" : ""));
     }
 

@@ -27,6 +27,14 @@
 #include <stdlib.h>
 
 
+/*
+  Note on rounding: C89 (which we are trying to be compatible with)
+  doesn't have round-to-nearest function, only ceil() and floor(), so
+  we add 0.5 to doubles before casting them to integers (and the cast
+  always rounds toward zero).
+*/
+
+
 #define DISPATCH_MAX_POINT  0xffffffffU
 
 
@@ -108,7 +116,7 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
   state->total_weight += weight;
   scale = (1 - weight / state->total_weight);
   for (i = 0; i < state->bins_count; ++i)
-    state->bins[i].point = (double) state->bins[i].point * scale;
+    state->bins[i].point = ((double) state->bins[i].point * scale + 0.5);
 
   state->bins[state->bins_count].point = DISPATCH_MAX_POINT;
   state->bins[state->bins_count].index = index;
@@ -139,7 +147,12 @@ compatible_get_server(struct dispatch_state *state,
   unsigned int hash = ((crc32 >> 16) & 0x00007fff);
   unsigned int point = hash % (unsigned int) (state->total_weight + 0.5);
 
-  point = (double) point / state->total_weight * DISPATCH_MAX_POINT;
+  point = ((double) point / state->total_weight * DISPATCH_MAX_POINT + 0.5);
+  /*
+    Shift point one step forward to possibly get from the border point
+    which belongs to the previous bin.
+  */
+  point += 1;
 
   bin = dispatch_find_bin(state, point);
   return state->bins[bin].index;
