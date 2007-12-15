@@ -173,9 +173,20 @@ ketama_crc32_add_server(struct dispatch_state *state,
 
   for (i = 0; i < count; ++i)
     {
-      unsigned int point =
-        compute_crc32_add(crc32, (const char *) &i, sizeof(i));
+      char buf[4];
+      unsigned int point;
       int bin;
+
+      /*
+        We want the same result on all platforms, so we hardcode size
+        of int as 4 8-bit bytes.
+      */
+      buf[0] = i & 0xff;
+      buf[1] = (i >> 8) & 0xff;
+      buf[2] = (i >> 16) & 0xff;
+      buf[3] = (i >> 24) & 0xff;
+
+      point = compute_crc32_add(crc32, buf, 4);
 
       if (state->bins_count > 0)
         {
