@@ -5,8 +5,12 @@ typemap
 Fast.xs
 ppport.h
 README
+script/benchmark.pl
 script/compare.pl
+t/00-load.t
 t/Cache-Memcached-Fast.t
+t/pod-coverage.t
+t/pod.t
 lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
 src/gencrc32.pl
