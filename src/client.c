@@ -150,7 +150,7 @@ struct command_state
   {
     struct value_state value;
     struct arith_state arith;
-  };
+  } u;
 };
 
 
@@ -638,13 +638,13 @@ read_value(struct command_state *state)
   size_t remains;
 
   size = state->end - state->pos;
-  if (size > state->value.size)
-    size = state->value.size;
+  if (size > state->u.value.size)
+    size = state->u.value.size;
   if (size > 0)
     {
-      memcpy(state->value.ptr, state->pos, size);
-      state->value.size -= size;
-      state->value.ptr += size;
+      memcpy(state->u.value.ptr, state->pos, size);
+      state->u.value.size -= size;
+      state->u.value.ptr = (char *) state->u.value.ptr + size;
       state->pos += size;
     }
 
@@ -656,11 +656,11 @@ read_value(struct command_state *state)
       state->pos = memmove(state->buf, state->pos, remains);
       state->end = state->buf + remains;
 
-      iov[0].iov_base = state->value.ptr;
-      iov[0].iov_len = state->value.size;
+      iov[0].iov_base = state->u.value.ptr;
+      iov[0].iov_len = state->u.value.size;
       iov[1].iov_base = state->end;
       iov[1].iov_len = REPLY_BUF_SIZE - remains;
-      piov = &iov[state->value.size > 0 ? 0 : 1];
+      piov = &iov[state->u.value.size > 0 ? 0 : 1];
 
       do
         {
@@ -669,27 +669,27 @@ read_value(struct command_state *state)
           res = readv_restart(state->fd, piov, iov + 2 - piov);
           if (res <= 0)
             {
-              state->value.ptr = iov[0].iov_base;
-              state->value.size = iov[0].iov_len;
+              state->u.value.ptr = iov[0].iov_base;
+              state->u.value.size = iov[0].iov_len;
               state->end = iov[1].iov_base;
 
               if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
                 return MEMCACHED_EAGAIN;
 
-              state->value.object->free(state->value.object->arg);
+              state->u.value.object->free(state->u.value.object->arg);
               return MEMCACHED_CLOSED;
             }
 
           if ((size_t) res >= piov->iov_len)
             {
-              piov->iov_base += piov->iov_len;
+              piov->iov_base = (char *) piov->iov_base + piov->iov_len;
               res -= piov->iov_len;
               piov->iov_len = 0;
               ++piov;
             }
 
           piov->iov_len -= res;
-          piov->iov_base += res;
+          piov->iov_base = (char *) piov->iov_base + res;
         }
       while ((size_t) ((char *) iov[1].iov_base - state->pos) < sizeof(eol));
 
@@ -698,15 +698,15 @@ read_value(struct command_state *state)
 
   if (memcmp(state->pos, eol, sizeof(eol)) != 0)
     {
-      state->value.object->free(state->value.object->arg);
+      state->u.value.object->free(state->u.value.object->arg);
       return MEMCACHED_UNKNOWN;
     }
   state->pos += sizeof(eol);
   state->eol = state->pos;
 
-  state->value.object->store(state->value.object->arg, state->key_index,
-                             state->value.flags,
-                             state->value.use_cas, state->value.cas);
+  state->u.value.object->store(state->u.value.object->arg, state->key_index,
+                               state->u.value.flags,
+                               state->u.value.use_cas, state->u.value.cas);
 
   return MEMCACHED_SUCCESS;
 }
@@ -787,28 +787,28 @@ parse_get_reply(struct command_state *state)
   res = parse_ull(state, &num);
   if (res != MEMCACHED_SUCCESS)
     return res;
-  state->value.flags = num;
+  state->u.value.flags = num;
 
   res = parse_ull(state, &num);
   if (res != MEMCACHED_SUCCESS)
     return res;
-  state->value.size = num;
+  state->u.value.size = num;
 
-  if (state->value.use_cas)
+  if (state->u.value.use_cas)
     {
       res = parse_ull(state, &num);
       if (res != MEMCACHED_SUCCESS)
         return res;
-      state->value.cas = num;
+      state->u.value.cas = num;
     }
 
   res = swallow_eol(state, 0, 0);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  state->value.ptr = state->value.object->alloc(state->value.object->arg,
-                                                state->value.size);
-  if (! state->value.ptr)
+  state->u.value.ptr = state->u.value.object->alloc(state->u.value.object->arg,
+                                                    state->u.value.size);
+  if (! state->u.value.ptr)
     return MEMCACHED_FAILURE;
 
   state->phase = PHASE_VALUE;
@@ -889,7 +889,7 @@ parse_arith_reply(struct command_state *state)
   res = parse_ull(state, &num);
   if (res != MEMCACHED_SUCCESS)
     return res;
-  *state->arith.result = num;
+  *state->u.arith.result = num;
 
   res = swallow_eol(state, 1, 1);
   if (res != MEMCACHED_SUCCESS)
@@ -927,13 +927,15 @@ send_request(struct command_state *state)
       count = (state->iov_count < MAX_IOVEC
                ? state->iov_count : MAX_IOVEC);
 
-      state->iov->iov_base += state->write_offset;
+      state->iov->iov_base =
+        (char *) state->iov->iov_base + state->write_offset;
       state->iov->iov_len -= state->write_offset;
       len = state->iov->iov_len;
 
       res = writev_restart(state->fd, state->iov, count);
 
-      state->iov->iov_base -= state->write_offset;
+      state->iov->iov_base =
+        (char *) state->iov->iov_base - state->write_offset;
       state->iov->iov_len += state->write_offset;
 
       if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
@@ -1558,7 +1560,7 @@ client_get(struct client *c, enum get_cmd_e cmd,
 
   state = &c->servers[server_index].cmd_state;
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1, parse_get_reply);
-  value_state_reset(&state->value, o, (cmd == CMD_GETS));
+  value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
   res = iov_buf_extend(state, request_size);
   if (res != MEMCACHED_SUCCESS)
@@ -1631,7 +1633,7 @@ client_mget(struct client *c, enum get_cmd_e cmd,
         {
           command_state_reset(state, (c->prefix_len ? 3 : 2), 0,
                               parse_get_reply);
-          value_state_reset(&state->value, o, (cmd == CMD_GETS));
+          value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
           switch (cmd)
             {
@@ -1696,7 +1698,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   state = &c->servers[server_index].cmd_state;
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_arith_reply));
-  arith_state_reset(&state->arith, result);
+  arith_state_reset(&state->u.arith, result);
 
   res = iov_buf_extend(state, request_size);
   if (res != MEMCACHED_SUCCESS)
