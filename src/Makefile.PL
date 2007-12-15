@@ -1,12 +1,14 @@
 use 5.006;
+use strict;
+use warnings;
 use ExtUtils::MakeMaker;
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
     NAME              => 'Cache::Memcached::Fast::libclient',
-    VERSION_FROM      => '../lib/Cache/Memcached/Fast.pm', # finds $VERSION
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (AUTHOR         => 'Tomash Brechko <tomash.brechko@gmail.com>') : ()),
+    VERSION_FROM      => '../lib/Cache/Memcached/Fast.pm',
+    AUTHOR            => 'Tomash Brechko <tomash.brechko@gmail.com>',
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
