@@ -171,7 +171,8 @@ socket connections.  When weight is not given, 1 is assumed.  Client
 will distribute keys across servers proportionally to server weights.
 
 If you want to get key distribution compatible with Cache::Memcached,
-all server weights should be integer.
+all server weights should be integer, and their sum should be less
+than 32768.
 
 
 =item I<namespace>
