@@ -1,10 +1,26 @@
 # See the end of the file for copyright and license.
 #
 
+package Cache::Memcached::Fast;
+
+use 5.006;
+use strict;
+use warnings;
+
+
 =head1 NAME
 
 Cache::Memcached::Fast - Perl client for
 L<memcached|http://www.danga.com/memcached/>, in C language
+
+=head1 VERSION
+
+Version 0.02
+
+=cut
+
+our $VERSION = '0.02';
+
 
 =head1 SYNOPSIS
 
@@ -81,20 +97,7 @@ name in their scripts (see L<"Compatibility with Cache::Memcached">
 below for full details).
 
 
-=head2 Export
-
-None.  Module has object oriented API.
-
 =cut
-
-package Cache::Memcached::Fast;
-
-use 5.006;
-use strict;
-use warnings;
-
-
-our $VERSION = '0.02';
 
 
 use Carp;
@@ -145,7 +148,11 @@ use fields qw(
 );
 
 
-=head2 Constructor
+=head1 CONSTRUCTOR
+
+=over
+
+=item I<new>
 
   my $memd = new Cache::Memcached::Fast($params);
 
@@ -252,7 +259,7 @@ Consider the following scenario:
 
 =item 3 Then the server reads 'value_data' while it is in
         accept-command state!  It can't parse it either (hopefully),
-        and sends again
+        and sends another
 
   ERROR\r\n
 
@@ -346,6 +353,8 @@ L<servers> above.
 
 =back
 
+=back
+
 =cut
 
 sub new {
@@ -377,7 +386,7 @@ sub DESTROY {
 }
 
 
-=head2 Methods
+=head1 METHODS
 
 =over
 
@@ -763,12 +772,13 @@ sub AUTOLOAD {
 
 
 1;
+
 __END__
 
 =back
 
 
-=head2 Compatibility with Cache::Memcached
+=head1 Compatibility with Cache::Memcached
 
 This module is designed to be a drop in replacement for
 L<Cache::Memcached|Cache::Memcached>.  Where constructor parameters
@@ -786,7 +796,7 @@ Cache::Memcached are not supported by Cache::Memcached::Fast (and some
 of them will never be):
 
 
-=head3 Constructor parameters
+=head2 Constructor parameters
 
 =over
 
@@ -811,7 +821,7 @@ any compatibility on I<debug> level.
 =back
 
 
-=head3 Methods
+=head2 Methods
 
 =over
 
@@ -867,6 +877,50 @@ or
 =back
 
 
+=head1 BUGS
+
+Please report any bugs or feature requests to
+C<bug-cache-memcached-fast at rt.cpan.org>, or through the web
+interface at
+L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cache-Memcached-Fast>.
+I will be notified, and then you'll automatically be notified of
+progress on your bug as I make changes.
+
+
+=head1 SUPPORT
+
+You can find documentation for this module with the perldoc command.
+
+    perldoc Cache::Memcached::Fast
+
+
+You can also look for information at:
+
+=over 4
+
+=item * RT: CPAN's request tracker
+
+L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cache-Memcached-Fast>
+
+
+=item * AnnoCPAN: Annotated CPAN documentation
+
+L<http://annocpan.org/dist/Cache-Memcached-Fast>
+
+
+=item * CPAN Ratings
+
+L<http://cpanratings.perl.org/d/Cache-Memcached-Fast>
+
+
+=item * Search CPAN
+
+L<http://search.cpan.org/dist/Cache-Memcached-Fast>
+
+
+=back
+
+
 =head1 SEE ALSO
 
 L<Cache::Memcached|Cache::Memcached> - original pure Perl memcached
@@ -877,14 +931,16 @@ L<http://www.danga.com/memcached/> - memcached website.
 
 =head1 AUTHORS
 
-Tomash Brechko, E<lt>tomash.brechko@gmail.comE<gt> - design and
-implementation.  Feel free to send bug reports and patches to this
-address.
+Tomash Brechko, C<< <tomash.brechko at gmail.com> >> - design and
+implementation.
 
-Michael Monashev, E<lt>postmaster@softsearch.ruE<gt> - project
+Michael Monashev, C<< <postmaster at softsearch.ru> >> - project
 management, design suggestions, testing.
 
-Development sponsored by S<Monashev Co. Ltd.>
+
+=head1 ACKNOWLEDGEMENTS
+
+Development of this module is sponsored by S<Monashev Co. Ltd.>
 
 
 =head1 WARRANTY

@@ -21,10 +21,11 @@ API and may be used by itself).
 The module should compile and work on any Unix-derived system.  I
 don't know whether it compiles and/or works on MS Windows.
 
-Despite the low version number (which only reflects release history)
-the module is very stable.  See "Compatibility with Cache::Memcached"
-section in the module documentation for the description of what is
-missing compared to Cache::Memcached.
+Despite the low version number (which mainly reflects release history)
+the module is considered to be stable (see BUGS below on how to report
+bugs).  See "Compatibility with Cache::Memcached" section in the
+module documentation for the description of what is missing compared
+to Cache::Memcached.
 
 
 INSTALLATION
@@ -47,6 +48,37 @@ This module requires these other modules and software:
   ANSI C compiler to compile module core
 
   Test::More (required only to run tests)
+
+
+SUPPORT AND DOCUMENTATION
+
+After installing, you can find documentation for this module with the
+perldoc command.
+
+    perldoc Cache::Memcached::Fast
+
+You can also look for information at:
+
+    RT, CPAN's request tracker
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cache-Memcached-Fast
+
+    AnnoCPAN, Annotated CPAN documentation
+        http://annocpan.org/dist/Cache-Memcached-Fast
+
+    CPAN Ratings
+        http://cpanratings.perl.org/d/Cache-Memcached-Fast
+
+    Search CPAN
+        http://search.cpan.org/dist/Cache-Memcached-Fast
+
+
+BUGS
+
+Please report any bugs or feature requests to bug-cache-memcached-fast
+at rt.cpan.org, or through the web interface at
+http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cache-Memcached-Fast.
+I will be notified, and then you'll automatically be notified of
+progress on your bug as I make changes.
 
 
 COPYRIGHT AND LICENCE
