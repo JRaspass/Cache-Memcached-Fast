@@ -1,6 +1,6 @@
 #! /usr/bin/perl
 #
-# Copyright (C) 2007 by Tomash Brechko.  All rights reserved.
+# Copyright (C) 2007 Tomash Brechko.  All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself, either Perl version 5.8.8

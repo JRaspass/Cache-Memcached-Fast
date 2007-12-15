@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 by Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
