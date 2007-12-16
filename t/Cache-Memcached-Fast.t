@@ -3,15 +3,16 @@ use strict;
 
 # TODO: the test is messy.  It should be split into several files.
 
+my $addr = 'localhost:11211';
 
-use Test::More tests => 58;
-BEGIN { use_ok('Cache::Memcached::Fast') };
+use Test::More;
 
 use Cache::Memcached::Fast;
 
 my $memd = Cache::Memcached::Fast->new({
-    servers => [ { address => 'localhost:11211', weight => 2.5 },
-                 '127.0.0.1:11211', '127.0.0.1:11211' ],
+    servers => [ { address => $addr, weight => 1 },
+                 $addr,
+                 [ $addr, 1 ] ],
     namespace => 'Cache::Memcached::Fast::',
     connect_timeout => 0.2,
     io_timeout => 0.5,
@@ -22,6 +23,27 @@ my $memd = Cache::Memcached::Fast->new({
     failure_timeout => 2,
     ketama_points => 150,
 });
+
+# Test what server version we have.  server_versions() is currently
+# undocumented.  We know that all servers are the same, so test only
+# the first version.
+my $version = $memd->server_versions;
+unless (@$version) {
+    plan skip_all => "No server is running at $addr";
+}
+
+if ($version->[0] =~ /(\d+)\.(\d+)\.(\d+)/) {
+    diag("Connected to memcached $version->[0]");
+    $version = $1 * 10000 + $2 * 100 + $3;
+    if ($version >= 10204) {
+        plan tests => 57;
+    } else {
+        plan tests => 41;
+    }
+} else {
+    plan skip_all => "Can't parse server version $version->[0]";
+}
+
 
 isa_ok($memd, 'Cache::Memcached::Fast');
 
@@ -78,9 +100,11 @@ $memd->delete("key5");
 ok(not $memd->replace("key5", "x"));
 ok($memd->add("key5", "x"));
 ok(not $memd->add("key5", "x"));
-ok($memd->append("key5", "a"));
-ok($memd->prepend("key5", "b"));
-is($memd->get("key5"), "bxa");
+if ($version >= 10204) {
+    ok($memd->append("key5", "a"));
+    ok($memd->prepend("key5", "b"));
+    is($memd->get("key5"), "bxa");
+}
 
 ok($memd->flush_all(1));
 sleep(1.2);
@@ -97,20 +121,22 @@ is($$h{$old_key}, $value);
 is($$h{$key}, undef);
 
 
-$memd->set("cas", "value");
-my $cas_res = $memd->gets("cas");
-isa_ok($cas_res, "ARRAY");
-is (scalar @$cas_res, 2);
-is($$cas_res[1], "value");
-ok($memd->cas("cas", $$cas_res[0], "new value"));
-ok(! $memd->cas("cas", @$cas_res));
-is($memd->get("cas"), "new value");
+if ($version >= 10204) {
+    $memd->set("cas", "value");
+    my $cas_res = $memd->gets("cas");
+    isa_ok($cas_res, "ARRAY");
+    is (scalar @$cas_res, 2);
+    is($$cas_res[1], "value");
+    ok($memd->cas("cas", $$cas_res[0], "new value"));
+    ok(! $memd->cas("cas", @$cas_res));
+    is($memd->get("cas"), "new value");
 
-$h = $memd->gets_multi("no_such_key", "cas", "nothing");
-is(scalar keys %$h, 1);
-isa_ok($$h{cas}, "ARRAY");
-is (scalar @{$$h{cas}}, 2);
-is(${$$h{cas}}[1], "new value");
+    $h = $memd->gets_multi("no_such_key", "cas", "nothing");
+    is(scalar keys %$h, 1);
+    isa_ok($$h{cas}, "ARRAY");
+    is (scalar @{$$h{cas}}, 2);
+    is(${$$h{cas}}[1], "new value");
+}
 
 
 my %hash = (
@@ -137,11 +163,14 @@ my $hash_ref = $memd->get("hash");
 isa_ok($hash_ref, 'HASH');
 storable_ok($hash_ref);
 
-$memd->prepend("hash", "garbage");
-$h = $memd->get_multi("cas", "hash");
-is(scalar keys %$h, 1);
-ok(exists $$h{cas});
-ok(not exists $$h{hash});
+
+if ($version >= 10204) {
+    $memd->prepend("hash", "garbage");
+    $h = $memd->get_multi($old_key, "hash");
+    is(scalar keys %$h, 1);
+    ok(exists $$h{$old_key});
+    ok(not exists $$h{hash});
+}
 
 
 undef $memd;

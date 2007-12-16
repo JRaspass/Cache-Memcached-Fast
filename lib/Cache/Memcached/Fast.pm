@@ -519,6 +519,8 @@ description.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
+This command first appears in B<memcached> 1.2.4.
+
 =cut
 
 sub cas {
@@ -584,6 +586,8 @@ the server.  C<append> doesn't affect expiration time of the value.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
+This command first appears in B<memcached> 1.2.4.
+
 =cut
 
 sub append {
@@ -605,6 +609,8 @@ I<$key> and I<$value> should be scalars, as well as current value on
 the server.  C<append> doesn't affect expiration time of the value.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
+
+This command first appears in B<memcached> 1.2.4.
 
 =cut
 
@@ -687,6 +693,8 @@ may conveniently pass it back to L</cas> with I<@$res>:
       $memd->cas($key, @$cas_val);
   }
 
+This command first appears in B<memcached> 1.2.4.
+
 =cut
 
 sub gets {
@@ -712,6 +720,8 @@ I<@keys> should be an array of scalars.
 
 I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds a
 reference to an array I<[$cas, $value]>.  Compare with L</gets>.
+
+This command first appears in B<memcached> 1.2.4.
 
 =cut
 
