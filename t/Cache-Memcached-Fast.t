@@ -109,7 +109,7 @@ if ($version >= 10204) {
 }
 
 ok($memd->flush_all(1));
-sleep(1.2);
+sleep(2.2); # Sleep longer to account for all edge cases.
 
 
 my $key = "key_ref";
