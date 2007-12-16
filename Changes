@@ -1,6 +1,26 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.03  2007-12-16
+        - this release has no new functionality compared to 0.02.  It
+          only fixes some test and documentation problems that were
+          discovered, as it always happens, after the upload to CPAN.
+
+        Changes since 0.02:
+
+        Fixed internal documentation references.
+
+        Added missing docs for incr and decr.
+
+        Fixed test case to test server version and use
+        cas/gets/append/prepend only for 1.2.4 and up.
+
+        Actually there's new _undocumented_ command server_versions,
+        is has broken interface, you can't say which version
+        corresponds to which server when some of them do not respond.
+        This command is subject to change.
+
+
 0.02  2007-12-15
         - first public release.
 
