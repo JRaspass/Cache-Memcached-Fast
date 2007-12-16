@@ -3,16 +3,18 @@ use strict;
 
 # TODO: the test is messy.  It should be split into several files.
 
-my $addr = 'localhost:11211';
+# Use differently spelled addressed to enable Ketama to hash names
+# differently.
+my @addr = qw(localhost:11211 127.0.0.1:11211 localhost.localdomain:11211);
 
 use Test::More;
 
 use Cache::Memcached::Fast;
 
 my $memd = Cache::Memcached::Fast->new({
-    servers => [ { address => $addr, weight => 1 },
-                 $addr,
-                 [ $addr, 1 ] ],
+    servers => [ { address => $addr[0], weight => 1.5 },
+                 $addr[1],
+                 [ $addr[2], 1 ] ],
     namespace => 'Cache::Memcached::Fast::',
     connect_timeout => 0.2,
     io_timeout => 0.5,
@@ -29,7 +31,7 @@ my $memd = Cache::Memcached::Fast->new({
 # the first version.
 my $version = $memd->server_versions;
 unless (@$version) {
-    plan skip_all => "No server is running at $addr";
+    plan skip_all => "No servers are running at @addr";
 }
 
 if ($version->[0] =~ /(\d+)\.(\d+)\.(\d+)/) {
