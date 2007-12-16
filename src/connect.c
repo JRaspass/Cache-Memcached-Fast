@@ -51,7 +51,9 @@ client_connect_inet(const char *host, const char *port, int stream,
   pto = timeout > 0 ? &to : NULL;
 
   memset(&hint, 0, sizeof(hint));
+#ifdef AI_ADDRCONFIG  /* NetBSD 3.1 doesn't have this.  */
   hint.ai_flags = AI_ADDRCONFIG;
+#endif /* AI_ADDRCONFIG */
   hint.ai_socktype = stream ? SOCK_STREAM : SOCK_DGRAM;
   res = getaddrinfo(host, port, &hint, &addr);
   if (res != 0)

@@ -1,13 +1,17 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.04  ??
-        - ???
+0.04  2007-12-16
+        - CPAN testers found more issues on different platforms,
+        fixing these.
 
         Changes since 0.03:
 
         const char * is missing from typemap in Perl 5.6.2, fixed by
         using plain char * for class name in new().
+
+        Use AI_ADDRCONFIG conditionally, some systems do not have it
+        (NetBSD 3.1).
 
 
 0.03  2007-12-16
