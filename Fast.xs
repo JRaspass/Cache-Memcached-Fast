@@ -348,6 +348,26 @@ mkey_free(void *arg)
 }
 
 
+static
+void *
+embedded_alloc(void *arg, value_size_type value_size)
+{
+  AV *av;
+  SV *sv;
+  char *res;
+
+  av = (AV *) arg;
+
+  sv = newSVpvn("", 0);
+  res = SvGROW(sv, value_size + 1); /* FIXME: check OOM.  */
+  res[value_size] = '\0';
+  SvCUR_set(sv, value_size);
+  av_push(av, sv);
+
+  return (void *) res;
+}
+
+
 MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast::_xs
 
 
@@ -580,6 +600,22 @@ flush_all(memd, ...)
         RETVAL
 
 
+AV *
+server_versions(memd)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $
+    PREINIT:
+        struct value_object object = { embedded_alloc, NULL, NULL, NULL };
+    CODE:
+        RETVAL = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) RETVAL);
+        object.arg = RETVAL;
+        client_server_versions(memd, &object);
+    OUTPUT:
+        RETVAL
+
+
 HV *
 _rvav2rvhv(array)
         AV *                    array
@@ -589,7 +625,7 @@ _rvav2rvhv(array)
     CODE:
         RETVAL = newHV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
-        sv_2mortal((SV*)RETVAL);
+        sv_2mortal((SV *) RETVAL);
         max_index = av_len(array);
         if ((max_index & 1) != 1)
           croak("Even sized list expected");

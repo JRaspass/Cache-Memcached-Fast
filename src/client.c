@@ -94,6 +94,22 @@ arith_state_reset(struct arith_state *state, arith_type *result)
 }
 
 
+struct embedded_state
+{
+  struct value_object *object;
+
+  void *ptr;
+};
+
+
+static inline
+void
+embedded_state_reset(struct embedded_state *state, struct value_object *o)
+{
+  state->object = o;
+}
+
+
 struct command_state;
 typedef int (*parse_reply_func)(struct command_state *state);
 
@@ -150,6 +166,7 @@ struct command_state
   {
     struct value_state value;
     struct arith_state arith;
+    struct embedded_state embedded;
   } u;
 };
 
@@ -912,6 +929,45 @@ parse_ok_reply(struct command_state *state)
     default:
       return MEMCACHED_UNKNOWN;
     }
+}
+
+
+static
+int
+parse_version_reply(struct command_state *state)
+{
+  const char *beg;
+  size_t len;
+  int res;
+
+  switch (state->match)
+    {
+    default:
+      return MEMCACHED_UNKNOWN;
+
+    case MATCH_VERSION:
+      break;
+    }
+
+  while (*state->pos == ' ')
+    ++state->pos;
+
+  beg = state->pos;
+
+  res = swallow_eol(state, 1, 1);
+  if (res != MEMCACHED_SUCCESS)
+    return res;
+
+  len = state->pos - sizeof(eol) - beg;
+
+  state->u.embedded.ptr =
+    state->u.embedded.object->alloc(state->u.embedded.object->arg, len);
+  if (! state->u.embedded.ptr)
+    return MEMCACHED_FAILURE;
+
+  memcpy(state->u.embedded.ptr, beg, len);
+
+  return MEMCACHED_SUCCESS;
 }
 
 
@@ -1827,6 +1883,48 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
       buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
                                  (delay_type) (ddelay + 0.5),
                                  (use_noreply ? " noreply" : ""));
+    }
+
+  return process_commands(c);
+}
+
+
+int
+client_server_versions(struct client *c, struct value_object *o)
+{
+  static const size_t request_size =
+    (sizeof(struct iovec) * 1 + sizeof("version\r\n"));
+  int i;
+
+  client_reset_for_command(c);
+
+  for (i = 0; i < c->server_count; ++i)
+    {
+      struct command_state *state;
+      struct iovec *buf_iov;
+      char *buf;
+      int fd, res;
+
+      fd = get_server_fd(c, i);
+      if (fd == -1)
+        continue;
+
+      state = &c->servers[i].cmd_state;
+      command_state_reset(state, 0, 0, parse_version_reply);
+      embedded_state_reset(&state->u.embedded, o);
+
+      res = iov_buf_extend(state, request_size);
+      if (res != MEMCACHED_SUCCESS)
+        {
+          deactivate(state);
+          continue;
+        }
+
+      buf_iov = &state->iov_buf[state->iov_count];
+      iov_push(state, NULL, 0);
+      buf = (char *) &state->iov_buf[state->iov_count];
+      buf_iov->iov_base = buf;
+      buf_iov->iov_len = sprintf(buf, "version\r\n");
     }
 
   return process_commands(c);

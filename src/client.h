@@ -168,5 +168,9 @@ extern
 int
 client_flush_all(struct client *c, delay_type delay, int noreply);
 
+extern
+int
+client_server_versions(struct client *c, struct value_object *o);
+
 
 #endif /* ! CLIENT_H */
