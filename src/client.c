@@ -891,6 +891,7 @@ parse_arith_reply(struct command_state *state)
     return res;
   *state->u.arith.result = num;
 
+  /* Value may be space padded.  */
   res = swallow_eol(state, 1, 1);
   if (res != MEMCACHED_SUCCESS)
     return res;

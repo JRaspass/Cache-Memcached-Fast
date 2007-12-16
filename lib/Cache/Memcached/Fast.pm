@@ -187,8 +187,8 @@ than 32768.
   (default: '')
 
 The value is a scalar that will be prepended to all key names passed
-to the memcached server.  By using different namespaces clients avoid
-interference with each other.
+to the B<memcached> server.  By using different namespaces clients
+avoid interference with each other.
 
 
 =item I<connect_timeout>
@@ -235,7 +235,7 @@ timeout.
 
 The value is a boolean which enables (true) or disables (false)
 I<close_on_error> mode.  When enabled, any error response from the
-memcached server would make client close the connection.  Note that
+B<memcached> server would make client close the connection.  Note that
 such "error response" is different from "negative response".  The
 latter means the server processed the command and yield negative
 result.  The former means the server failed to process the command for
@@ -734,6 +734,33 @@ sub gets_multi {
 }
 
 
+=item C<incr>
+
+  $memd->incr($key);
+  $memd->incr($key, $increment);
+
+Increment the value for the I<$key>.  If current value is not a
+number, zero is assumed.  An optional I<$increment> should be a
+positive integer, when not given 1 is assumed.  Note that the server
+doesn't check for overflow.
+
+I<Return:> unsigned integer, new value for the I<$key>, or nothing.
+
+
+=item C<decr>
+
+  $memd->decr($key);
+  $memd->decr($key, $decrement);
+
+Decrement the value for the I<$key>.  If current value is not a
+number, zero is assumed.  An optional I<$decrement> should be a
+positive integer, when not given 1 is assumed.  Note that the server
+I<does> check for underflow, attempt to decrement the value below zero
+would set the value to zero.
+
+I<Return:> unsigned integer, new value for the I<$key>, or nothing.
+
+
 =item C<delete> (or deprecated C<remove>)
 
   $memd->delete($key);
@@ -922,10 +949,10 @@ L<http://search.cpan.org/dist/Cache-Memcached-Fast>
 
 =head1 SEE ALSO
 
-L<Cache::Memcached|Cache::Memcached> - original pure Perl memcached
+L<Cache::Memcached|Cache::Memcached> - original pure Perl B<memcached>
 client.
 
-L<http://www.danga.com/memcached/> - memcached website.
+L<http://www.danga.com/memcached/> - B<memcached> website.
 
 
 =head1 AUTHORS
