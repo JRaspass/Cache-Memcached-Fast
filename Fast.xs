@@ -373,7 +373,7 @@ MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast::_xs
 
 Cache_Memcached_Fast *
 new(class, conf)
-        const char *            class
+        char *                  class
         SV *                    conf
     PROTOTYPE: $$
     PREINIT:
