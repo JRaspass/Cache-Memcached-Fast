@@ -606,7 +606,7 @@ B<Prepend> the I<$value> to the current value on the server under the
 I<$key>.
 
 I<$key> and I<$value> should be scalars, as well as current value on
-the server.  C<append> doesn't affect expiration time of the value.
+the server.  C<prepend> doesn't affect expiration time of the value.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
 
