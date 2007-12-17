@@ -20,7 +20,7 @@
 
 
 typedef struct client Cache_Memcached_Fast;
-typedef SV *SVREF;
+typedef SV *Ref_SV;
 
 
 static
@@ -402,7 +402,7 @@ bool
 set(memd, skey, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
-        SVREF                   sval
+        Ref_SV                  sval
         U32                     flags
     ALIAS:
         add      =  CMD_ADD
@@ -436,7 +436,7 @@ cas(memd, skey, cas, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
         U32                     cas
-        SVREF                   sval
+        Ref_SV                  sval
         U32                     flags
     PROTOTYPE: $$$$$;$
     PREINIT:

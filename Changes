@@ -1,6 +1,17 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.05  ??
+        - ??
+
+        Changes since 0.04:
+
+        At least on Perl 5.6.2 SVREF typemap entry has the meaning of
+        the class derived from SvRV.  So instead of SVREF we use
+        custom Ref_SV and custom typemap entry.  Found by CPAN
+        testers.
+
+
 0.04  2007-12-16
         - CPAN testers found more issues on different platforms,
         fixing these.
