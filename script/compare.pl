@@ -127,6 +127,8 @@ my @methods = (
 #    [gets_multi => \&compare, $keys_multi],
     [get        => \&compare_multi, $keys_multi],
 #    [gets       => \&compare_multi, $keys_multi],
+    [incr       => \&compare, 1, NOREPLY],
+    [decr       => \&compare, 1, NOREPLY],
     [delete     => \&compare, 1, NOREPLY],
 );
 

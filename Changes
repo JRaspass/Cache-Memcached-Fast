@@ -14,6 +14,9 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Do not use AUTOLOAD for normal commands, only for undocumented
         ones.
 
+        Add incr() and decr() to script/compare.pl and
+        script/benchmark.pl.
+
 
 0.04  2007-12-16
         - CPAN testers found more issues on different platforms,

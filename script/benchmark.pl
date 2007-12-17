@@ -113,6 +113,8 @@ my @methods = (
     [gets_multi => \&run, $keys_multi],
     [get        => \&run_multi, $keys_multi],
     [gets       => \&run_multi, $keys_multi],
+    [incr       => \&run, 1, NOREPLY],
+    [decr       => \&run, 1, NOREPLY],
     [delete     => \&run, 1, NOREPLY],
 );
 
