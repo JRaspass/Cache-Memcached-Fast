@@ -46,7 +46,9 @@ foreach my $k (@keys) {
 is($count, count);
 
 my @extra_keys = @keys;
-splice(@extra_keys, int(rand($#extra_keys)), 0, 'no_such_key') for (1..count);
+for (1..count) {
+    splice(@extra_keys, int(rand($#extra_keys)), 0, "no_such_key-$_");
+}
 
 my $res = $Memd::memd->get_multi(@extra_keys);
 isa_ok($res, 'HASH');
