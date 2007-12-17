@@ -137,7 +137,7 @@ int
 client_connect_unix(const char *path, size_t path_len)
 {
   int fd, res, flags;
-  struct sockaddr_un sun;
+  struct sockaddr_un s_unix;
 
   if (path_len >= SAFE_UNIX_PATH_MAX)
     return -1;
@@ -146,11 +146,11 @@ client_connect_unix(const char *path, size_t path_len)
   if (fd == -1)
     return -1;
 
-  sun.sun_family = AF_UNIX;
-  memcpy(sun.sun_path, path, path_len);
-  sun.sun_path[path_len] = '\0';
+  s_unix.sun_family = AF_UNIX;
+  memcpy(s_unix.sun_path, path, path_len);
+  s_unix.sun_path[path_len] = '\0';
 
-  res = connect(fd, (const struct sockaddr *) &sun, sizeof(sun));
+  res = connect(fd, (const struct sockaddr *) &s_unix, sizeof(s_unix));
   if (res != 0)
     return -1;
 

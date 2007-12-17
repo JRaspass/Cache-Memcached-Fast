@@ -19,6 +19,10 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Test case is split into several files and cleaned a bit.
 
+        Rename 'sun' -> 's_unix' in connect.c, because 'sun' is
+        reserved on... guesses?  Right, Sun systems!  Found by CPAN
+        testers.
+
 
 0.04  2007-12-16
         - CPAN testers found more issues on different platforms,
