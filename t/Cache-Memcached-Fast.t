@@ -61,7 +61,7 @@ ok($memd->set("key4", "x" x 1_000_000));
 
 is($memd->get("no_such_key"), undef);
 is($memd->get("key2"), "val2");
-is($memd->get("key4"), "x" x 1_000_000);
+ok($memd->get("key4") eq "x" x 1_000_000);
 
 my $val = $memd->get("key3");
 is($val, "val3");
