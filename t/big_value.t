@@ -30,11 +30,11 @@ $Memd::memd->enable_compress(1);
 SKIP: {
     my $warning;
 
-    local $SIG{__WARN__} = sub { $warning = $_[0] };
+    {
+        local $SIG{__WARN__} = sub { $warning = $_[0] };
 
-    ok($Memd::memd->set($key, $value), 'Store value possibly compressed');
-
-    $SIG{__WARN__} = 'DEFAULT';
+        ok($Memd::memd->set($key, $value), 'Store value possibly compressed');
+    }
 
     if (defined $warning) {
         if ($warning =~ /^Can't find module IO::Compress::/) {
