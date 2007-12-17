@@ -26,7 +26,5 @@
 
 - UDP (?).
 
-- Test case should be split into several files.
-
 - Document how to inherit from C::M::F for Custom Serialization for
   instance.

@@ -17,6 +17,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Add incr() and decr() to script/compare.pl and
         script/benchmark.pl.
 
+        Test case is split into several files and cleaned a bit.
+
 
 0.04  2007-12-16
         - CPAN testers found more issues on different platforms,
