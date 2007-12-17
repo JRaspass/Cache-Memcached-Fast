@@ -756,6 +756,13 @@ doesn't check for overflow.
 
 I<Return:> unsigned integer, new value for the I<$key>, or nothing.
 
+=cut
+
+sub incr {
+    my Cache::Memcached::Fast $self = shift;
+    return $self->{_xs}->incr(@_);
+}
+
 
 =item C<decr>
 
@@ -770,6 +777,13 @@ would set the value to zero.
 
 I<Return:> unsigned integer, new value for the I<$key>, or nothing.
 
+=cut
+
+sub decr {
+    my Cache::Memcached::Fast $self = shift;
+    return $self->{_xs}->decr(@_);
+}
+
 
 =item C<delete> (or deprecated C<remove>)
 
@@ -782,6 +796,15 @@ this time L</add> and L</replace> commands will be rejected by the
 server.  When omitted, zero is assumed, i.e. delete immediately.
 
 I<Return:> boolean, true if operation succeeded, false otherwise.
+
+=cut
+
+# remove is still loaded via AUTOLOAD, if we mention is here we'll
+# have to document it as a separate =item.
+sub delete {
+    my Cache::Memcached::Fast $self = shift;
+    return $self->{_xs}->delete(@_);
+}
 
 
 =item C<flush_all>
@@ -800,6 +823,14 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
 
 =cut
 
+sub flush_all {
+    my Cache::Memcached::Fast $self = shift;
+    return $self->{_xs}->flush_all(@_);
+}
+
+
+# AOUTOLOAD is used for commands that are not yet official and
+# documented.
 sub AUTOLOAD {
     my Cache::Memcached::Fast $self = shift;
     my ($method) = $AUTOLOAD =~ /::([^:]+)$/;
