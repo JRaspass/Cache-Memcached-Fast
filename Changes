@@ -1,8 +1,9 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.05  ??
-        - ??
+0.05  2007-12-18
+        - more fixes to build and pass tests on different platforms.
+        There's no functional changes again.
 
         Changes since 0.04:
 

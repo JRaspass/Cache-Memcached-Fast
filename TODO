@@ -23,11 +23,13 @@
 - UDP (?).
 
 
-For 0.05:
+For 0.06:
 
 - nowait (per server flag): skip_reply() function, counter for pending
   replies to skip.  On every call skip what's pending until request is
   pushed (and reply is got).
+
+- delete_multi, set_multi based on nowait framework.
 
 - Document how to inherit from C::M::F for Custom Serialization for
   instance.
