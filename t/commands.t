@@ -35,7 +35,7 @@ ok($Memd::memd->decr($key), 'Decr');
 ok($Memd::memd->get($key) == 5, 'Fetch');
 ok($Memd::memd->decr($key, 2), 'Decr');
 ok($Memd::memd->get($key) == 3, 'Fetch');
-ok(! $Memd::memd->decr($key, 100), 'Decr below zero');
+ok($Memd::memd->decr($key, 100) == 0, 'Decr below zero');
 ok($Memd::memd->get($key) == 0, 'Fetch');
 
 

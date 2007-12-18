@@ -773,7 +773,7 @@ Decrement the value for the I<$key>.  If current value is not a
 number, zero is assumed.  An optional I<$decrement> should be a
 positive integer, when not given 1 is assumed.  Note that the server
 I<does> check for underflow, attempt to decrement the value below zero
-would set the value to zero.  No value will be returned in this case.
+would set the value to zero.
 
 I<Return:> unsigned integer, new value for the I<$key>, or nothing.
 
