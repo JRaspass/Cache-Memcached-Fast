@@ -1892,8 +1892,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 int
 client_server_versions(struct client *c, struct value_object *o)
 {
-  static const size_t request_size =
-    (sizeof(struct iovec) * 1 + sizeof("version\r\n"));
+  static const size_t request_size = (sizeof(struct iovec) * 1);
   int i;
 
   client_reset_for_command(c);
@@ -1901,8 +1900,6 @@ client_server_versions(struct client *c, struct value_object *o)
   for (i = 0; i < c->server_count; ++i)
     {
       struct command_state *state;
-      struct iovec *buf_iov;
-      char *buf;
       int fd, res;
 
       fd = get_server_fd(c, i);
@@ -1920,11 +1917,7 @@ client_server_versions(struct client *c, struct value_object *o)
           continue;
         }
 
-      buf_iov = &state->iov_buf[state->iov_count];
-      iov_push(state, NULL, 0);
-      buf = (char *) &state->iov_buf[state->iov_count];
-      buf_iov->iov_base = buf;
-      buf_iov->iov_len = sprintf(buf, "version\r\n");
+      iov_push(state, STR_WITH_LEN("version\r\n"));
     }
 
   return process_commands(c);
