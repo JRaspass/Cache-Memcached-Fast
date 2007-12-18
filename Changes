@@ -23,6 +23,10 @@ Revision history for Perl extension Cache::Memcached::Fast.
         reserved on... guesses?  Right, Sun systems!  Found by CPAN
         testers.
 
+        Fix test case for FreeBSD and derivatives: do not use
+        localhost.localdomain address, which FreeBSD doesn't resolve
+        by default.
+
 
 0.04  2007-12-16
         - CPAN testers found more issues on different platforms,

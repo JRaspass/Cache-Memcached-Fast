@@ -31,5 +31,3 @@ For 0.05:
 
 - Document how to inherit from C::M::F for Custom Serialization for
   instance.
-
-- Fix big_value and storable problems on FreeBSD.

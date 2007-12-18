@@ -15,5 +15,5 @@ if ($Memd::memd) {
 } elsif (defined $Memd::memd) {
     plan skip_all => "Can't parse server version $Memd::version_str";
 } else {
-    plan skip_all => "No servers are running at @Memd::addr";
+    plan skip_all => "No server is running at (one of) @Memd::addr";
 }
