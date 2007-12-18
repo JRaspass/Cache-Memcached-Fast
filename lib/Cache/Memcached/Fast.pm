@@ -944,6 +944,17 @@ or
 =back
 
 
+=head1 UTF-8 and tainted data
+
+Current implementation does not preserve UTF-8 flag on scalars.
+Storing UTF-8 string and retrieving it back would return the same byte
+sequence, but UTF-8 flag will be forgotten.  See L<utf8|utf8>.
+
+Likewise, tainted flag is neither tested nor preserved, storing
+tainted data and retrieving it back would clear tainted flag.  See
+L<perlsec|perlsec>.
+
+
 =head1 BUGS
 
 Please report any bugs or feature requests to
