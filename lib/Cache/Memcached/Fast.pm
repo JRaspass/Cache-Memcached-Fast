@@ -357,10 +357,10 @@ L</servers> above.
 =cut
 
 sub new {
-    my $class = shift;
+    my Cache::Memcached::Fast $self = shift;
     my ($conf) = @_;
 
-    my $self = fields::new($class);
+    $self = fields::new($self) unless ref($self);
 
     # $conf->{compress_threshold} == 0 actually disables compression.
     $self->{compress_threshold} = $conf->{compress_threshold} || -1;
