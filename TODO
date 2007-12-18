@@ -33,3 +33,5 @@ For 0.06:
 
 - Document how to inherit from C::M::F for Custom Serialization for
   instance.
+
+- Add tests for noreply and huge values, do not list them in MANIFEST.
