@@ -14,7 +14,6 @@ t/02-isa.t
 t/03-flush_all.t
 t/big_value.t
 t/commands.t
-t/derived.t
 t/key_ref.t
 t/serialize.t
 t/pod-coverage.t
