@@ -14,11 +14,11 @@ Cache::Memcached::Fast - Perl client for B<memcached>, in C language
 
 =head1 VERSION
 
-Version 0.05
+Version 0.06
 
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 
 =head1 SYNOPSIS
