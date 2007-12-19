@@ -116,7 +116,7 @@ typedef int (*parse_reply_func)(struct command_state *state);
 
 enum command_phase
 {
-  PHASE_SEND,
+  PHASE_INIT,
   PHASE_RECEIVE,
   PHASE_PARSE,
   PHASE_VALUE,
@@ -295,7 +295,7 @@ command_state_reset(struct command_state *state, int key_offset,
   state->key_count = key_count;
   state->parse_reply = parse_reply;
 
-  state->phase = PHASE_SEND;
+  state->phase = PHASE_INIT;
   state->iov = state->iov_buf;
   state->write_offset = 0;
   state->key_head = state->key_tail = -1;
@@ -1094,7 +1094,7 @@ parse_reply(struct command_state *state)
 
 static
 int
-process_command(struct command_state *state)
+process_reply(struct command_state *state)
 {
   int res;
 
@@ -1102,14 +1102,7 @@ process_command(struct command_state *state)
     {
       switch (state->phase)
         {
-        case PHASE_SEND:
-          res = send_request(state);
-          if (res != MEMCACHED_SUCCESS)
-            return res;
-
-          if (! state->parse_reply)
-            return MEMCACHED_SUCCESS;
-
+        case PHASE_INIT:
           state->pos = state->end = state->eol = state->buf;
           state->key = &state->iov_buf[state->key_offset];
 
@@ -1219,43 +1212,80 @@ process_commands(struct client *c)
       max_fd = -1;
       for (i = 0; i < c->server_count; ++i)
         {
+          int may_write, may_read;
           struct command_state *state = &c->servers[i].cmd_state;
 
           if (! is_active(state))
             continue;
 
-          if (first_iter
-              || FD_ISSET(state->fd, &read_set)
-              || FD_ISSET(state->fd, &write_set))
+          if (first_iter)
             {
-              res = process_command(state);
+              may_write = 1;
+              may_read = (state->parse_reply != NULL);
+            }
+          else
+            {
+              may_write = FD_ISSET(state->fd, &write_set);
+              may_read = FD_ISSET(state->fd, &read_set);
+            }
+
+          if (may_read || may_write)
+            {
+#if 1
+              /*
+                At least gcc 3.4.2--4.2.2 report that res may be used
+                uninitialized here.  Though this doesn't look so, we
+                initialize it to suppress the warning.
+              */
+              int res = 0;
+#endif
+
+              if (may_write)
+                {
+                  res = send_request(state);
+                  if (res == MEMCACHED_SUCCESS)
+                    {
+                      if (! state->parse_reply)
+                        deactivate(state);
+                    }
+                  else if (res == MEMCACHED_CLOSED)
+                    {
+                      may_read = 0;
+                    }
+                }
+
+              if (may_read)
+                {
+                  res = process_reply(state);
+                  if (res != MEMCACHED_EAGAIN)
+                    {
+                      state->parse_reply = NULL;
+                      if (state->iov_count == 0)
+                        deactivate(state);
+                      if (res == MEMCACHED_SUCCESS)
+                        result = MEMCACHED_SUCCESS;
+                    }
+                }
+
               switch (res)
                 {
-                case MEMCACHED_SUCCESS:
-                  result = MEMCACHED_SUCCESS;
-                  deactivate(state);
-                  break;
-
-                case MEMCACHED_FAILURE:
-                  deactivate(state);
-                  break;
-
                 case MEMCACHED_ERROR:
-                  deactivate(state);
-                  if (c->close_on_error)
-                    client_mark_failed(c, i);
-                  break;
+                  if (! c->close_on_error)
+                    break;
+
+                  /* else fall into below.  */
 
                 case MEMCACHED_UNKNOWN:
                 case MEMCACHED_CLOSED:
                   deactivate(state);
                   client_mark_failed(c, i);
                   break;
+                }
 
-                case MEMCACHED_EAGAIN:
+              if (is_active(state))
+                {
                   if (max_fd < state->fd)
                     max_fd = state->fd;
-                  break;
                 }
             }
           else
@@ -1276,9 +1306,9 @@ process_commands(struct client *c)
 
           if (is_active(state))
             {
-              if (state->phase == PHASE_SEND)
+              if (state->iov_count > 0)
                 FD_SET(state->fd, &write_set);
-              else
+              if (state->parse_reply)
                 FD_SET(state->fd, &read_set);
             }
         }
