@@ -143,6 +143,7 @@ struct command_state
   generation_type generation;
 
   int phase;
+  int nowait_count;
 
   char buf[REPLY_BUF_SIZE];
   char *pos;
@@ -181,6 +182,7 @@ command_state_init(struct command_state *state,
   state->iov_buf = NULL;
   state->iov_buf_size = 0;
   state->generation = 0;
+  state->nowait_count = 0;
 }
 
 
@@ -973,6 +975,60 @@ parse_version_reply(struct command_state *state)
 
 static
 int
+parse_nowait_reply(struct command_state *state)
+{
+  int done, res;
+
+  --state->nowait_count;
+  done = (state->nowait_count == 0 && ! state->parse_reply);
+  if (! done)
+    state->phase = PHASE_RECEIVE;
+
+  /*
+    Cast to enum parse_keyword_e to get compiler warning when some
+    match result is not handled.
+  */
+  switch ((enum parse_keyword_e) state->match)
+    {
+    case MATCH_DELETED:
+    case MATCH_OK:
+    case MATCH_STORED:
+      return swallow_eol(state, 0, done);
+
+    case MATCH_0: case MATCH_1: case MATCH_2: case MATCH_3: case MATCH_4:
+    case MATCH_5: case MATCH_6: case MATCH_7: case MATCH_8: case MATCH_9:
+      return swallow_eol(state, 1, done);
+
+    case MATCH_EXISTS:
+    case MATCH_NOT_FOUND:
+    case MATCH_NOT_STORED:
+      res = swallow_eol(state, 0, done);
+      return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+
+    case MATCH_ERROR:
+      res = swallow_eol(state, 0, done);
+      return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
+
+    case MATCH_CLIENT_ERROR:
+    case MATCH_SERVER_ERROR:
+      res = swallow_eol(state, 1, done);
+      return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
+
+    case NO_MATCH:
+    case MATCH_VALUE:
+    case MATCH_END:
+    case MATCH_VERSION:
+    case MATCH_STAT:
+      return MEMCACHED_UNKNOWN;
+    }
+
+  /* Never reach here.  */
+  return MEMCACHED_UNKNOWN;
+}
+
+
+static
+int
 send_request(struct command_state *state)
 {
   while (state->iov_count > 0)
@@ -1084,7 +1140,10 @@ parse_reply(struct command_state *state)
       return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
 
     default:
-      return state->parse_reply(state);
+      if (state->nowait_count)
+        return parse_nowait_reply(state);
+      else
+        return state->parse_reply(state);
 
     case NO_MATCH:
       return MEMCACHED_UNKNOWN;
@@ -1162,6 +1221,7 @@ client_mark_failed(struct client *c, int server_index)
     {
       close(s->cmd_state.fd);
       s->cmd_state.fd = -1;
+      s->cmd_state.nowait_count = 0;
     }
 
   if (c->max_failures > 0)
@@ -1221,7 +1281,8 @@ process_commands(struct client *c)
           if (first_iter)
             {
               may_write = 1;
-              may_read = (state->parse_reply != NULL);
+              may_read = (state->parse_reply != NULL
+                          || state->nowait_count > 0);
             }
           else
             {
@@ -1308,7 +1369,7 @@ process_commands(struct client *c)
             {
               if (state->iov_count > 0)
                 FD_SET(state->fd, &write_set);
-              if (state->parse_reply)
+              if (state->parse_reply || state->nowait_count > 0)
                 FD_SET(state->fd, &read_set);
             }
         }
