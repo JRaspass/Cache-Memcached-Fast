@@ -2,9 +2,12 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
 
 0.06  ???
-        - ???
+        - this release features the 'nowait' mode.
 
-
+        Added 'nowait' mode that allow the client to not wait the
+        reply, and thus reduces the wallclock time.  Run
+        script/benchmark.pl and see how it affects wallclock time,
+        especially over the wire.
 
         Made undocumented 'noreply' parameter a per-server setting.
 

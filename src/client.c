@@ -155,7 +155,7 @@ struct command_state
   int phase;
   int nowait_count;
 
-  char buf[REPLY_BUF_SIZE];
+  char *buf;
   char *pos;
   char *end;
   char *eol;
@@ -194,6 +194,8 @@ command_state_init(struct command_state *state,
   state->iov_buf_size = 0;
   state->generation = 0;
   state->nowait_count = 0;
+  state->buf = (char *) malloc(REPLY_BUF_SIZE);
+  state->pos = state->end = state->eol = state->buf;
 }
 
 
@@ -201,6 +203,7 @@ static inline
 void
 command_state_destroy(struct command_state *state)
 {
+  free(state->buf);
   free(state->iov_buf);
   if (state->fd != -1)
     close(state->fd);
@@ -322,7 +325,6 @@ command_state_reset(struct command_state *state, int key_offset,
 #if 0 /* No need to initialize the following.  */
   state->key = NULL;
   state->key_index = 0;
-  state->pos = state->end = state->eol = state->buf;
   state->match = NO_MATCH;
 #endif
 }
@@ -1099,6 +1101,13 @@ receive_reply(struct command_state *state)
       size_t size;
       ssize_t res;
 
+      /*
+        When buffer is empty, move to the beginning of it for better
+        CPU cache utilization.
+      */
+      if (state->pos == state->end)
+        state->pos = state->end = state->eol = state->buf;
+
       size = REPLY_BUF_SIZE - (state->end - state->buf);
       if (size == 0)
         {
@@ -1177,7 +1186,6 @@ process_reply(struct command_state *state)
       switch (state->phase)
         {
         case PHASE_INIT:
-          state->pos = state->end = state->eol = state->buf;
           state->key = &state->iov_buf[state->key_offset];
 
           state->phase = PHASE_RECEIVE;
@@ -1237,6 +1245,8 @@ client_mark_failed(struct client *c, int server_index)
       close(s->cmd_state.fd);
       s->cmd_state.fd = -1;
       s->cmd_state.nowait_count = 0;
+      s->cmd_state.pos = s->cmd_state.end = s->cmd_state.eol =
+        s->cmd_state.buf;
     }
 
   if (c->max_failures > 0)
