@@ -47,6 +47,15 @@
 #define REPLY_BUF_SIZE  1024
 
 
+#define FLAGS_STUB  "4294967295"
+#define EXPTIME_STUB  "2147483647"
+#define DELAY_STUB  "4294967295"
+#define VALUE_SIZE_STUB  "18446744073709551615"
+#define CAS_STUB  "18446744073709551615"
+#define ARITH_STUB  "18446744073709551615"
+#define NOREPLY  "noreply"
+
+
 static const char eol[2] = "\r\n";
 
 
@@ -1511,7 +1520,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
   int use_noreply = (noreply && c->noreply);
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 6 : 5)
-     + sizeof(" 4294967295 2147483647 18446744073709551615 noreply\r\n"));
+     + sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
+              " " NOREPLY "\r\n"));
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
@@ -1571,7 +1581,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   buf_iov->iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME
                              " " FMT_VALUE_SIZE "%s\r\n",
                              flags, exptime, value_size,
-                             (use_noreply ? " noreply" : ""));
+                             (use_noreply ? " " NOREPLY : ""));
 
   return process_commands(c);
 }
@@ -1585,8 +1595,8 @@ client_cas(struct client *c, const char *key, size_t key_len,
   int use_noreply = (noreply && c->noreply);
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 6 : 5)
-     + sizeof(" 4294967295 2147483647 18446744073709551615"
-              " 18446744073709551615 noreply\r\n"));
+     + sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
+              " " CAS_STUB " " NOREPLY "\r\n"));
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
@@ -1625,7 +1635,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
   buf_iov->iov_len = sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME
                              " " FMT_VALUE_SIZE " " FMT_CAS "%s\r\n",
                              flags, exptime, value_size, cas,
-                             (use_noreply ? " noreply" : ""));
+                             (use_noreply ? " " NOREPLY : ""));
 
   return process_commands(c);
 }
@@ -1770,7 +1780,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   int use_noreply = (noreply && c->noreply);
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
-     + sizeof(" 18446744073709551616 noreply\r\n"));
+     + sizeof(" " ARITH_STUB " " NOREPLY "\r\n"));
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
@@ -1814,7 +1824,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   buf = (char *) &state->iov_buf[state->iov_count];
   buf_iov->iov_base = buf;
   buf_iov->iov_len = sprintf(buf, " " FMT_ARITH "%s\r\n", arg,
-                             (use_noreply ? " noreply" : ""));
+                             (use_noreply ? " " NOREPLY : ""));
 
   return process_commands(c);
 
@@ -1828,7 +1838,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   int use_noreply = (noreply && c->noreply);
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
-     + sizeof(" 4294967295 noreply\r\n"));
+     + sizeof(" " DELAY_STUB " " NOREPLY "\r\n"));
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
@@ -1862,7 +1872,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   buf = (char *) &state->iov_buf[state->iov_count];
   buf_iov->iov_base = buf;
   buf_iov->iov_len = sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
-                             (use_noreply ? " noreply" : ""));
+                             (use_noreply ? " " NOREPLY : ""));
 
   return process_commands(c);
 }
@@ -1873,7 +1883,8 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 {
   int use_noreply = (noreply && c->noreply);
   static const size_t request_size =
-    (sizeof(struct iovec) * 1 + sizeof("flush_all 4294967295 noreply\r\n"));
+    (sizeof(struct iovec) * 1
+     + sizeof("flush_all " DELAY_STUB " " NOREPLY "\r\n"));
   double ddelay = delay, delay_step = 0.0;
   int i;
 
@@ -1912,7 +1923,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
       buf_iov->iov_base = buf;
       buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
                                  (delay_type) (ddelay + 0.5),
-                                 (use_noreply ? " noreply" : ""));
+                                 (use_noreply ? " " NOREPLY : ""));
     }
 
   return process_commands(c);
