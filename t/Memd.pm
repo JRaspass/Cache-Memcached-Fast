@@ -27,6 +27,7 @@ BEGIN {
         max_failures => 3,
         failure_timeout => 2,
         ketama_points => 150,
+        nowait => 1,
     });
 
     # Test what server version we have.  server_versions() is

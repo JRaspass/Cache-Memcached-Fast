@@ -128,6 +128,10 @@ void
 client_set_close_on_error(struct client *c, int enable);
 
 extern
+void
+client_set_nowait(struct client *c, int enable);
+
+extern
 int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,

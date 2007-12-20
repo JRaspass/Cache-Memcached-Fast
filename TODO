@@ -23,10 +23,6 @@
 
 For 0.06:
 
-- nowait (per server flag): skip_reply() function, counter for pending
-  replies to skip.  On every call skip what's pending until request is
-  pushed (and reply is got).
-
 - delete_multi, set_multi based on nowait framework.
 
 - Document how to inherit from C::M::F for Custom Serialization for
@@ -35,12 +31,3 @@ For 0.06:
 - Add tests for noreply and huge values, do not list them in MANIFEST.
 
 - Clean warnings for gcc 4.2.2.
-
-- Make 'noreply' parameter per-server.
-
-- noreply per server, nowait per client.
-
-    state->noreply = (noreply && server->noreply);
-
-    if (noreply && ! state->noreply && c->nowait)
-      ++state->nowait_count;

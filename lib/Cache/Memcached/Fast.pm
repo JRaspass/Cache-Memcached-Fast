@@ -39,6 +39,7 @@ our $VERSION = '0.06';
       max_failures => 3,
       failure_timeout => 2,
       ketama_points => 150,
+      nowait => 1,
   });
 
   # Store scalars.
@@ -189,6 +190,25 @@ than 32768.
 The value is a scalar that will be prepended to all key names passed
 to the B<memcached> server.  By using different namespaces clients
 avoid interference with each other.
+
+
+=item I<nowait>
+
+  nowait => 1
+  (default: disabled)
+
+The value is a boolean which enables (true) or disables (false)
+I<nowait> mode.  If enabled, when you call a method that only returns
+its success status (like L</set>), B<I<in a void context>>, it sends
+the request to the server and returns immediately, not waiting the
+reply.  This avoids the round-trip latency at a cost of uncertain
+command outcome.
+
+Internally there is a counter of how many outstanding replies there
+should be, and on any command the client reads and discards any
+replies that have already arrived.  When you later execute some method
+in a non-void context, all outstanding replies will be waited for, and
+then the reply for this command will be read and returned.
 
 
 =item I<connect_timeout>

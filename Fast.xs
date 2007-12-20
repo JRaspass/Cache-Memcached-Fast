@@ -194,6 +194,12 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
     {
       client_set_close_on_error(memd, SvTRUE(*ps));
     }
+
+  ps = hv_fetch(conf, "nowait", 6, 0);
+  if (ps)
+    {
+      client_set_nowait(memd, SvTRUE(*ps));
+    }
 }
 
 

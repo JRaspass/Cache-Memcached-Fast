@@ -30,8 +30,24 @@ use Cache::Memcached;
 use Benchmark qw(:hireswallclock timethese cmpthese);
 
 
-use constant NOREPLY => 0;
 use constant CAS => 1;
+
+use constant NOWAIT => 1;
+use constant NOREPLY => 1;
+
+
+my $old = new Cache::Memcached {
+    servers   => [@addrs],
+    namespace => 'Cache::Memcached::Old',
+};
+$old->enable_compress(0);
+
+
+my $new_nowait = new Cache::Memcached::Fast {
+    servers   => [@addrs],
+    namespace => 'Cache::Memcached::NoW',
+    nowait => NOWAIT,
+};
 
 
 @addrs = map { +{ address => $_, noreply => NOREPLY } } @addrs;
@@ -42,20 +58,13 @@ my $new = new Cache::Memcached::Fast {
 };
 
 
-my $old = new Cache::Memcached {
-    servers   => [@addrs],
-    namespace => 'Cache::Memcached::Old',
-};
-$old->enable_compress(0);
-
-
 sub get_key {
     int(rand($max_keys));
 }
 
 
 sub compare {
-    my ($method, $keys, $noreply, $value, $cas) = @_;
+    my ($method, $keys, $nowait, $noreply, $value, $cas) = @_;
 
     my $title = "$method";
     if (defined $value) {
@@ -78,6 +87,12 @@ sub compare {
         "Old $title"  => sub { $res = $old->$method(&$params) },
         "New $title"  => sub { $res = $new->$method(&$params) },
     );
+
+    if ($nowait) {
+        push @test, (
+             "New $title nowait"  => sub { $new_nowait->$method(&$params) },
+        );
+    }
 
     if ($noreply) {
         push @test, (
@@ -116,21 +131,21 @@ sub compare_multi {
 
 # Cache::Memcached doesn't support append/prepend, cas, gets, gets_multi yet.
 my @methods = (
-    [add        => \&compare, 1, NOREPLY, $value],
-    [set        => \&compare, 1, NOREPLY, $value],
-#    [append     => \&compare, 1, NOREPLY, $value],
-#    [prepend    => \&compare, 1, NOREPLY, $value],
-    [replace    => \&compare, 1, NOREPLY, $value],
-#    [cas        => \&compare, 1, NOREPLY, $value, CAS],
+    [add        => \&compare, 1, NOWAIT, NOREPLY, $value],
+    [set        => \&compare, 1, NOWAIT, NOREPLY, $value],
+#    [append     => \&compare, 1, NOWAIT, NOREPLY, $value],
+#    [prepend    => \&compare, 1, NOWAIT, NOREPLY, $value],
+    [replace    => \&compare, 1, NOWAIT, NOREPLY, $value],
+#    [cas        => \&compare, 1, NOWAIT, NOREPLY, $value, CAS],
     [get        => \&compare, 1],
     [get_multi  => \&compare, $keys_multi],
 #    [gets       => \&compare, 1],
 #    [gets_multi => \&compare, $keys_multi],
     [get        => \&compare_multi, $keys_multi],
 #    [gets       => \&compare_multi, $keys_multi],
-    [incr       => \&compare, 1, NOREPLY],
-    [decr       => \&compare, 1, NOREPLY],
-    [delete     => \&compare, 1, NOREPLY],
+    [incr       => \&compare, 1, NOWAIT, NOREPLY],
+    [decr       => \&compare, 1, NOWAIT, NOREPLY],
+    [delete     => \&compare, 1, NOWAIT, NOREPLY],
 );
 
 

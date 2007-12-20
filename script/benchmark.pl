@@ -29,15 +29,25 @@ use Cache::Memcached::Fast;
 use Benchmark qw(:hireswallclock timethese cmpthese);
 
 
-use constant NOREPLY => 0;
 use constant CAS => 1;
+
+use constant NOWAIT => 1;
+use constant NOREPLY => 0;
+
+
+my $new_nowait = new Cache::Memcached::Fast {
+    servers   => [@addrs],
+    namespace => 'Cache::Memcached::nowait',
+    ketama_points => 150,
+    nowait => NOWAIT,
+};
 
 
 @addrs = map { +{ address => $_, noreply => NOREPLY } } @addrs;
 
 my $new = new Cache::Memcached::Fast {
     servers   => [@addrs],
-    namespace => 'Cache::Memcached::New',
+    namespace => 'Cache::Memcached::_plain',
     ketama_points => 150,
 };
 
@@ -48,7 +58,7 @@ sub get_key {
 
 
 sub run {
-    my ($method, $keys, $noreply, $value, $cas) = @_;
+    my ($method, $keys, $nowait, $noreply, $value, $cas) = @_;
 
     my $title = "$method";
     if (defined $value) {
@@ -70,6 +80,12 @@ sub run {
     my @test = (
         "$title"  => sub { $res = $new->$method(&$params) },
     );
+
+    if ($nowait) {
+        push @test, (
+             "$title nowait"  => sub { $new_nowait->$method(&$params) },
+        );
+    }
 
     if ($noreply) {
         push @test, (
@@ -102,21 +118,21 @@ sub run_multi {
 
 
 my @methods = (
-    [add        => \&run, 1, NOREPLY, $value],
-    [set        => \&run, 1, NOREPLY, $value],
-    [append     => \&run, 1, NOREPLY, $value],
-    [prepend    => \&run, 1, NOREPLY, $value],
-    [replace    => \&run, 1, NOREPLY, $value],
-    [cas        => \&run, 1, NOREPLY, $value, CAS],
+    [add        => \&run, 1, NOWAIT, NOREPLY, $value],
+    [set        => \&run, 1, NOWAIT, NOREPLY, $value],
+    [append     => \&run, 1, NOWAIT, NOREPLY, $value],
+    [prepend    => \&run, 1, NOWAIT, NOREPLY, $value],
+    [replace    => \&run, 1, NOWAIT, NOREPLY, $value],
+    [cas        => \&run, 1, NOWAIT, NOREPLY, $value, CAS],
     [get        => \&run, 1],
     [get_multi  => \&run, $keys_multi],
     [gets       => \&run, 1],
     [gets_multi => \&run, $keys_multi],
     [get        => \&run_multi, $keys_multi],
     [gets       => \&run_multi, $keys_multi],
-    [incr       => \&run, 1, NOREPLY],
-    [decr       => \&run, 1, NOREPLY],
-    [delete     => \&run, 1, NOREPLY],
+    [incr       => \&run, 1, NOWAIT, NOREPLY],
+    [decr       => \&run, 1, NOWAIT, NOREPLY],
+    [delete     => \&run, 1, NOWAIT, NOREPLY],
 );
 
 
