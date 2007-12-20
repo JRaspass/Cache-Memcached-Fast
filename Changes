@@ -5,6 +5,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
         - this release fixes a serious bug and features the 'nowait'
         mode.  Upgrade is recommended.
 
+        Changes since 0.05:
+
         Fix a subtle race bug that could mix several values into one
         when you have more than one memcached server and execute
         get_multi or gets_multi.  If you have seen the following in
