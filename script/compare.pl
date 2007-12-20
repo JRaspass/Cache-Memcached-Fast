@@ -33,7 +33,7 @@ use Benchmark qw(:hireswallclock timethese cmpthese);
 use constant CAS => 1;
 
 use constant NOWAIT => 1;
-use constant NOREPLY => 1;
+use constant NOREPLY => 0;
 
 
 my $old = new Cache::Memcached {
