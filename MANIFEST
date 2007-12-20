@@ -15,6 +15,7 @@ t/03-flush_all.t
 t/big_value.t
 t/commands.t
 t/key_ref.t
+t/nowait.t
 t/serialize.t
 t/pod-coverage.t
 t/pod.t
