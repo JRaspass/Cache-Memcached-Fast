@@ -12,8 +12,6 @@
   failure (undef).  flush_all() should return true only on success
   with all servers.
 
-- Make 'noreply' parameter per-server.
-
 - Mention server patches in docs.
 
 - Binary protocol!
@@ -37,3 +35,12 @@ For 0.06:
 - Add tests for noreply and huge values, do not list them in MANIFEST.
 
 - Clean warnings for gcc 4.2.2.
+
+- Make 'noreply' parameter per-server.
+
+- noreply per server, nowait per client.
+
+    state->noreply = (noreply && server->noreply);
+
+    if (noreply && ! state->noreply && c->nowait)
+      ++state->nowait_count;
