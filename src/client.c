@@ -140,6 +140,7 @@ struct command_state
 {
   struct client *client;
   int fd;
+  int noreply;
 
   /*
     If the command needs additional character buffer, the space after
@@ -183,10 +184,11 @@ struct command_state
 static inline
 void
 command_state_init(struct command_state *state,
-                   struct client *c)
+                   struct client *c, int noreply)
 {
   state->client = c;
   state->fd = -1;
+  state->noreply = noreply;
   state->iov_buf = NULL;
   state->iov_buf_size = 0;
   state->generation = 0;
@@ -218,7 +220,7 @@ static inline
 int
 server_init(struct server *s, struct client *c,
             const char *host, size_t host_len,
-            const char *port, size_t port_len)
+            const char *port, size_t port_len, int noreply)
 {
   if (port)
     s->host = (char *) malloc(host_len + 1 + port_len + 1);
@@ -246,7 +248,7 @@ server_init(struct server *s, struct client *c,
   s->failure_count = 0;
   s->failure_expires = 0;
 
-  command_state_init(&s->cmd_state, c);
+  command_state_init(&s->cmd_state, c, noreply);
 
   return MEMCACHED_SUCCESS;
 }
@@ -285,7 +287,6 @@ struct client
   int max_failures;
   int failure_timeout;          /* 1 sec.  */
   int close_on_error;
-  int noreply;
 
   struct key_node *key_list;
   int key_list_count;
@@ -373,7 +374,6 @@ client_init()
   c->max_failures = 0;
   c->failure_timeout = 10;
   c->close_on_error = 1;
-  c->noreply = 0;
 
   c->key_list = NULL;
   c->key_list_count = c->key_list_capacity = 0;
@@ -449,18 +449,10 @@ client_set_close_on_error(struct client *c, int enable)
 }
 
 
-void
-client_set_noreply(struct client *c, int enable)
-{
-  c->noreply = enable;
-  if (enable)
-    client_set_close_on_error(c, 1);
-}
-
-
 int
 client_add_server(struct client *c, const char *host, size_t host_len,
-                  const char *port, size_t port_len, double weight)
+                  const char *port, size_t port_len, double weight,
+                  int noreply)
 {
   int res;
 
@@ -481,7 +473,7 @@ client_add_server(struct client *c, const char *host, size_t host_len,
     }
 
   res = server_init(&c->servers[c->server_count], c,
-                    host, host_len, port, port_len);
+                    host, host_len, port, port_len, noreply);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
@@ -1279,7 +1271,7 @@ process_commands(struct client *c)
               switch (res)
                 {
                 case MEMCACHED_ERROR:
-                  if (! c->close_on_error)
+                  if (! (c->close_on_error || state->noreply))
                     break;
 
                   /* else fall into below.  */
@@ -1517,7 +1509,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
            flags_type flags, exptime_type exptime,
            const void *value, value_size_type value_size, int noreply)
 {
-  int use_noreply = (noreply && c->noreply);
+  int use_noreply;
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 6 : 5)
      + sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
@@ -1534,6 +1526,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
     return MEMCACHED_CLOSED;
 
   state = &c->servers[server_index].cmd_state;
+  use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_set_reply));
 
@@ -1592,7 +1585,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
            cas_type cas, flags_type flags, exptime_type exptime,
            const void *value, value_size_type value_size, int noreply)
 {
-  int use_noreply = (noreply && c->noreply);
+  int use_noreply;
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 6 : 5)
      + sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
@@ -1609,6 +1602,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
     return MEMCACHED_CLOSED;
 
   state = &c->servers[server_index].cmd_state;
+  use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_set_reply));
 
@@ -1777,7 +1771,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
              const char *key, size_t key_len,
              arith_type arg, arith_type *result, int noreply)
 {
-  int use_noreply = (noreply && c->noreply);
+  int use_noreply;
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
      + sizeof(" " ARITH_STUB " " NOREPLY "\r\n"));
@@ -1793,6 +1787,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
     return MEMCACHED_CLOSED;
 
   state = &c->servers[server_index].cmd_state;
+  use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_arith_reply));
   arith_state_reset(&state->u.arith, result);
@@ -1835,7 +1830,7 @@ int
 client_delete(struct client *c, const char *key, size_t key_len,
               delay_type delay, int noreply)
 {
-  int use_noreply = (noreply && c->noreply);
+  int use_noreply;
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
      + sizeof(" " DELAY_STUB " " NOREPLY "\r\n"));
@@ -1851,6 +1846,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
     return MEMCACHED_CLOSED;
 
   state = &c->servers[server_index].cmd_state;
+  use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply ? NULL : parse_delete_reply));
 
@@ -1881,7 +1877,6 @@ client_delete(struct client *c, const char *key, size_t key_len,
 int
 client_flush_all(struct client *c, delay_type delay, int noreply)
 {
-  int use_noreply = (noreply && c->noreply);
   static const size_t request_size =
     (sizeof(struct iovec) * 1
      + sizeof("flush_all " DELAY_STUB " " NOREPLY "\r\n"));
@@ -1896,6 +1891,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   for (i = 0; i < c->server_count; ++i)
     {
+      int use_noreply;
       struct command_state *state;
       struct iovec *buf_iov;
       char *buf;
@@ -1908,6 +1904,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
         continue;
 
       state = &c->servers[i].cmd_state;
+      use_noreply = (noreply && state->noreply);
       command_state_reset(state, 0, 0, (use_noreply ? NULL : parse_ok_reply));
 
       res = iov_buf_extend(state, request_size);

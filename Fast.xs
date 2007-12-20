@@ -25,7 +25,7 @@ typedef SV *Ref_SV;
 
 static
 void
-add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight)
+add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight, int noreply)
 {
   static const int delim = ':';
   const char *host, *port;
@@ -46,11 +46,12 @@ add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight)
       host_len = port - host;
       ++port;
       port_len = len - host_len - 1;
-      res = client_add_server(memd, host, host_len, port, port_len, weight);
+      res = client_add_server(memd, host, host_len, port, port_len,
+                              weight, noreply);
     }
   else
     {
-      res = client_add_server(memd, host, len, NULL, 0, weight);
+      res = client_add_server(memd, host, len, NULL, 0, weight, noreply);
     }
   if (res != MEMCACHED_SUCCESS)
     croak("Not enough memory");
@@ -63,7 +64,7 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
 {
   if (! SvROK(sv))
     {
-      add_server(memd, sv, 1.0);
+      add_server(memd, sv, 1.0, 0);
     }
   else
     {
@@ -72,16 +73,20 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
         case SVt_PVHV:
           {
             HV *hv = (HV *) SvRV(sv);
-            SV **addr_sv, **weight_sv;
+            SV **addr_sv, **ps;
             double weight = 1.0;
+            int noreply = 0;
 
             addr_sv = hv_fetch(hv, "address", 7, 0);
             if (! addr_sv)
               croak("server should have { address => $addr }");
-            weight_sv = hv_fetch(hv, "weight", 6, 0);
-            if (weight_sv)
-              weight = SvNV(*weight_sv);
-            add_server(memd, *addr_sv, weight);
+            ps = hv_fetch(hv, "weight", 6, 0);
+            if (ps)
+              weight = SvNV(*ps);
+            ps = hv_fetch(hv, "noreply", 7, 0);
+            if (ps)
+              noreply = SvTRUE(*ps);
+            add_server(memd, *addr_sv, weight, noreply);
           }
           break;
 
@@ -97,7 +102,7 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
             weight_sv = av_fetch(av, 1, 0);
             if (weight_sv)
               weight = SvNV(*weight_sv);
-            add_server(memd, *addr_sv, weight);
+            add_server(memd, *addr_sv, weight, 0);
           }
           break;
 
@@ -188,13 +193,6 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
   if (ps)
     {
       client_set_close_on_error(memd, SvTRUE(*ps));
-    }
-
-  ps = hv_fetch(conf, "noreply", 7, 0);
-  if (ps)
-    {
-      /* This may set 'close_on_error'.  */
-      client_set_noreply(memd, SvTRUE(*ps));
     }
 }
 

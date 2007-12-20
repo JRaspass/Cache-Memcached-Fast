@@ -33,11 +33,12 @@ use constant NOREPLY => 0;
 use constant CAS => 1;
 
 
+@addrs = map { +{ address => $_, noreply => NOREPLY } } @addrs;
+
 my $new = new Cache::Memcached::Fast {
     servers   => [@addrs],
     namespace => 'Cache::Memcached::New',
     ketama_points => 150,
-    noreply   => NOREPLY,
 };
 
 

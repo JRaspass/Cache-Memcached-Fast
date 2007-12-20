@@ -100,7 +100,8 @@ client_set_ketama_points(struct client *c, int ketama_points);
 extern
 int
 client_add_server(struct client *c, const char *host, size_t host_len,
-                  const char *port, size_t port_len, double weight);
+                  const char *port, size_t port_len, double weight,
+                  int noreply);
 
 extern
 int
@@ -125,10 +126,6 @@ client_set_failure_timeout(struct client *c, int to);
 extern
 void
 client_set_close_on_error(struct client *c, int enable);
-
-extern
-void
-client_set_noreply(struct client *c, int enable);
 
 extern
 int
