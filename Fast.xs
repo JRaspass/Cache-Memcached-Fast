@@ -321,8 +321,7 @@ mkey_store(void *arg, int key_index, flags_type flags,
 
   ax = mkey_res->ax;
   key_sv = ST(mkey_res->stack_offset + key_index);
-  SvREFCNT_inc(key_sv);
-  av_push(mkey_res->key_val, key_sv);
+  av_push(mkey_res->key_val, SvREFCNT_inc(key_sv));
   if (! use_cas)
     {
       av_push(mkey_res->key_val, newRV_noinc(mkey_res->sv));
@@ -643,8 +642,7 @@ _rvav2rvhv(array)
             pval = av_fetch(array, i++, 0);
             if (! (pkey && pval))
               croak("Undefined values in the list");
-            SvREFCNT_inc(*pval);
-            he = hv_store_ent(RETVAL, *pkey, *pval, 0);
+            he = hv_store_ent(RETVAL, *pkey, SvREFCNT_inc(*pval), 0);
             if (! he)
               SvREFCNT_dec(*pval);
           }
