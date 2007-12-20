@@ -23,7 +23,7 @@ According to CPAN testers it doesn't compile on Windows, patches are
 welcomed.
 
 Despite the low version number (which mainly reflects release history)
-the module is considered to be stable (see BUGS below on how to report
+the module is considered to be beta (see BUGS below on how to report
 bugs).  See "Compatibility with Cache::Memcached" section in the
 module documentation for the description of what is missing compared
 to Cache::Memcached.

@@ -213,17 +213,17 @@ struct xs_skey_result
 
 static
 void *
-skey_alloc(void *arg, value_size_type value_size)
+key_alloc(value_size_type value_size, void **opaque)
 {
-  struct xs_skey_result *skey_res;
+  SV *sv;
   char *res;
 
-  skey_res = (struct xs_skey_result *) arg;
-
-  skey_res->sv = newSVpvn("", 0);
-  res = SvGROW(skey_res->sv, value_size + 1); /* FIXME: check OOM.  */
+  sv = newSVpvn("", 0);
+  res = SvGROW(sv, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
-  SvCUR_set(skey_res->sv, value_size);
+  SvCUR_set(sv, value_size);
+
+  *opaque = sv;
 
   return (void *) res;
 }
@@ -231,7 +231,7 @@ skey_alloc(void *arg, value_size_type value_size)
 
 static
 void
-skey_store(void *arg, int key_index, flags_type flags,
+skey_store(void *arg, void *opaque, int key_index, flags_type flags,
            int use_cas, cas_type cas)
 {
   struct xs_skey_result *skey_res;
@@ -241,6 +241,7 @@ skey_store(void *arg, int key_index, flags_type flags,
 
   skey_res = (struct xs_skey_result *) arg;
 
+  skey_res->sv = (SV *) opaque;
   skey_res->flags = flags;
   skey_res->cas = cas;
 }
@@ -248,20 +249,16 @@ skey_store(void *arg, int key_index, flags_type flags,
 
 static
 void
-skey_free(void *arg)
+key_free(void *opaque)
 {
-  struct xs_skey_result *skey_res;
+  SV *sv = (SV *) opaque;
 
-  skey_res = (struct xs_skey_result *) arg;
-
-  SvREFCNT_dec(skey_res->sv);
-  skey_res->sv = NULL;
+  SvREFCNT_dec(sv);
 }
 
 
 struct xs_mkey_result
 {
-  SV *sv;
   AV *key_val;
   AV *flags;
   I32 ax;
@@ -291,31 +288,15 @@ get_key(void *arg, int key_index, size_t *key_len)
 
 
 static
-void *
-mkey_alloc(void *arg, value_size_type value_size)
-{
-  struct xs_mkey_result *mkey_res;
-  char *res;
-
-  mkey_res = (struct xs_mkey_result *) arg;
-
-  mkey_res->sv = newSVpvn("", 0);
-  res = SvGROW(mkey_res->sv, value_size + 1); /* FIXME: check OOM.  */
-  res[value_size] = '\0';
-  SvCUR_set(mkey_res->sv, value_size);
-
-  return (void *) res;
-}
-
-
-static
 void
-mkey_store(void *arg, int key_index, flags_type flags,
+mkey_store(void *arg, void *opaque, int key_index, flags_type flags,
            int use_cas, cas_type cas)
 {
   I32 ax;
   struct xs_mkey_result *mkey_res;
-  SV *key_sv;
+  SV *key_sv, *value_sv;
+
+  value_sv = (SV *) opaque;
 
   mkey_res = (struct xs_mkey_result *) arg;
 
@@ -324,14 +305,14 @@ mkey_store(void *arg, int key_index, flags_type flags,
   av_push(mkey_res->key_val, SvREFCNT_inc(key_sv));
   if (! use_cas)
     {
-      av_push(mkey_res->key_val, newRV_noinc(mkey_res->sv));
+      av_push(mkey_res->key_val, newRV_noinc(value_sv));
     }
   else
     {
       AV *cas_val = newAV();
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(cas));
-      av_push(cas_val, newRV_noinc(mkey_res->sv));
+      av_push(cas_val, newRV_noinc(value_sv));
       av_push(mkey_res->key_val, newRV_noinc((SV *) cas_val));
     }
 
@@ -340,26 +321,14 @@ mkey_store(void *arg, int key_index, flags_type flags,
 
 
 static
-void
-mkey_free(void *arg)
-{
-  struct xs_mkey_result *mkey_res;
-
-  mkey_res = (struct xs_mkey_result *) arg;
-
-  SvREFCNT_dec(mkey_res->sv);
-}
-
-
-static
 void *
-embedded_alloc(void *arg, value_size_type value_size)
+embedded_alloc(value_size_type value_size, void **opaque)
 {
   AV *av;
   SV *sv;
   char *res;
 
-  av = (AV *) arg;
+  av = (AV *) *opaque;
 
   sv = newSVpvn("", 0);
   res = SvGROW(sv, value_size + 1); /* FIXME: check OOM.  */
@@ -475,7 +444,7 @@ get(memd, skey)
         STRLEN key_len;
         struct xs_skey_result skey_res;
         struct value_object object =
-            { skey_alloc, skey_store, skey_free, &skey_res };
+            { key_alloc, skey_store, key_free, &skey_res };
     PPCODE:
         key = SvPV(skey, key_len);
         skey_res.sv = NULL;
@@ -510,7 +479,7 @@ mget(memd, ...)
     PREINIT:
         struct xs_mkey_result mkey_res;
         struct value_object object =
-            { mkey_alloc, mkey_store, mkey_free, &mkey_res };
+            { key_alloc, mkey_store, key_free, &mkey_res };
         int key_count;
     PPCODE:
         key_count = items - 1;

@@ -65,7 +65,7 @@ typedef unsigned long long generation_type;
 struct value_state
 {
   struct value_object *object;
-
+  void *opaque;
   flags_type flags;
   void *ptr;
   value_size_type size;
@@ -711,7 +711,7 @@ read_value(struct command_state *state)
               if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
                 return MEMCACHED_EAGAIN;
 
-              state->u.value.object->free(state->u.value.object->arg);
+              state->u.value.object->free(state->u.value.opaque);
               return MEMCACHED_CLOSED;
             }
 
@@ -733,14 +733,15 @@ read_value(struct command_state *state)
 
   if (memcmp(state->pos, eol, sizeof(eol)) != 0)
     {
-      state->u.value.object->free(state->u.value.object->arg);
+      state->u.value.object->free(state->u.value.opaque);
       return MEMCACHED_UNKNOWN;
     }
   state->pos += sizeof(eol);
   state->eol = state->pos;
 
-  state->u.value.object->store(state->u.value.object->arg, state->key_index,
-                               state->u.value.flags,
+  state->u.value.object->store(state->u.value.object->arg,
+                               state->u.value.opaque,
+                               state->key_index, state->u.value.flags,
                                state->u.value.use_cas, state->u.value.cas);
 
   return MEMCACHED_SUCCESS;
@@ -841,8 +842,9 @@ parse_get_reply(struct command_state *state)
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  state->u.value.ptr = state->u.value.object->alloc(state->u.value.object->arg,
-                                                    state->u.value.size);
+  state->u.value.ptr =
+    state->u.value.object->alloc(state->u.value.size,
+                                 &state->u.value.opaque);
   if (! state->u.value.ptr)
     return MEMCACHED_FAILURE;
 
@@ -980,7 +982,7 @@ parse_version_reply(struct command_state *state)
   len = state->pos - sizeof(eol) - beg;
 
   state->u.embedded.ptr =
-    state->u.embedded.object->alloc(state->u.embedded.object->arg, len);
+    state->u.embedded.object->alloc(len, &state->u.embedded.object->arg);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
