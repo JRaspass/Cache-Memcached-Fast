@@ -1428,7 +1428,16 @@ process_commands(struct client *c)
               struct command_state *state = &c->servers[i].cmd_state;
 
               if (is_active(state))
-                client_mark_failed(c, i);
+                {
+                  /*
+                    Ugly fix for possible memory leak.  FIXME:
+                    requires redesign.
+                  */
+                  if (state->phase == PHASE_VALUE)
+                    state->u.value.object->free(state->u.value.opaque);
+
+                  client_mark_failed(c, i);
+                }
             }
 
           break;
