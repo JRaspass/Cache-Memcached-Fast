@@ -862,6 +862,7 @@ parse_set_reply(struct command_state *state)
       return swallow_eol(state, 0, 1);
 
     case MATCH_NOT_STORED:
+    case MATCH_NOT_FOUND:
     case MATCH_EXISTS:
       res = swallow_eol(state, 0, 1);
 
