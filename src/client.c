@@ -183,7 +183,7 @@ struct command_state
 
 
 static inline
-void
+int
 command_state_init(struct command_state *state,
                    struct client *c, int noreply)
 {
@@ -195,7 +195,12 @@ command_state_init(struct command_state *state,
   state->generation = 0;
   state->nowait_count = 0;
   state->buf = (char *) malloc(REPLY_BUF_SIZE);
+  if (! state->buf)
+    return -1;
+
   state->pos = state->end = state->eol = state->buf;
+
+  return 0;
 }
 
 
@@ -253,7 +258,8 @@ server_init(struct server *s, struct client *c,
   s->failure_count = 0;
   s->failure_expires = 0;
 
-  command_state_init(&s->cmd_state, c, noreply);
+  if (command_state_init(&s->cmd_state, c, noreply) != 0)
+    return MEMCACHED_FAILURE;
 
   return MEMCACHED_SUCCESS;
 }
