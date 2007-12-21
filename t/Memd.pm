@@ -13,11 +13,11 @@ our (@addr, $memd, $version_str, $version_num);
 BEGIN {
     # Use differently spelled addressed to enable Ketama to hash names
     # differently.
-    @addr = qw(localhost:11211 127.0.0.1:11211);
+    @addr = ( { address => 'localhost:11211', weight => 1.5 },
+              '127.0.0.1:11211' );
 
     $memd = Cache::Memcached::Fast->new({
-        servers => [ { address => $addr[0], weight => 1.5 },
-                     $addr[1] ],
+        servers => [ @addr ],
         namespace => "Cache::Memcached::Fast/$$/",
         connect_timeout => 5,
         io_timeout => 5,
