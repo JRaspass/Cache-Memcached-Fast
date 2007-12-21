@@ -213,7 +213,7 @@ struct xs_skey_result
 
 static
 void *
-key_alloc(value_size_type value_size, void **opaque)
+alloc_value(value_size_type value_size, void **opaque)
 {
   SV *sv;
   char *res;
@@ -249,7 +249,7 @@ skey_store(void *arg, void *opaque, int key_index, flags_type flags,
 
 static
 void
-key_free(void *opaque)
+free_value(void *opaque)
 {
   SV *sv = (SV *) opaque;
 
@@ -321,22 +321,19 @@ mkey_store(void *arg, void *opaque, int key_index, flags_type flags,
 
 
 static
-void *
-embedded_alloc(value_size_type value_size, void **opaque)
+void
+embedded_store(void *arg, void *opaque, int key_index, flags_type flags,
+               int use_cas, cas_type cas)
 {
   AV *av;
   SV *sv;
-  char *res;
 
-  av = (AV *) *opaque;
+  /* Suppress warning about unused key_index, flags, use_cas and cas.  */
+  if (key_index || flags || use_cas || cas) {}
 
-  sv = newSVpvn("", 0);
-  res = SvGROW(sv, value_size + 1); /* FIXME: check OOM.  */
-  res[value_size] = '\0';
-  SvCUR_set(sv, value_size);
+  av = (AV *) arg;
+  sv = (SV *) opaque;
   av_push(av, sv);
-
-  return (void *) res;
 }
 
 
@@ -444,7 +441,7 @@ get(memd, skey)
         STRLEN key_len;
         struct xs_skey_result skey_res;
         struct value_object object =
-            { key_alloc, skey_store, key_free, &skey_res };
+            { alloc_value, skey_store, free_value, &skey_res };
     PPCODE:
         key = SvPV(skey, key_len);
         skey_res.sv = NULL;
@@ -479,7 +476,7 @@ mget(memd, ...)
     PREINIT:
         struct xs_mkey_result mkey_res;
         struct value_object object =
-            { key_alloc, mkey_store, key_free, &mkey_res };
+            { alloc_value, mkey_store, free_value, &mkey_res };
         int key_count;
     PPCODE:
         key_count = items - 1;
@@ -577,7 +574,8 @@ server_versions(memd)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     PREINIT:
-        struct value_object object = { embedded_alloc, NULL, NULL, NULL };
+        struct value_object object =
+            { alloc_value, embedded_store, NULL, NULL };
     CODE:
         RETVAL = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */

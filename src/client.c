@@ -106,7 +106,7 @@ arith_state_reset(struct arith_state *state, arith_type *result)
 struct embedded_state
 {
   struct value_object *object;
-
+  void *opaque;
   void *ptr;
 };
 
@@ -982,11 +982,14 @@ parse_version_reply(struct command_state *state)
   len = state->pos - sizeof(eol) - beg;
 
   state->u.embedded.ptr =
-    state->u.embedded.object->alloc(len, &state->u.embedded.object->arg);
+    state->u.embedded.object->alloc(len, &state->u.embedded.opaque);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
   memcpy(state->u.embedded.ptr, beg, len);
+
+  state->u.embedded.object->store(state->u.embedded.object->arg,
+                                  state->u.embedded.opaque, 0, 0, 0, 0);
 
   return MEMCACHED_SUCCESS;
 }
