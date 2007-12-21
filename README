@@ -39,9 +39,7 @@ To install this module type the following:
    make install
 
 Don't forget to start memcahced daemon on local host port 11211 (the
-default) before running 'make test'.  Note that test case contains
-flush_all command, you probably don't want to run it on a production
-server.
+default) before running 'make test'.
 
 
 DEPENDENCIES

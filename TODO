@@ -32,6 +32,4 @@ For 0.07:
 
 - Clean warnings for gcc 4.2.2.
 
-- Allow simultaneous tests: add "/$$/" to namespace, remove flush_all.
-
 - Fix all ugliness introduced in 0.06 ;).

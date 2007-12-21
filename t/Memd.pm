@@ -18,7 +18,7 @@ BEGIN {
     $memd = Cache::Memcached::Fast->new({
         servers => [ { address => $addr[0], weight => 1.5 },
                      $addr[1] ],
-        namespace => 'Cache::Memcached::Fast::',
+        namespace => "Cache::Memcached::Fast/$$/",
         connect_timeout => 5,
         io_timeout => 5,
         close_on_error => 0,

@@ -11,7 +11,6 @@ t/Memd.pm
 t/00-load.t
 t/01-connect.t
 t/02-isa.t
-t/03-flush_all.t
 t/big_value.t
 t/commands.t
 t/key_ref.t

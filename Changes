@@ -1,6 +1,20 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.07  ???
+        - ???
+
+        Changes since 0.06:
+
+        t/03-flush_all.t was removed.  We use PID as a part of a
+        namespace prefix now, so we don't need clear cache any more.
+        And there are good reasons not to have flush_all: the user may
+        flush a valuable cache by mistake, and "flush_all 0" doesn't
+        work on memcached 1.2.2, so the outcome was uncertain anyway.
+        Without flush_all it's possible to execute in parallel more
+        than one 'make test'.
+
+
 0.06  2007-12-20
         - this release fixes a serious bug and features the 'nowait'
         mode.  Upgrade is recommended.
