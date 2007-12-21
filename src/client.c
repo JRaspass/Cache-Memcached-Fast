@@ -1101,17 +1101,17 @@ receive_reply(struct command_state *state)
   while (state->eol != state->end && *state->eol != eol[sizeof(eol) - 1])
     ++state->eol;
 
+  /*
+    When buffer is empty, move to the beginning of it for better CPU
+    cache utilization.
+  */
+  if (state->pos == state->end)
+    state->pos = state->end = state->eol = state->buf;
+
   while (state->eol == state->end)
     {
       size_t size;
       ssize_t res;
-
-      /*
-        When buffer is empty, move to the beginning of it for better
-        CPU cache utilization.
-      */
-      if (state->pos == state->end)
-        state->pos = state->end = state->eol = state->buf;
 
       size = REPLY_BUF_SIZE - (state->end - state->buf);
       if (size == 0)
