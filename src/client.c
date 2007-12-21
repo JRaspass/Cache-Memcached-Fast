@@ -1122,7 +1122,7 @@ receive_reply(struct command_state *state)
               state->pos = memmove(state->buf, state->pos, len);
               state->end -= REPLY_BUF_SIZE - len;
               state->eol -= REPLY_BUF_SIZE - len;
-              continue;
+              size = REPLY_BUF_SIZE - len;
             }
           else
             {
