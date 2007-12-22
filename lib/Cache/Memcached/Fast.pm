@@ -286,9 +286,9 @@ Consider the following scenario:
 
 But the client expects one reply per command, so after sending the
 next command it will think that the second 'ERROR' is a reply for this
-new command.  This means that all replies would shift, including
-replies for L</get> commands!  By closing the connection we avoid such
-possibility.
+new command.  This means that all replies will shift, including
+replies for L</get> commands!  By closing the connection we eliminate
+such possibility.
 
 When connection dies, or the client receives the reply that it can't
 understand, it closes the socket regardless the I<close_on_error>
