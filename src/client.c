@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -404,6 +404,8 @@ void
 client_destroy(struct client *c)
 {
   int i;
+
+  client_nowait_push(c);
 
   for (i = 0; i < c->server_count; ++i)
     server_destroy(&c->servers[i]);
@@ -1007,10 +1009,22 @@ parse_nowait_reply(struct command_state *state)
 {
   int done, res;
 
-  --state->nowait_count;
-  done = (state->nowait_count == 0 && ! state->parse_reply);
-  if (! done)
-    state->phase = PHASE_RECEIVE;
+  if (state->nowait_count > 0)
+    {
+      --state->nowait_count;
+      done = (state->nowait_count == 0 && ! state->parse_reply);
+      if (! done)
+        state->phase = PHASE_RECEIVE;
+    }
+  else
+    {
+      /*
+        (state->nowait_count == 0) would mean that we were called
+        directly from client_nowait_push(), and we are about to read
+        the last pending reply.
+      */
+      done = 1;
+    }
 
   /*
     Cast to enum parse_keyword_e to get compiler warning when some
@@ -2032,6 +2046,41 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
       buf_iov->iov_len = sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
                                  (delay_type) (ddelay + 0.5),
                                  (use_noreply ? " " NOREPLY : ""));
+    }
+
+  return process_commands(c);
+}
+
+
+int
+client_nowait_push(struct client *c)
+{
+  int i;
+
+  if (! c->nowait)
+    return MEMCACHED_SUCCESS;
+
+  client_reset_for_command(c);
+
+  for (i = 0; i < c->server_count; ++i)
+    {
+      struct command_state *state;
+      int fd, res;
+
+      state = &c->servers[i].cmd_state;
+      if (state->nowait_count == 0)
+        continue;
+
+      fd = get_server_fd(c, i);
+      if (fd == -1)
+        continue;
+
+      /*
+        In order to wait the final pending reply we decrease
+        nowait_count, and set parse function to parse_nowait_reply.
+      */
+      --state->nowait_count;
+      command_state_reset(state, 0, 0, parse_nowait_reply);
     }
 
   return process_commands(c);

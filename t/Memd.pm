@@ -7,7 +7,7 @@ use strict;
 use Cache::Memcached::Fast;
 
 
-our (@addr, $memd, $version_str, $version_num);
+our (@addr, %params, $memd, $version_str, $version_num);
 
 
 BEGIN {
@@ -16,7 +16,7 @@ BEGIN {
     @addr = ( { address => 'localhost:11211', weight => 1.5 },
               '127.0.0.1:11211' );
 
-    $memd = Cache::Memcached::Fast->new({
+    %params = (
         servers => [ @addr ],
         namespace => "Cache::Memcached::Fast/$$/",
         connect_timeout => 5,
@@ -28,7 +28,9 @@ BEGIN {
         failure_timeout => 2,
         ketama_points => 150,
         nowait => 1,
-    });
+    );
+
+    $memd = Cache::Memcached::Fast->new(\%params);
 
     # Test what server version we have.  server_versions() is
     # currently undocumented.  We know that all servers are the same,

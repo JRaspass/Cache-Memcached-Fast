@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
   This library is free software; you can redistribute it and/or modify
   it under the same terms as Perl itself, either Perl version 5.8.8
@@ -567,6 +567,14 @@ flush_all(memd, ...)
         RETVAL = (res == MEMCACHED_SUCCESS);
     OUTPUT:
         RETVAL
+
+
+void
+nowait_push(memd)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $
+    CODE:
+        client_nowait_push(memd);
 
 
 AV *

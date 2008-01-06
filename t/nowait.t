@@ -8,14 +8,16 @@ use FindBin;
 use lib "$FindBin::Bin";
 use Memd;
 
-use constant count => 1000;
-
 if ($Memd::memd) {
-    plan tests => 3;
+    plan tests => 5;
 } else {
     plan skip_all => 'Not connected';
 }
 
+
+use constant count => 1000;
+
+my $another_memd = new Cache::Memcached::Fast(\%Memd::params);
 
 my @keys = map { "nowait-$_" } (1..count);
 
@@ -32,6 +34,12 @@ while (my ($k, $v) = each %$res) {
 }
 is($count, count, 'Match results');
 
+is($another_memd->get($keys[$#keys]), $keys[$#keys]);
+
 foreach my $k (@keys) {
     $Memd::memd->delete($k);
 }
+
+$Memd::memd->nowait_push;
+
+ok(not $another_memd->get($keys[$#keys]));

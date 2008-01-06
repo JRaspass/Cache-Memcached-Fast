@@ -849,6 +849,32 @@ sub flush_all {
 }
 
 
+=item C<nowait_push>
+
+  $memd->nowait_push;
+
+Push all pending requests to the server(s), and wait for all replies.
+When L</nowait> mode is enabled, the requests issued in a void context
+may not reach the server(s) immediately (because the reply is not
+waited for).  Instead they may stay in the send queue on the local
+host, or in the receive queue on the remote host(s), for quite a long
+time.  This method ensures that they are delivered to the server(s),
+processed there, and the replies have arrived (or some error has
+happened that caused some connection(s) to be closed).
+
+Destructor will call this method to ensure that all requests are
+processed before the connection is closed.
+
+I<Return:> nothing.
+
+=cut
+
+sub nowait_push {
+    my Cache::Memcached::Fast $self = shift;
+    $self->{_xs}->nowait_push;
+}
+
+
 # AOUTOLOAD is used for commands that are not yet official and
 # documented.
 sub AUTOLOAD {
@@ -1049,7 +1075,7 @@ There's B<NONE>, neither explicit nor implied.  But you knew it already
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.8 or,

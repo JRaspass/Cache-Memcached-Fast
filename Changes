@@ -14,6 +14,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Without flush_all it's possible to execute in parallel more
         than one 'make test'.
 
+        New method nowait_push, call it on destroy.
+
 
 0.06  2007-12-20
         - this release fixes a serious bug and features the 'nowait'

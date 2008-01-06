@@ -46,4 +46,4 @@ For 0.07:
 
 - In find_bin() replace binary search with interpolation search.
 
-- On destroy push pending requests in nowait mode!!!
+- Improve server_versions command.

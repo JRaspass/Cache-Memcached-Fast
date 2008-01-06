@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -168,6 +168,10 @@ client_delete(struct client *c, const char *key, size_t key_len,
 extern
 int
 client_flush_all(struct client *c, delay_type delay, int noreply);
+
+extern
+int
+client_nowait_push(struct client *c);
 
 extern
 int
