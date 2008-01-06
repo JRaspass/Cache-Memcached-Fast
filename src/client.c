@@ -22,6 +22,7 @@
 */
 
 #include "client.h"
+#include "array.h"
 #include "connect.h"
 #include "parse_keyword.h"
 #include "dispatch_key.h"
@@ -283,9 +284,7 @@ struct key_node
 
 struct client
 {
-  struct server *servers;
-  int server_count;
-  int server_capacity;
+  struct array servers;
 
   struct dispatch_state dispatch;
 
@@ -300,9 +299,7 @@ struct client
   int close_on_error;
   int nowait;
 
-  struct key_node *key_list;
-  int key_list_count;
-  int key_list_capacity;
+  struct array key_list;
 
   generation_type generation;
 };
@@ -356,7 +353,9 @@ static inline
 int
 get_key_index(struct command_state *state)
 {
-  return state->client->key_list[state->key_head].key;
+  struct key_node *node =
+    array_elem(state->client->key_list, struct key_node, state->key_head);
+  return node->key;
 }
 
 
@@ -364,7 +363,9 @@ static inline
 void
 next_key_index(struct command_state *state)
 {
-  state->key_head = state->client->key_list[state->key_head].next;
+  struct key_node *node =
+    array_elem(state->client->key_list, struct key_node, state->key_head);
+  state->key_head = node->next;
 }
 
 
@@ -375,8 +376,8 @@ client_init()
   if (! c)
     return NULL;
 
-  c->servers = NULL;
-  c->server_count = c->server_capacity = 0;
+  array_init(&c->servers);
+  array_init(&c->key_list);
 
   dispatch_init(&c->dispatch);
 
@@ -391,9 +392,6 @@ client_init()
   c->close_on_error = 1;
   c->nowait = 0;
 
-  c->key_list = NULL;
-  c->key_list_count = c->key_list_capacity = 0;
-
   c->generation = 1;            /* Different from initial command state.  */
 
   return c;
@@ -403,18 +401,21 @@ client_init()
 void
 client_destroy(struct client *c)
 {
+  struct server *s;
   int i;
 
   client_nowait_push(c);
 
-  for (i = 0; i < c->server_count; ++i)
-    server_destroy(&c->servers[i]);
+  for (s = array_beg(c->servers, struct server);
+       s != array_end(c->servers, struct server);
+       ++s)
+    server_destroy(s);
 
   dispatch_destroy(&c->dispatch);
 
-  free(c->servers);
+  array_destroy(&c->servers);
+  array_destroy(&c->key_list);
   free(c->prefix);
-  free(c->key_list);
   free(c);
 }
 
@@ -423,7 +424,7 @@ int
 client_set_ketama_points(struct client *c, int ketama_points)
 {
   /* Should be called before we added any server.  */
-  if (c->server_count > 0 || ketama_points < 0)
+  if (! array_empty(c->servers) || ketama_points < 0)
     return MEMCACHED_FAILURE;
 
   dispatch_set_ketama_points(&c->dispatch, ketama_points);
@@ -484,30 +485,20 @@ client_add_server(struct client *c, const char *host, size_t host_len,
   if (weight <= 0.0)
     return MEMCACHED_FAILURE;
 
-  if (c->server_count == c->server_capacity)
-    {
-      int capacity = (c->server_capacity > 0 ? c->server_capacity + 1 : 1);
-      struct server *s =
-        (struct server *) realloc(c->servers,
-                                  capacity * sizeof(struct server));
-      if (! s)
-        return MEMCACHED_FAILURE;
+  if (array_extend(c->servers, struct server, 1, ARRAY_EXTEND_EXACT) == -1)
+    return MEMCACHED_FAILURE;
 
-      c->servers = s;
-      c->server_capacity = capacity;
-    }
-
-  res = server_init(&c->servers[c->server_count], c,
+  res = server_init(array_end(c->servers, struct server), c,
                     host, host_len, port, port_len, noreply);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
   res = dispatch_add_server(&c->dispatch, host, host_len, port, port_len,
-                            weight, c->server_count);
+                            weight, array_size(c->servers));
   if (res == -1)
     return MEMCACHED_FAILURE;
 
-  ++c->server_count;
+  array_push(c->servers);
 
   return MEMCACHED_SUCCESS;
 }
@@ -1259,12 +1250,8 @@ process_reply(struct command_state *state)
 
 static
 void
-client_mark_failed(struct client *c, int server_index)
+client_mark_failed(struct client *c, struct server *s)
 {
-  struct server *s;
-
-  s = &c->servers[server_index];
-
   if (s->cmd_state.fd != -1)
     {
       close(s->cmd_state.fd);
@@ -1317,13 +1304,16 @@ process_commands(struct client *c)
 
   while (1)
     {
-      int max_fd, i, res;
+      struct server *s;
+      int max_fd, res;
 
       max_fd = -1;
-      for (i = 0; i < c->server_count; ++i)
+      for (s = array_beg(c->servers, struct server);
+           s != array_end(c->servers, struct server);
+           ++s)
         {
           int may_write, may_read;
-          struct command_state *state = &c->servers[i].cmd_state;
+          struct command_state *state = &s->cmd_state;
 
           if (! is_active(state))
             continue;
@@ -1389,7 +1379,7 @@ process_commands(struct client *c)
                 case MEMCACHED_UNKNOWN:
                 case MEMCACHED_CLOSED:
                   deactivate(state);
-                  client_mark_failed(c, i);
+                  client_mark_failed(c, s);
                   break;
                 }
 
@@ -1411,9 +1401,11 @@ process_commands(struct client *c)
 
       FD_ZERO(&write_set);
       FD_ZERO(&read_set);
-      for (i = 0; i < c->server_count; ++i)
+      for (s = array_beg(c->servers, struct server);
+           s != array_end(c->servers, struct server);
+           ++s)
         {
-          struct command_state *state = &c->servers[i].cmd_state;
+          struct command_state *state = &s->cmd_state;
 
           if (is_active(state))
             {
@@ -1446,9 +1438,11 @@ process_commands(struct client *c)
       */
       if (res <= 0)
         {
-          for (i = 0; i < c->server_count; ++i)
+          for (s = array_beg(c->servers, struct server);
+               s != array_end(c->servers, struct server);
+               ++s)
             {
-              struct command_state *state = &c->servers[i].cmd_state;
+              struct command_state *state = &s->cmd_state;
 
               if (is_active(state))
                 {
@@ -1459,7 +1453,7 @@ process_commands(struct client *c)
                   if (state->phase == PHASE_VALUE)
                     state->u.value.object->free(state->u.value.opaque);
 
-                  client_mark_failed(c, i);
+                  client_mark_failed(c, s);
                 }
             }
 
@@ -1483,12 +1477,9 @@ process_commands(struct client *c)
 
 static
 int
-get_server_fd(struct client *c, int index)
+get_server_fd(struct client *c, struct server *s)
 {
-  struct server *s;
   struct command_state *state;
-
-  s = &c->servers[index];
 
   /*
     Do not try to try reconnect if had max_failures and
@@ -1517,27 +1508,30 @@ get_server_fd(struct client *c, int index)
     }
 
   if (state->fd == -1)
-    client_mark_failed(c, index);
+    client_mark_failed(c, s);
 
   return state->fd;
 }
 
 
 static
-int
-client_get_server_index(struct client *c, const char *key, size_t key_len)
+struct server *
+client_get_server(struct client *c, const char *key, size_t key_len)
 {
+  struct server *s;
   int index, fd;
 
   index = dispatch_key(&c->dispatch, key, key_len);
   if (index == -1)
-    return -1;
+    return NULL;
 
-  fd = get_server_fd(c, index);
+  s = array_elem(c->servers, struct server, index);
+
+  fd = get_server_fd(c, s);
   if (fd == -1)
-    return -1;
+    return NULL;
 
-  return index;
+  return s;
 }
 
 
@@ -1580,31 +1574,22 @@ push_key(struct command_state *state, int key_index)
   struct client *c;
 
   c = state->client;
-  if (c->key_list_count == c->key_list_capacity)
-    {
-      int capacity = (c->key_list_capacity > 0 ? c->key_list_capacity * 2 : 1);
-      struct key_node *list =
-        (struct key_node *) realloc(c->key_list,
-                                    sizeof(struct key_node) * capacity);
-      if (! list)
-        return MEMCACHED_FAILURE;
-
-      c->key_list = list;
-      c->key_list_capacity = capacity;
-    }
+  if (array_extend(c->key_list, struct key_node, 1, ARRAY_EXTEND_TWICE) == -1)
+    return MEMCACHED_FAILURE;
 
   if (state->key_tail != -1)
-    c->key_list[state->key_tail].next = c->key_list_count;
+    array_elem(c->key_list, struct key_node, state->key_tail)->next =
+      array_size(c->key_list);
   else
-    state->key_head = c->key_list_count;
+    state->key_head = array_size(c->key_list);
 
-  state->key_tail = c->key_list_count;
+  state->key_tail = array_size(c->key_list);
 
-  node = &c->key_list[state->key_tail];
+  node = array_elem(c->key_list, struct key_node, state->key_tail);
   node->key = key_index;
   node->next = -1;
 
-  ++c->key_list_count;
+  array_push(c->key_list);
 
   return MEMCACHED_SUCCESS;
 }
@@ -1614,7 +1599,7 @@ static inline
 void
 client_reset_for_command(struct client *c)
 {
-  c->key_list_count = 0;
+  array_clear(c->key_list);
   ++c->generation;
 }
 
@@ -1634,18 +1619,19 @@ client_set(struct client *c, enum set_cmd_e cmd,
     (sizeof(struct iovec) * (c->prefix_len ? 6 : 5)
      + sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
               " " NOREPLY "\r\n"));
+  struct server *s;
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
-  int server_index, res;
+  int res;
 
   client_reset_for_command(c);
 
-  server_index = client_get_server_index(c, key, key_len);
-  if (server_index == -1)
+  s = client_get_server(c, key, key_len);
+  if (! s)
     return MEMCACHED_CLOSED;
 
-  state = &c->servers[server_index].cmd_state;
+  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply || use_nowait ? NULL : parse_set_reply));
@@ -1711,18 +1697,19 @@ client_cas(struct client *c, const char *key, size_t key_len,
     (sizeof(struct iovec) * (c->prefix_len ? 6 : 5)
      + sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
               " " CAS_STUB " " NOREPLY "\r\n"));
+  struct server *s;
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
-  int server_index, res;
+  int res;
 
   client_reset_for_command(c);
 
-  server_index = client_get_server_index(c, key, key_len);
-  if (server_index == -1)
+  s = client_get_server(c, key, key_len);
+  if (! s)
     return MEMCACHED_CLOSED;
 
-  state = &c->servers[server_index].cmd_state;
+  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply || use_nowait ? NULL : parse_set_reply));
@@ -1761,16 +1748,17 @@ client_get(struct client *c, enum get_cmd_e cmd,
            const char *key, size_t key_len, struct value_object *o)
 {
   size_t request_size = (sizeof(struct iovec) * (c->prefix_len ? 4 : 3));
+  struct server *s;
   struct command_state *state;
-  int server_index, res;
+  int res;
 
   client_reset_for_command(c);
 
-  server_index = client_get_server_index(c, key, key_len);
-  if (server_index == -1)
+  s = client_get_server(c, key, key_len);
+  if (! s)
     return MEMCACHED_CLOSED;
 
-  state = &c->servers[server_index].cmd_state;
+  state = &s->cmd_state;
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1, parse_get_reply);
   value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
@@ -1808,6 +1796,7 @@ client_mget(struct client *c, enum get_cmd_e cmd,
 {
   size_t min_request_size =
     (sizeof(struct iovec) * ((c->prefix_len ? 3 : 2) + 2));
+  struct server *s;
   struct command_state *state;
   int i;
 
@@ -1818,15 +1807,15 @@ client_mget(struct client *c, enum get_cmd_e cmd,
       char *key;
       size_t key_len;
       size_t size;
-      int server_index, res;
+      int res;
 
       key = get_key(o->arg, i, &key_len);
 
-      server_index = client_get_server_index(c, key, key_len);
-      if (server_index == -1)
+      s = client_get_server(c, key, key_len);
+      if (! s)
         continue;
 
-      state = &c->servers[server_index].cmd_state;
+      state = &s->cmd_state;
 
       if (is_active(state))
         size = (sizeof(struct iovec)
@@ -1872,9 +1861,11 @@ client_mget(struct client *c, enum get_cmd_e cmd,
         }
     }
 
-  for (i = 0; i < c->server_count; ++i)
+  for (s = array_beg(c->servers, struct server);
+       s != array_end(c->servers, struct server);
+       ++s)
     {
-      state = &c->servers[i].cmd_state;
+      state = &s->cmd_state;
 
       if (is_active(state))
         {
@@ -1897,18 +1888,19 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
      + sizeof(" " ARITH_STUB " " NOREPLY "\r\n"));
+  struct server *s;
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
-  int server_index, res;
+  int res;
 
   client_reset_for_command(c);
 
-  server_index = client_get_server_index(c, key, key_len);
-  if (server_index == -1)
+  s = client_get_server(c, key, key_len);
+  if (! s)
     return MEMCACHED_CLOSED;
 
-  state = &c->servers[server_index].cmd_state;
+  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply || use_nowait ? NULL : parse_arith_reply));
@@ -1957,18 +1949,19 @@ client_delete(struct client *c, const char *key, size_t key_len,
   size_t request_size =
     (sizeof(struct iovec) * (c->prefix_len ? 4 : 3)
      + sizeof(" " DELAY_STUB " " NOREPLY "\r\n"));
+  struct server *s;
   struct command_state *state;
   struct iovec *buf_iov;
   char *buf;
-  int server_index, res;
+  int res;
 
   client_reset_for_command(c);
 
-  server_index = client_get_server_index(c, key, key_len);
-  if (server_index == -1)
+  s = client_get_server(c, key, key_len);
+  if (! s)
     return MEMCACHED_CLOSED;
 
-  state = &c->servers[server_index].cmd_state;
+  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, (c->prefix_len ? 2 : 1), 1,
                       (use_noreply || use_nowait ? NULL : parse_delete_reply));
@@ -2004,16 +1997,19 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
   static const size_t request_size =
     (sizeof(struct iovec) * 1
      + sizeof("flush_all " DELAY_STUB " " NOREPLY "\r\n"));
+  struct server *s;
   double ddelay = delay, delay_step = 0.0;
   int i;
 
   client_reset_for_command(c);
 
-  if (c->server_count > 1)
-    delay_step = ddelay / (c->server_count - 1);
+  if (array_size(c->servers) > 1)
+    delay_step = ddelay / (array_size(c->servers) - 1);
   ddelay += delay_step;
 
-  for (i = 0; i < c->server_count; ++i)
+  for (s = array_beg(c->servers, struct server);
+       s != array_end(c->servers, struct server);
+       ++s)
     {
       int use_noreply;
       struct command_state *state;
@@ -2023,11 +2019,11 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
       ddelay -= delay_step;
 
-      fd = get_server_fd(c, i);
+      fd = get_server_fd(c, s);
       if (fd == -1)
         continue;
 
-      state = &c->servers[i].cmd_state;
+      state = &s->cmd_state;
       use_noreply = (noreply && state->noreply);
       command_state_reset(state, 0, 0,
                           (use_noreply || use_nowait ? NULL : parse_ok_reply));
@@ -2055,6 +2051,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 int
 client_nowait_push(struct client *c)
 {
+  struct server *s;
   int i;
 
   if (! c->nowait)
@@ -2062,16 +2059,18 @@ client_nowait_push(struct client *c)
 
   client_reset_for_command(c);
 
-  for (i = 0; i < c->server_count; ++i)
+  for (s = array_beg(c->servers, struct server);
+       s != array_end(c->servers, struct server);
+       ++s)
     {
       struct command_state *state;
       int fd, res;
 
-      state = &c->servers[i].cmd_state;
+      state = &s->cmd_state;
       if (state->nowait_count == 0)
         continue;
 
-      fd = get_server_fd(c, i);
+      fd = get_server_fd(c, s);
       if (fd == -1)
         continue;
 
@@ -2091,20 +2090,23 @@ int
 client_server_versions(struct client *c, struct value_object *o)
 {
   static const size_t request_size = (sizeof(struct iovec) * 1);
+  struct server *s;
   int i;
 
   client_reset_for_command(c);
 
-  for (i = 0; i < c->server_count; ++i)
+  for (s = array_beg(c->servers, struct server);
+       s != array_end(c->servers, struct server);
+       ++s)
     {
       struct command_state *state;
       int fd, res;
 
-      fd = get_server_fd(c, i);
+      fd = get_server_fd(c, s);
       if (fd == -1)
         continue;
 
-      state = &c->servers[i].cmd_state;
+      state = &s->cmd_state;
       command_state_reset(state, 0, 0, parse_version_reply);
       embedded_state_reset(&state->u.embedded, o);
 

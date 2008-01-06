@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2008 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -21,43 +21,43 @@
   Lesser General Public License for more details.
 */
 
-#ifndef DISPATCH_KEY_H
-#define DISPATCH_KEY_H 1
-
 #include "array.h"
-#include <stddef.h>
+#include <stdlib.h>
 
 
-struct dispatch_state
+void
+array_init(struct array *a)
 {
-  struct array bins;
-  double total_weight;
-  int ketama_points;
-};
+  a->buf = NULL;
+  a->capacity = a->elems = 0;
+}
 
 
-extern
 void
-dispatch_init(struct dispatch_state *state);
+array_destroy(struct array *a)
+{
+  free(a->buf);
+}
 
-extern
-void
-dispatch_destroy(struct dispatch_state *state);
 
-extern
-void
-dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points);
-
-extern
 int
-dispatch_add_server(struct dispatch_state *state,
-                    const char *host, size_t host_len,
-                    const char *port, size_t port_len,
-                    double weight, int index);
+array_resize(struct array *a, int elem_size, int elems,
+             enum e_array_extend extend)
+{
+  void *buf;
 
-extern
-int
-dispatch_key(struct dispatch_state *state, const char *key, size_t key_len);
+  if (elems <= a->capacity)
+    return 0;
 
+  if (extend == ARRAY_EXTEND_TWICE && elems < a->capacity * 2)
+    elems = a->capacity * 2;
 
-#endif /* ! DISPATCH_KEY_H */
+  buf = realloc(a->buf, elem_size * elems);
+  if (! buf)
+    return -1;
+
+  a->buf = buf;
+  a->capacity = elems;
+
+  return 0;
+}

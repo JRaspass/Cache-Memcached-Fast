@@ -23,6 +23,8 @@ src/Makefile.PL
 src/gencrc32.pl
 src/genparser.pl
 src/reply.kw
+src/array.h
+src/array.c
 src/client.h
 src/client.c
 src/connect.h

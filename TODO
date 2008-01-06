@@ -20,6 +20,12 @@
 
 - UDP (?).
 
+- Investigate why there are read() errors in no_eagain branch.
+
+- In find_bin() replace binary search with interpolation search.
+
+- Add test for noreply, do not list it in MANIFEST.
+
 
 For 0.07:
 
@@ -28,13 +34,9 @@ For 0.07:
 - Document how to inherit from C::M::F for Custom Serialization for
   instance.
 
-- Add test for noreply, do not list it in MANIFEST.
-
 - Clean warnings for gcc 4.2.2.
 
 - Fix all ugliness introduced in 0.06 ;).
-
-- Investigate why there are read() errors in no_eagain branch.
 
 - Replace av_push() with av_store(), test result.
 
@@ -43,7 +45,5 @@ For 0.07:
 - Describe how to report a bug (-vv, -g).
 
 - Rename bins to buckets.
-
-- In find_bin() replace binary search with interpolation search.
 
 - Improve server_versions command.
