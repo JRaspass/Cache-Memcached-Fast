@@ -69,5 +69,8 @@ array_resize(struct array *a, int elem_size, int elems,
 
 #define array_end(array, type)  ((type *) (array).buf + (array).elems)
 
+#define array_each(array, type, p)                                      \
+  (p) = array_beg(array, type); (p) != array_end(array, type); ++(p)
+
 
 #endif /* ! ARRAY_H */

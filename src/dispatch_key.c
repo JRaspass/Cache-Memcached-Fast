@@ -92,11 +92,10 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
 
   state->total_weight += weight;
   scale = (1 - weight / state->total_weight);
-  for (p = array_beg(state->bins, struct continuum_point);
-       p != array_end(state->bins, struct continuum_point);
-       ++p)
+  for (array_each(state->bins, struct continuum_point, p))
     p->point = ((double) p->point * scale + 0.5);
 
+  /* Here p points to array_end().  */
   p->point = DISPATCH_MAX_POINT;
   p->index = index;
   array_push(state->bins);

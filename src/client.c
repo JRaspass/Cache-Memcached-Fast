@@ -406,9 +406,7 @@ client_destroy(struct client *c)
 
   client_nowait_push(c);
 
-  for (s = array_beg(c->servers, struct server);
-       s != array_end(c->servers, struct server);
-       ++s)
+  for (array_each(c->servers, struct server, s))
     server_destroy(s);
 
   dispatch_destroy(&c->dispatch);
@@ -1308,9 +1306,7 @@ process_commands(struct client *c)
       int max_fd, res;
 
       max_fd = -1;
-      for (s = array_beg(c->servers, struct server);
-           s != array_end(c->servers, struct server);
-           ++s)
+      for (array_each(c->servers, struct server, s))
         {
           int may_write, may_read;
           struct command_state *state = &s->cmd_state;
@@ -1401,9 +1397,7 @@ process_commands(struct client *c)
 
       FD_ZERO(&write_set);
       FD_ZERO(&read_set);
-      for (s = array_beg(c->servers, struct server);
-           s != array_end(c->servers, struct server);
-           ++s)
+      for (array_each(c->servers, struct server, s))
         {
           struct command_state *state = &s->cmd_state;
 
@@ -1438,9 +1432,7 @@ process_commands(struct client *c)
       */
       if (res <= 0)
         {
-          for (s = array_beg(c->servers, struct server);
-               s != array_end(c->servers, struct server);
-               ++s)
+          for (array_each(c->servers, struct server, s))
             {
               struct command_state *state = &s->cmd_state;
 
@@ -1861,9 +1853,7 @@ client_mget(struct client *c, enum get_cmd_e cmd,
         }
     }
 
-  for (s = array_beg(c->servers, struct server);
-       s != array_end(c->servers, struct server);
-       ++s)
+  for (array_each(c->servers, struct server, s))
     {
       state = &s->cmd_state;
 
@@ -2007,9 +1997,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
     delay_step = ddelay / (array_size(c->servers) - 1);
   ddelay += delay_step;
 
-  for (s = array_beg(c->servers, struct server);
-       s != array_end(c->servers, struct server);
-       ++s)
+  for (array_each(c->servers, struct server, s))
     {
       int use_noreply;
       struct command_state *state;
@@ -2059,9 +2047,7 @@ client_nowait_push(struct client *c)
 
   client_reset_for_command(c);
 
-  for (s = array_beg(c->servers, struct server);
-       s != array_end(c->servers, struct server);
-       ++s)
+  for (array_each(c->servers, struct server, s))
     {
       struct command_state *state;
       int fd, res;
@@ -2095,9 +2081,7 @@ client_server_versions(struct client *c, struct value_object *o)
 
   client_reset_for_command(c);
 
-  for (s = array_beg(c->servers, struct server);
-       s != array_end(c->servers, struct server);
-       ++s)
+  for (array_each(c->servers, struct server, s))
     {
       struct command_state *state;
       int fd, res;
