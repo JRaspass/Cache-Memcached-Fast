@@ -57,6 +57,8 @@ array_resize(struct array *a, int elem_size, int elems,
 
 #define array_push(array)  ++(array).elems
 
+#define array_append(array, add)  (array).elems += add
+
 #define array_size(array)  ((array).elems)
 
 #define array_empty(array)  ((array).elems == 0)
