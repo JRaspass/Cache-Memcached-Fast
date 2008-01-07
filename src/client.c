@@ -305,10 +305,9 @@ struct client
 
 static inline
 void
-command_state_reset(struct command_state *state,
-                    int key_count, parse_reply_func parse_reply)
+command_state_reset(struct command_state *state, parse_reply_func parse_reply)
 {
-  state->key_count = key_count;
+  state->key_count = 1;
   state->parse_reply = parse_reply;
 
   state->phase = PHASE_INIT;
@@ -1622,7 +1621,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
 
   state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
-  command_state_reset(state, 1,
+  command_state_reset(state,
                       (use_noreply || use_nowait ? NULL : parse_set_reply));
 
   res = iov_buf_extend(state, request_size);
@@ -1699,7 +1698,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
 
   state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
-  command_state_reset(state, 1,
+  command_state_reset(state,
                       (use_noreply || use_nowait ? NULL : parse_set_reply));
 
   res = iov_buf_extend(state, request_size);
@@ -1746,7 +1745,7 @@ client_get(struct client *c, enum get_cmd_e cmd,
     return MEMCACHED_CLOSED;
 
   state = &s->cmd_state;
-  command_state_reset(state, 1, parse_get_reply);
+  command_state_reset(state, parse_get_reply);
   value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
   res = iov_buf_extend(state, request_size);
@@ -1818,7 +1817,7 @@ client_mget(struct client *c, enum get_cmd_e cmd,
 
       if (! is_active(state))
         {
-          command_state_reset(state, 0,
+          command_state_reset(state,
                               parse_get_reply);
           value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
@@ -1884,7 +1883,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
 
   state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
-  command_state_reset(state, 1,
+  command_state_reset(state,
                       (use_noreply || use_nowait ? NULL : parse_arith_reply));
   arith_state_reset(&state->u.arith, result);
 
@@ -1944,7 +1943,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
 
   state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
-  command_state_reset(state, 1,
+  command_state_reset(state,
                       (use_noreply || use_nowait ? NULL : parse_delete_reply));
 
   res = iov_buf_extend(state, request_size);
@@ -2003,7 +2002,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
       state = &s->cmd_state;
       use_noreply = (noreply && state->noreply);
-      command_state_reset(state, 0,
+      command_state_reset(state,
                           (use_noreply || use_nowait ? NULL : parse_ok_reply));
 
       res = iov_buf_extend(state, request_size);
@@ -2055,7 +2054,7 @@ client_nowait_push(struct client *c)
         nowait_count, and set parse function to parse_nowait_reply.
       */
       --state->nowait_count;
-      command_state_reset(state, 0, parse_nowait_reply);
+      command_state_reset(state, parse_nowait_reply);
     }
 
   return process_commands(c);
@@ -2081,7 +2080,7 @@ client_server_versions(struct client *c, struct value_object *o)
         continue;
 
       state = &s->cmd_state;
-      command_state_reset(state, 0, parse_version_reply);
+      command_state_reset(state, parse_version_reply);
       embedded_state_reset(&state->u.embedded, o);
 
       res = iov_buf_extend(state, request_size);
