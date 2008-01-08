@@ -162,9 +162,9 @@ struct command_state
   int write_offset;
   struct iovec *key;
   int key_count;
-  int key_index;
-  int key_head;
-  int key_tail;
+  int index;
+  int index_head;
+  int index_tail;
 
   parse_reply_func parse_reply;
 
@@ -272,9 +272,9 @@ server_destroy(struct server *s)
 }
 
 
-struct key_node
+struct index_node
 {
-  int key;
+  int index;
   int next;
 };
 
@@ -295,7 +295,7 @@ struct client
   int close_on_error;
   int nowait;
 
-  struct array key_list;
+  struct array index_list;
   struct array str_buf;
 
   generation_type generation;
@@ -319,12 +319,12 @@ command_state_reset(struct command_state *state, int str_step,
     ++state->nowait_count;
 
   state->write_offset = 0;
-  state->key_head = state->key_tail = -1;
+  state->index_head = state->index_tail = -1;
   state->generation = state->client->generation;
 
 #if 0 /* No need to initialize the following.  */
   state->key = NULL;
-  state->key_index = 0;
+  state->index = 0;
   state->match = NO_MATCH;
   state->iov_count = 0;
   state->iov = NULL;
@@ -350,21 +350,21 @@ deactivate(struct command_state *state)
 
 static inline
 int
-get_key_index(struct command_state *state)
+get_index(struct command_state *state)
 {
-  struct key_node *node =
-    array_elem(state->client->key_list, struct key_node, state->key_head);
-  return node->key;
+  struct index_node *node = array_elem(state->client->index_list,
+                                       struct index_node, state->index_head);
+  return node->index;
 }
 
 
 static inline
 void
-next_key_index(struct command_state *state)
+next_index(struct command_state *state)
 {
-  struct key_node *node =
-    array_elem(state->client->key_list, struct key_node, state->key_head);
-  state->key_head = node->next;
+  struct index_node *node = array_elem(state->client->index_list,
+                                       struct index_node, state->index_head);
+  state->index_head = node->next;
 }
 
 
@@ -376,7 +376,7 @@ client_init()
     return NULL;
 
   array_init(&c->servers);
-  array_init(&c->key_list);
+  array_init(&c->index_list);
   array_init(&c->str_buf);
 
   dispatch_init(&c->dispatch);
@@ -410,7 +410,7 @@ client_destroy(struct client *c)
   dispatch_destroy(&c->dispatch);
 
   array_destroy(&c->servers);
-  array_destroy(&c->key_list);
+  array_destroy(&c->index_list);
   array_destroy(&c->str_buf);
 
   if (c->prefix_len > 1)
@@ -638,7 +638,7 @@ parse_key(struct command_state *state)
       */
       do
         {
-          next_key_index(state);
+          next_index(state);
           state->key += 2;
         }
       while (--state->key_count > 1
@@ -657,8 +657,8 @@ parse_key(struct command_state *state)
 
   --state->key_count;
   state->key += 2;
-  state->key_index = get_key_index(state);
-  next_key_index(state);
+  state->index = get_index(state);
+  next_index(state);
 
   return MEMCACHED_SUCCESS;
 }
@@ -740,7 +740,7 @@ read_value(struct command_state *state)
 
   state->u.value.object->store(state->u.value.object->arg,
                                state->u.value.opaque,
-                               state->key_index, state->u.value.flags,
+                               state->index, state->u.value.flags,
                                state->u.value.use_cas, state->u.value.cas);
 
   return MEMCACHED_SUCCESS;
@@ -1606,28 +1606,29 @@ iov_push(struct command_state *state, void *buf, size_t buf_size)
 
 static
 int
-push_key(struct command_state *state, int key_index)
+push_index(struct command_state *state, int index)
 {
-  struct key_node *node;
+  struct index_node *node;
   struct client *c;
 
   c = state->client;
-  if (array_extend(c->key_list, struct key_node, 1, ARRAY_EXTEND_TWICE) == -1)
+  if (array_extend(c->index_list, struct index_node,
+                   1, ARRAY_EXTEND_TWICE) == -1)
     return MEMCACHED_FAILURE;
 
-  if (state->key_tail != -1)
-    array_elem(c->key_list, struct key_node, state->key_tail)->next =
-      array_size(c->key_list);
+  if (state->index_tail != -1)
+    array_elem(c->index_list, struct index_node, state->index_tail)->next =
+      array_size(c->index_list);
   else
-    state->key_head = array_size(c->key_list);
+    state->index_head = array_size(c->index_list);
 
-  state->key_tail = array_size(c->key_list);
+  state->index_tail = array_size(c->index_list);
 
-  node = array_elem(c->key_list, struct key_node, state->key_tail);
-  node->key = key_index;
+  node = array_elem(c->index_list, struct index_node, state->index_tail);
+  node->index = index;
   node->next = -1;
 
-  array_push(c->key_list);
+  array_push(c->index_list);
 
   return MEMCACHED_SUCCESS;
 }
@@ -1637,7 +1638,7 @@ static inline
 void
 client_reset(struct client *c)
 {
-  array_clear(c->key_list);
+  array_clear(c->index_list);
   array_clear(c->str_buf);
 
   ++c->generation;
@@ -1693,7 +1694,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
 
-  res = push_key(state, 0);
+  res = push_index(state, 0);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
@@ -1738,7 +1739,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
 
-  res = push_key(state, 0);
+  res = push_index(state, 0);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
@@ -1789,7 +1790,7 @@ client_get(struct client *c, enum get_cmd_e cmd,
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
 
-  res = push_key(state, 0);
+  res = push_index(state, 0);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
@@ -1843,7 +1844,7 @@ client_mget(struct client *c, enum get_cmd_e cmd,
       iov_push(state, c->prefix, c->prefix_len);
       iov_push(state, (void *) key, key_len);
 
-      res = push_key(state, i);
+      res = push_index(state, i);
       if (res != MEMCACHED_SUCCESS)
         {
           deactivate(state);
@@ -1900,7 +1901,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
 
-  res = push_key(state, 0);
+  res = push_index(state, 0);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
@@ -1938,7 +1939,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
 
-  res = push_key(state, 0);
+  res = push_index(state, 0);
   if (res != MEMCACHED_SUCCESS)
     return res;
 
