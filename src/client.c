@@ -150,6 +150,7 @@ struct command_state
 
   int phase;
   int nowait_count;
+  int command_count;
 
   char *buf;
   char *pos;
@@ -307,6 +308,7 @@ void
 command_state_reset(struct command_state *state, int str_step,
                     parse_reply_func parse_reply)
 {
+  state->command_count = 0;
   state->str_step = str_step;
   state->key_count = 1;
   state->parse_reply = parse_reply;
@@ -1229,6 +1231,12 @@ process_reply(struct command_state *state)
           /* Fall into below.  */
 
         case PHASE_DONE:
+          if (--state->command_count > 0)
+            {
+              state->phase = PHASE_RECEIVE;
+              break;
+            }
+
           if (state->pos != state->end)
             return MEMCACHED_UNKNOWN;
 
@@ -1305,7 +1313,6 @@ state_prepare(struct command_state *state)
 }
 
 
-static
 int
 client_execute(struct client *c)
 {
@@ -1640,7 +1647,6 @@ get_state(struct client *c, int index, const char *key, size_t key_len,
 }
 
 
-static inline
 void
 client_reset(struct client *c)
 {
@@ -1711,6 +1717,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
   iov_push(state, (void *) value, value_size);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
+  ++state->command_count;
+
   return client_execute(c);
 }
 
@@ -1751,26 +1759,27 @@ client_cas(struct client *c, const char *key, size_t key_len,
   iov_push(state, (void *) value, value_size);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
+  ++state->command_count;
+
   return client_execute(c);
 }
 
 
 int
-client_get(struct client *c, enum get_cmd_e cmd,
+client_get(struct client *c, enum get_cmd_e cmd, int key_index,
            const char *key, size_t key_len, struct value_object *o)
 {
   static const size_t request_size = 4;
 
   struct command_state *state;
 
-  client_reset(c);
-
-  state = get_state(c, 0, key, key_len, request_size, 0,
+  state = get_state(c, key_index, key, key_len, request_size, 0,
                     parse_get_reply, NULL);
   if (! state)
     return MEMCACHED_FAILURE;
 
-  value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
+  if (array_empty(state->iov_buf))
+    value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
   switch (cmd)
     {
@@ -1786,7 +1795,9 @@ client_get(struct client *c, enum get_cmd_e cmd,
   iov_push(state, (void *) key, key_len);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
-  return client_execute(c);
+  ++state->command_count;
+
+  return MEMCACHED_SUCCESS;
 }
 
 
@@ -1842,6 +1853,8 @@ client_mget(struct client *c, enum get_cmd_e cmd,
         {
           state->key_count = (array_size(state->iov_buf) - 1) / 2;
           iov_push(state, STR_WITH_LEN("\r\n"));
+
+          ++state->command_count;
         }
     }
 
@@ -1889,6 +1902,8 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
     array_append(c->str_buf, str_size);
   }
 
+  ++state->command_count;
+
   return client_execute(c);
 }
 
@@ -1921,6 +1936,8 @@ client_delete(struct client *c, const char *key, size_t key_len,
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
+
+  ++state->command_count;
 
   return client_execute(c);
 }
@@ -1967,6 +1984,8 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
         iov_push(state, (void *) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
+
+      ++state->command_count;
     }
 
   return client_execute(c);
@@ -2002,6 +2021,8 @@ client_nowait_push(struct client *c)
       */
       --state->nowait_count;
       command_state_reset(state, 0, parse_nowait_reply);
+
+      ++state->command_count;
     }
 
   return client_execute(c);
@@ -2035,6 +2056,8 @@ client_server_versions(struct client *c, struct value_object *o)
       embedded_state_reset(&state->u.embedded, o);
 
       iov_push(state, STR_WITH_LEN("version\r\n"));
+
+      ++state->command_count;
     }
 
   return client_execute(c);

@@ -132,6 +132,10 @@ void
 client_set_nowait(struct client *c, int enable);
 
 extern
+void
+client_reset(struct client *c);
+
+extern
 int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
@@ -146,7 +150,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
 
 extern
 int
-client_get(struct client *c, enum get_cmd_e cmd,
+client_get(struct client *c, enum get_cmd_e cmd, int key_index,
            const char *key, size_t key_len, struct value_object *o);
 
 extern
@@ -176,6 +180,10 @@ client_nowait_push(struct client *c);
 extern
 int
 client_server_versions(struct client *c, struct value_object *o);
+
+extern
+int
+client_execute(struct client *c);
 
 
 #endif /* ! CLIENT_H */

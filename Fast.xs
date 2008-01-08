@@ -445,7 +445,9 @@ get(memd, skey)
     PPCODE:
         key = SvPV(skey, key_len);
         skey_res.sv = NULL;
-        client_get(memd, ix, key, key_len, &object);
+        client_reset(memd);
+        client_get(memd, ix, 0, key, key_len, &object);
+        client_execute(memd);
         if (skey_res.sv != NULL)
           {
             dXSTARG;
