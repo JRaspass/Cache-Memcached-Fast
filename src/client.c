@@ -1537,7 +1537,43 @@ get_server_fd(struct client *c, struct server *s)
 
 static
 struct command_state *
-init_state(struct client *c, const char *key, size_t key_len)
+init_state(struct command_state *state, size_t request_size, size_t str_size,
+           parse_reply_func parse_reply, int *noreply)
+{
+  if (noreply && *noreply)
+    {
+      if (state->client->nowait || state->noreply)
+        parse_reply = NULL;
+      *noreply = state->noreply;
+    }
+
+  if (! is_active(state))
+    command_state_reset(state, (str_size > 0 ? request_size : 0), parse_reply);
+
+  if (array_extend(state->iov_buf, struct iovec,
+                   request_size, ARRAY_EXTEND_EXACT) == -1)
+    {
+      deactivate(state);
+      return NULL;
+    }
+
+  if (str_size > 0
+      && array_extend(state->client->str_buf, char,
+                      str_size, ARRAY_EXTEND_TWICE) == -1)
+    {
+      deactivate(state);
+      return NULL;
+    }
+
+  return state;
+}
+
+
+static
+struct command_state *
+get_state(struct client *c, const char *key, size_t key_len,
+          size_t request_size, size_t str_size,
+          parse_reply_func parse_reply, int *noreply)
 {
   struct server *s;
   int index, fd;
@@ -1552,7 +1588,8 @@ init_state(struct client *c, const char *key, size_t key_len)
   if (fd == -1)
     return NULL;
 
-  return &s->cmd_state;
+  return init_state(&s->cmd_state, request_size, str_size,
+                    parse_reply, noreply);
 }
 
 
@@ -1621,24 +1658,14 @@ client_set(struct client *c, enum set_cmd_e cmd,
     sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
            " " NOREPLY "\r\n");
 
-  int use_nowait = (noreply && c->nowait);
-  int use_noreply;
   struct command_state *state;
   int res;
 
   client_reset(c);
 
-  state = init_state(c, key, key_len);
+  state = get_state(c, key, key_len, request_size, str_size,
+                    parse_set_reply, &noreply);
   if (! state)
-    return MEMCACHED_CLOSED;
-
-  use_noreply = (noreply && state->noreply);
-  command_state_reset(state, request_size,
-                      (use_noreply || use_nowait ? NULL : parse_set_reply));
-
-  if (array_extend(state->iov_buf, struct iovec,
-                   request_size, ARRAY_EXTEND_EXACT) == -1
-      || array_extend(c->str_buf, char, str_size, ARRAY_EXTEND_TWICE) == -1)
     return MEMCACHED_FAILURE;
 
   switch (cmd)
@@ -1674,7 +1701,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE "%s\r\n",
-              flags, exptime, value_size, (use_noreply ? " " NOREPLY : ""));
+              flags, exptime, value_size, (noreply ? " " NOREPLY : ""));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1696,25 +1723,15 @@ client_cas(struct client *c, const char *key, size_t key_len,
     sizeof(" " FLAGS_STUB " " EXPTIME_STUB " " VALUE_SIZE_STUB
            " " CAS_STUB " " NOREPLY "\r\n");
 
-  int use_nowait = (noreply && c->nowait);
-  int use_noreply;
   struct command_state *state;
   char *buf;
   int res;
 
   client_reset(c);
 
-  state = init_state(c, key, key_len);
+  state = get_state(c, key, key_len, request_size, str_size,
+                    parse_set_reply, &noreply);
   if (! state)
-    return MEMCACHED_CLOSED;
-
-  use_noreply = (noreply && state->noreply);
-  command_state_reset(state, request_size,
-                      (use_noreply || use_nowait ? NULL : parse_set_reply));
-
-  if (array_extend(state->iov_buf, struct iovec,
-                   request_size, ARRAY_EXTEND_EXACT) == -1
-      || array_extend(c->str_buf, char, str_size, ARRAY_EXTEND_TWICE) == -1)
     return MEMCACHED_FAILURE;
 
   iov_push(state, STR_WITH_LEN("cas"));
@@ -1730,7 +1747,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
     size_t str_size =
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE
               " " FMT_CAS "%s\r\n", flags, exptime, value_size, cas,
-              (use_noreply ? " " NOREPLY : ""));
+              (noreply ? " " NOREPLY : ""));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1753,16 +1770,11 @@ client_get(struct client *c, enum get_cmd_e cmd,
 
   client_reset(c);
 
-  state = init_state(c, key, key_len);
+  state = get_state(c, key, key_len, request_size, 0, parse_get_reply, NULL);
   if (! state)
-    return MEMCACHED_CLOSED;
-
-  command_state_reset(state, 0, parse_get_reply);
-  value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
-
-  if (array_extend(state->iov_buf, struct iovec,
-                   request_size, ARRAY_EXTEND_EXACT) == -1)
     return MEMCACHED_FAILURE;
+
+  value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
   switch (cmd)
     {
@@ -1807,21 +1819,13 @@ client_mget(struct client *c, enum get_cmd_e cmd,
 
       key = get_key(o->arg, i, &key_len);
 
-      state = init_state(c, key, key_len);
+      state = get_state(c, key, key_len, request_size, 0,
+                        parse_get_reply, NULL);
       if (! state)
         continue;
 
-      if (array_extend(state->iov_buf, struct iovec,
-                       request_size, ARRAY_EXTEND_EXACT) == -1)
+      if (array_empty(state->iov_buf))
         {
-          deactivate(state);
-          continue;
-        }
-
-      if (! is_active(state))
-        {
-          command_state_reset(state, 0,
-                              parse_get_reply);
           value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
           switch (cmd)
@@ -1870,27 +1874,18 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
 
-  int use_nowait = (noreply && c->nowait);
-  int use_noreply;
   struct command_state *state;
   char *buf;
   int res;
 
   client_reset(c);
 
-  state = init_state(c, key, key_len);
+  state = get_state(c, key, key_len, request_size, str_size,
+                    parse_arith_reply, &noreply);
   if (! state)
-    return MEMCACHED_CLOSED;
-
-  use_noreply = (noreply && state->noreply);
-  command_state_reset(state, request_size,
-                      (use_noreply || use_nowait ? NULL : parse_arith_reply));
-  arith_state_reset(&state->u.arith, result);
-
-  if (array_extend(state->iov_buf, struct iovec,
-                   request_size, ARRAY_EXTEND_EXACT) == -1
-      || array_extend(c->str_buf, char, str_size, ARRAY_EXTEND_TWICE) == -1)
     return MEMCACHED_FAILURE;
+
+  arith_state_reset(&state->u.arith, result);
 
   switch (cmd)
     {
@@ -1912,8 +1907,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   {
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
-      sprintf(buf, " " FMT_ARITH "%s\r\n", arg,
-              (use_noreply ? " " NOREPLY : ""));
+      sprintf(buf, " " FMT_ARITH "%s\r\n", arg, (noreply ? " " NOREPLY : ""));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1929,25 +1923,15 @@ client_delete(struct client *c, const char *key, size_t key_len,
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
 
-  int use_nowait = (noreply && c->nowait);
-  int use_noreply;
   struct command_state *state;
   char *buf;
   int res;
 
   client_reset(c);
 
-  state = init_state(c, key, key_len);
+  state = get_state(c, key, key_len, request_size, str_size,
+                    parse_delete_reply, &noreply);
   if (! state)
-    return MEMCACHED_CLOSED;
-
-  use_noreply = (noreply && state->noreply);
-  command_state_reset(state, request_size,
-                      (use_noreply || use_nowait ? NULL : parse_delete_reply));
-
-  if (array_extend(state->iov_buf, struct iovec,
-                   request_size, ARRAY_EXTEND_EXACT) == -1
-      || array_extend(c->str_buf, char, str_size, ARRAY_EXTEND_TWICE) == -1)
     return MEMCACHED_FAILURE;
 
   iov_push(state, STR_WITH_LEN("delete"));
@@ -1962,7 +1946,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
       sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
-              (use_noreply ? " " NOREPLY : ""));
+              (noreply ? " " NOREPLY : ""));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1978,7 +1962,6 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
   static const size_t str_size =
     sizeof("flush_all " DELAY_STUB " " NOREPLY "\r\n");
 
-  int use_nowait = (noreply && c->nowait);
   struct server *s;
   double ddelay = delay, delay_step = 0.0;
   int i;
@@ -1991,7 +1974,6 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   for (array_each(c->servers, struct server, s))
     {
-      int use_noreply;
       struct command_state *state;
       char *buf;
       int fd, res;
@@ -2002,26 +1984,16 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
       if (fd == -1)
         continue;
 
-      state = &s->cmd_state;
-      use_noreply = (noreply && state->noreply);
-      command_state_reset(state, request_size,
-                          (use_noreply || use_nowait ? NULL : parse_ok_reply));
-
-      if (array_extend(state->iov_buf, struct iovec,
-                       request_size, ARRAY_EXTEND_EXACT) == -1
-          || array_extend(c->str_buf, char,
-                          str_size, ARRAY_EXTEND_TWICE) == -1)
-        {
-          deactivate(state);
-          continue;
-        }
+      state = init_state(&s->cmd_state, request_size, str_size,
+                         parse_ok_reply, &noreply);
+      if (! state)
+        continue;
 
       {
         char *buf = array_end(c->str_buf, char);
         size_t str_size =
           sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
-                  (delay_type) (ddelay + 0.5),
-                  (use_noreply ? " " NOREPLY : ""));
+                  (delay_type) (ddelay + 0.5), (noreply ? " " NOREPLY : ""));
         iov_push(state, (void *) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
@@ -2086,16 +2058,12 @@ client_server_versions(struct client *c, struct value_object *o)
       if (fd == -1)
         continue;
 
-      state = &s->cmd_state;
-      command_state_reset(state, 0, parse_version_reply);
-      embedded_state_reset(&state->u.embedded, o);
+      state = init_state(&s->cmd_state, request_size, 0,
+                         parse_version_reply, NULL);
+      if (! state)
+        continue;
 
-      if (array_extend(state->iov_buf, struct iovec,
-                       request_size, ARRAY_EXTEND_EXACT) == -1)
-        {
-          deactivate(state);
-          continue;
-        }
+      embedded_state_reset(&state->u.embedded, o);
 
       iov_push(state, STR_WITH_LEN("version\r\n"));
     }
