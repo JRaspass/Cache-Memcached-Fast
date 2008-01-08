@@ -890,6 +890,9 @@ parse_arith_reply(struct command_state *state)
   size_t len;
   int res;
 
+  state->index = get_index(state);
+  next_index(state);
+
   switch (state->match)
     {
     case MATCH_NOT_FOUND:
@@ -930,7 +933,8 @@ parse_arith_reply(struct command_state *state)
   memcpy(state->u.embedded.ptr, beg, len);
 
   state->u.embedded.object->store(state->u.embedded.object->arg,
-                                  state->u.embedded.opaque, 0, 0, 0, 0);
+                                  state->u.embedded.opaque, state->index,
+                                  0, 0, 0);
 
   /* Value may be space padded.  */
   res = swallow_eol(state, 1, 1);
@@ -964,6 +968,9 @@ parse_version_reply(struct command_state *state)
   size_t len;
   int res;
 
+  state->index = get_index(state);
+  next_index(state);
+
   switch (state->match)
     {
     default:
@@ -992,7 +999,8 @@ parse_version_reply(struct command_state *state)
   memcpy(state->u.embedded.ptr, beg, len);
 
   state->u.embedded.object->store(state->u.embedded.object->arg,
-                                  state->u.embedded.opaque, 0, 0, 0, 0);
+                                  state->u.embedded.opaque, state->index,
+                                  0, 0, 0);
 
   return MEMCACHED_SUCCESS;
 }

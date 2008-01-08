@@ -276,11 +276,11 @@ embedded_store(void *arg, void *opaque, int key_index, flags_type flags,
   SV *sv;
 
   /* Suppress warning about unused key_index, flags, use_cas and cas.  */
-  if (key_index || flags || use_cas || cas) {}
+  if (flags || use_cas || cas) {}
 
   av = (AV *) arg;
   sv = (SV *) opaque;
-  av_push(av, sv);
+  av_store(av, key_index, sv);
 }
 
 

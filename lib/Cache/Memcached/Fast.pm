@@ -143,7 +143,7 @@ BEGIN {
 
 
 use fields qw(
-    _xs
+    _xs servers
     compress_threshold compress_ratio compress_methods
 );
 
@@ -394,6 +394,16 @@ sub new {
     }
 
     $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
+
+    foreach my $addr (@{$conf->{servers}}) {
+        if (ref($addr) eq 'HASH') {
+            push @{$self->{servers}}, $addr->{address};
+        } elsif (ref($addr) eq 'ARRAY') {
+            push @{$self->{servers}}, $addr->[0];
+        } else {
+            push @{$self->{servers}}, $addr;
+        }
+    }
 
     return $self;
 }
@@ -892,6 +902,28 @@ I<Return:> nothing.
 sub nowait_push {
     my Cache::Memcached::Fast $self = shift;
     $self->{_xs}->nowait_push;
+}
+
+
+=item C<server_versions>
+
+  $memd->server_versions;
+
+Get server versions.
+
+I<Return:> reference to hash, where I<$href-E<gt>{$server}> holds
+corresponding server version.  I<$server> is either I<host:port> or
+F</path/to/unix.sock>, as described in L</servers>.
+
+=cut
+
+sub server_versions {
+    my Cache::Memcached::Fast $self = shift;
+
+    my $servers = $self->{servers};
+    my $versions = $self->{_xs}->server_versions;
+
+    return Cache::Memcached::Fast::_xs::_rvav2rvhv($servers, $versions);
 }
 
 

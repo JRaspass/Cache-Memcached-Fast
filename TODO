@@ -45,5 +45,3 @@ For 0.07:
 - Describe how to report a bug (-vv, -g).
 
 - Rename bins to buckets.
-
-- Improve server_versions command.

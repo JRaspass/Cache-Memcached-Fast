@@ -7,7 +7,7 @@ use strict;
 use Cache::Memcached::Fast;
 
 
-our (@addr, %params, $memd, $version_str, $version_num);
+our (@addr, %params, $memd, $version_str, $version_num, $error);
 
 
 BEGIN {
@@ -36,14 +36,19 @@ BEGIN {
     # currently undocumented.  We know that all servers are the same,
     # so test only the first version.
     my $version = $memd->server_versions;
-    if (@$version == @addr) {
-        if ($version->[0] =~ /(\d+)\.(\d+)\.(\d+)/) {
-            $version_str = $version->[0];
+    if (keys %$version == @addr) {
+        $version = (values %$version)[0];
+        if ($version =~ /(\d+)\.(\d+)\.(\d+)/) {
+            $version_str = $version;
             $version_num = $1 * 10000 + $2 * 100 + $3;
         } else {
-            $memd = 0;
+            $error = "Can't parse server version $version";
+            undef $memd;
         }
     } else {
+        $error = "No server is running at "
+            . join(', ', grep { not exists $version->{$_} }
+                              @{$memd->{servers}});
         undef $memd;
     }
 }
