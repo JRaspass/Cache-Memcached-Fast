@@ -275,7 +275,7 @@ embedded_store(void *arg, void *opaque, int key_index, flags_type flags,
   AV *av;
   SV *sv;
 
-  /* Suppress warning about unused key_index, flags, use_cas and cas.  */
+  /* Suppress warning about unused flags, use_cas and cas.  */
   if (flags || use_cas || cas) {}
 
   av = (AV *) arg;
