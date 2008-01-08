@@ -792,7 +792,11 @@ I<Return:> unsigned integer, new value for the I<$key>, or nothing.
 
 sub incr {
     my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->incr(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->incr(@_)->[0];
+    } else {
+        $self->{_xs}->incr(@_);
+    }
 }
 
 
@@ -813,7 +817,11 @@ I<Return:> unsigned integer, new value for the I<$key>, or nothing.
 
 sub decr {
     my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->decr(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->decr(@_)->[0];
+    } else {
+        $self->{_xs}->decr(@_);
+    }
 }
 
 

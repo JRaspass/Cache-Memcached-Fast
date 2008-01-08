@@ -409,7 +409,7 @@ get(memd, ...)
         XSRETURN(2);
 
 
-void
+AV*
 incr(memd, skey, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
@@ -419,25 +419,22 @@ incr(memd, skey, ...)
     PREINIT:
         const char *key;
         STRLEN key_len;
-        arith_type arg = 1, result;
-        int noreply, res;
-    PPCODE:
+        arith_type arg = 1;
+        struct value_object object =
+            { alloc_value, embedded_store, NULL, NULL };
+        int noreply;
+    CODE:
+        RETVAL = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) RETVAL);
+        object.arg = RETVAL;
         if (items > 2 && SvOK(ST(2)))
           arg = SvUV(ST(2));
         key = SvPV(skey, key_len);
         noreply = (GIMME_V == G_VOID);
-        res = client_arith(memd, ix, key, key_len, arg, &result, noreply);
-        if (! noreply && res == MEMCACHED_SUCCESS)
-          {
-            dXSTARG;
-
-            /*
-               NOTE: arith_type is at least 64 bit, but Perl UV is 32
-               bit.
-            */
-            PUSHu(result);
-            XSRETURN(1);
-          }
+        client_arith(memd, ix, key, key_len, arg, &object, noreply);
+    OUTPUT:
+        RETVAL
 
 
 bool

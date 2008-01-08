@@ -90,20 +90,6 @@ value_state_reset(struct value_state *state, struct value_object *o,
 }
 
 
-struct arith_state
-{
-  arith_type *result;
-};
-
-
-static inline
-void
-arith_state_reset(struct arith_state *state, arith_type *result)
-{
-  state->result = result;
-}
-
-
 struct embedded_state
 {
   struct value_object *object;
@@ -172,7 +158,6 @@ struct command_state
   union
   {
     struct value_state value;
-    struct arith_state arith;
     struct embedded_state embedded;
   } u;
 };
@@ -901,7 +886,8 @@ static
 int
 parse_arith_reply(struct command_state *state)
 {
-  unsigned long long num;
+  char *beg;
+  size_t len;
   int res;
 
   switch (state->match)
@@ -919,12 +905,32 @@ parse_arith_reply(struct command_state *state)
       break;
     }
 
-  --state->pos;
+  beg = state->pos - 1;
+  len = 0;
+  while (len == 0)
+    {
+      switch (*state->pos)
+        {
+        case '0': case '1': case '2': case '3': case '4':
+        case '5': case '6': case '7': case '8': case '9':
+          ++state->pos;
+          break;
 
-  res = parse_ull(state, &num);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
-  *state->u.arith.result = num;
+        default:
+          len = state->pos - beg;
+          break;
+        }
+    }
+
+  state->u.embedded.ptr =
+    state->u.embedded.object->alloc(len, &state->u.embedded.opaque);
+  if (! state->u.embedded.ptr)
+    return MEMCACHED_FAILURE;
+
+  memcpy(state->u.embedded.ptr, beg, len);
+
+  state->u.embedded.object->store(state->u.embedded.object->arg,
+                                  state->u.embedded.opaque, 0, 0, 0, 0);
 
   /* Value may be space padded.  */
   res = swallow_eol(state, 1, 1);
@@ -1811,7 +1817,7 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
 int
 client_arith(struct client *c, enum arith_cmd_e cmd,
              const char *key, size_t key_len,
-             arith_type arg, arith_type *result, int noreply)
+             arith_type arg, struct value_object *o, int noreply)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
@@ -1825,7 +1831,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   if (! state)
     return MEMCACHED_FAILURE;
 
-  arith_state_reset(&state->u.arith, result);
+  embedded_state_reset(&state->u.embedded, o);
 
   switch (cmd)
     {

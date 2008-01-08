@@ -157,7 +157,7 @@ extern
 int
 client_arith(struct client *c, enum arith_cmd_e cmd,
              const char *key, size_t key_len,
-             arith_type arg, arith_type *result, int noreply);
+             arith_type arg, struct value_object *o, int noreply);
 
 extern
 int
