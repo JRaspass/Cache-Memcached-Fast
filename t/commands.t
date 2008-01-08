@@ -11,7 +11,7 @@ use Memd;
 use constant count => 100;
 
 if ($Memd::memd) {
-    plan tests => 39;
+    plan tests => 40;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -38,6 +38,7 @@ ok($Memd::memd->get($key) == 3, 'Fetch');
 ok($Memd::memd->decr($key, 100) == 0, 'Decr below zero');
 ok($Memd::memd->get($key) == 0, 'Fetch');
 
+ok($Memd::memd->get_multi(), 'get_multi() with empty list');
 
 my $count = 0;
 foreach my $k (@keys) {
@@ -55,7 +56,7 @@ isa_ok($res, 'HASH');
 is(scalar keys %$res, scalar @keys, 'Number of entries in result');
 $count = 0;
 foreach my $k (@keys) {
-    ++$count if $res->{$k} eq $k;
+    ++$count if exists $res->{$k} and $res->{$k} eq $k;
 }
 is($count, count);
 
