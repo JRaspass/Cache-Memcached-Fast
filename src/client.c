@@ -112,7 +112,6 @@ typedef int (*parse_reply_func)(struct command_state *state);
 
 enum command_phase
 {
-  PHASE_INIT,
   PHASE_RECEIVE,
   PHASE_PARSE,
   PHASE_VALUE,
@@ -298,7 +297,7 @@ command_state_reset(struct command_state *state, int str_step,
   state->key_count = 1;
   state->parse_reply = parse_reply;
 
-  state->phase = PHASE_INIT;
+  state->phase = PHASE_RECEIVE;
 
   array_clear(state->iov_buf);
 
@@ -1213,13 +1212,6 @@ process_reply(struct command_state *state)
     {
       switch (state->phase)
         {
-        case PHASE_INIT:
-          state->key = array_elem(state->iov_buf, struct iovec, 2);
-
-          state->phase = PHASE_RECEIVE;
-
-          /* Fall into below.  */
-
         case PHASE_RECEIVE:
           res = receive_reply(state);
           if (res != MEMCACHED_SUCCESS)
@@ -1303,6 +1295,7 @@ static inline
 void
 state_prepare(struct command_state *state)
 {
+  state->key = array_elem(state->iov_buf, struct iovec, 2);
   state->iov = array_beg(state->iov_buf, struct iovec);
   state->iov_count = array_size(state->iov_buf);
 
