@@ -400,7 +400,6 @@ void
 client_destroy(struct client *c)
 {
   struct server *s;
-  int i;
 
   client_nowait_push(c);
 
@@ -1667,7 +1666,6 @@ client_set(struct client *c, enum set_cmd_e cmd,
            " " NOREPLY "\r\n");
 
   struct command_state *state;
-  int res;
 
   client_reset(c);
 
@@ -1728,8 +1726,6 @@ client_cas(struct client *c, const char *key, size_t key_len,
            " " CAS_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
-  char *buf;
-  int res;
 
   client_reset(c);
 
@@ -1766,7 +1762,6 @@ client_get(struct client *c, enum get_cmd_e cmd,
   static const size_t request_size = 4;
 
   struct command_state *state;
-  int res;
 
   client_reset(c);
 
@@ -1811,7 +1806,6 @@ client_mget(struct client *c, enum get_cmd_e cmd,
     {
       char *key;
       size_t key_len;
-      int res;
 
       key = get_key(o->arg, i, &key_len);
 
@@ -1864,8 +1858,6 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
-  char *buf;
-  int res;
 
   client_reset(c);
 
@@ -1909,8 +1901,6 @@ client_delete(struct client *c, const char *key, size_t key_len,
   static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
-  char *buf;
-  int res;
 
   client_reset(c);
 
@@ -1989,7 +1979,6 @@ int
 client_nowait_push(struct client *c)
 {
   struct server *s;
-  int i;
 
   if (! c->nowait)
     return MEMCACHED_SUCCESS;
@@ -1999,7 +1988,7 @@ client_nowait_push(struct client *c)
   for (array_each(c->servers, struct server, s))
     {
       struct command_state *state;
-      int fd, res;
+      int fd;
 
       state = &s->cmd_state;
       if (state->nowait_count == 0)
@@ -2034,7 +2023,7 @@ client_server_versions(struct client *c, struct value_object *o)
   for (array_each(c->servers, struct server, s))
     {
       struct command_state *state;
-      int fd, res;
+      int fd;
 
       fd = get_server_fd(c, s);
       if (fd == -1)

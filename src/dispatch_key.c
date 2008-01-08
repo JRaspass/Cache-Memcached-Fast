@@ -82,7 +82,6 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
     continuum so that it occupies the space proportional to its
     weight.  See the comment in compatible_get_server().
   */
-  int i;
   double scale;
   struct continuum_point *p;
 
