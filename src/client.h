@@ -155,11 +155,6 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
 
 extern
 int
-client_mget(struct client *c, enum get_cmd_e cmd,
-            int key_count, get_key_func get_key, struct value_object *o);
-
-extern
-int
 client_arith(struct client *c, enum arith_cmd_e cmd,
              const char *key, size_t key_len,
              arith_type arg, arith_type *result, int noreply);

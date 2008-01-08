@@ -680,19 +680,24 @@ corresponding value.
 sub get_multi {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($key_val, $flags) = $self->{_xs}->mget(@_);
+    my ($vals, $flags) = $self->{_xs}->mget(@_);
 
-    my $vi = 1;
-    foreach my $f (@$flags) {
-        if (_unpack_value($self, $$key_val[$vi], $f)) {
-            $$key_val[$vi] = ${$$key_val[$vi]};
-            $vi += 2;
+    my $keys = \@_;
+
+    my $i = -1;
+    foreach my $v (@$vals) {
+        ++$i;
+
+        next unless defined $v;
+
+        if (_unpack_value($self, $v, $flags->[$i])) {
+            $v = $$v;
         } else {
-            splice(@$key_val, $vi - 1, 2);
+            undef $v;
         }
     }
 
-    return Cache::Memcached::Fast::_xs::_rvav2rvhv($key_val);
+    return Cache::Memcached::Fast::_xs::_rvav2rvhv($keys, $vals);
 }
 
 
@@ -748,19 +753,24 @@ This command first appears in B<memcached> 1.2.4.
 sub gets_multi {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($key_val, $flags) = $self->{_xs}->mgets(@_);
+    my ($vals, $flags) = $self->{_xs}->mgets(@_);
 
-    my $vi = 1;
-    foreach my $f (@$flags) {
-        if (_unpack_value($self, ${$$key_val[$vi]}[1], $f)) {
-            ${$$key_val[$vi]}[1] = ${${$$key_val[$vi]}[1]};
-            $vi += 2;
+    my $keys = \@_;
+
+    my $i = -1;
+    foreach my $v (@$vals) {
+        ++$i;
+
+        next unless defined $v;
+
+        if (_unpack_value($self, $v->[1], $flags->[$i])) {
+            $v->[1] = ${$v->[1]};
         } else {
-            splice(@$key_val, $vi - 1, 2);
+            undef $v;
         }
     }
 
-    return Cache::Memcached::Fast::_xs::_rvav2rvhv($key_val);
+    return Cache::Memcached::Fast::_xs::_rvav2rvhv($keys, $vals);
 }
 
 

@@ -259,32 +259,9 @@ free_value(void *opaque)
 
 struct xs_mkey_result
 {
-  AV *key_val;
+  AV *vals;
   AV *flags;
-  I32 ax;
-  int stack_offset;
 };
-
-
-static
-char *
-get_key(void *arg, int key_index, size_t *key_len)
-{
-  I32 ax;
-  struct xs_mkey_result *mkey_res;
-  SV *key_sv;
-  char *res;
-  STRLEN len;
-
-  mkey_res = (struct xs_mkey_result *) arg;
-
-  ax = mkey_res->ax;
-  key_sv = ST(mkey_res->stack_offset + key_index);
-  res = SvPV(key_sv, len);
-  *key_len = len;
-
-  return res;
-}
 
 
 static
@@ -292,20 +269,16 @@ void
 mkey_store(void *arg, void *opaque, int key_index, flags_type flags,
            int use_cas, cas_type cas)
 {
-  I32 ax;
   struct xs_mkey_result *mkey_res;
-  SV *key_sv, *value_sv;
+  SV *value_sv;
 
   value_sv = (SV *) opaque;
 
   mkey_res = (struct xs_mkey_result *) arg;
 
-  ax = mkey_res->ax;
-  key_sv = ST(mkey_res->stack_offset + key_index);
-  av_push(mkey_res->key_val, SvREFCNT_inc(key_sv));
   if (! use_cas)
     {
-      av_push(mkey_res->key_val, newRV_noinc(value_sv));
+      av_store(mkey_res->vals, key_index, newRV_noinc(value_sv));
     }
   else
     {
@@ -313,10 +286,10 @@ mkey_store(void *arg, void *opaque, int key_index, flags_type flags,
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(cas));
       av_push(cas_val, newRV_noinc(value_sv));
-      av_push(mkey_res->key_val, newRV_noinc((SV *) cas_val));
+      av_store(mkey_res->vals, key_index, newRV_noinc((SV *) cas_val));
     }
 
-  av_push(mkey_res->flags, newSVuv(flags));
+  av_store(mkey_res->flags, key_index, newSVuv(flags));
 }
 
 
@@ -479,19 +452,25 @@ mget(memd, ...)
         struct xs_mkey_result mkey_res;
         struct value_object object =
             { alloc_value, mkey_store, free_value, &mkey_res };
-        int key_count;
+        int i, key_count;
     PPCODE:
         key_count = items - 1;
-        mkey_res.ax = ax;
-        mkey_res.stack_offset = 1;  
-        mkey_res.key_val = newAV();
+        mkey_res.vals = newAV();
         mkey_res.flags = newAV();
-        av_extend(mkey_res.key_val, key_count * 2);
+        av_extend(mkey_res.vals, key_count);
         av_extend(mkey_res.flags, key_count);
-        if (key_count > 0)
-          client_mget(memd, ix, key_count, get_key, &object);
+        client_reset(memd);
+        for (i = 0; i < key_count; ++i)
+          {
+            const char *key;
+            STRLEN key_len;
+
+            key = SvPV(ST(i + 1), key_len);
+            client_get(memd, ix, i, key, key_len, &object);
+          }
+        client_execute(memd);
         EXTEND(SP, 2);
-        PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.key_val)));
+        PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.vals)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
         XSRETURN(2);
 
@@ -597,8 +576,9 @@ server_versions(memd)
 
 
 HV *
-_rvav2rvhv(array)
-        AV *                    array
+_rvav2rvhv(keys, vals)
+        AV *                    keys
+        AV *                    vals
     PROTOTYPE: $
     PREINIT:
         I32 max_index, i;
@@ -606,19 +586,20 @@ _rvav2rvhv(array)
         RETVAL = newHV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
-        max_index = av_len(array);
-        if ((max_index & 1) != 1)
-          croak("Even sized list expected");
-        i = 0;
-        while (i <= max_index)
+        max_index = av_len(vals);
+        for (i = 0; i <= max_index; ++i)
           {
             SV **pkey, **pval;
             HE *he;
 
-            pkey = av_fetch(array, i++, 0);
-            pval = av_fetch(array, i++, 0);
-            if (! (pkey && pval))
-              croak("Undefined values in the list");
+            pval = av_fetch(vals, i, 0);
+            if (! (pval && SvOK(*pval)))
+              continue;
+
+            pkey = av_fetch(keys, i, 0);
+            if (! pkey)
+              croak("Undefined key in the list");
+
             he = hv_store_ent(RETVAL, *pkey, SvREFCNT_inc(*pval), 0);
             if (! he)
               SvREFCNT_dec(*pval);
