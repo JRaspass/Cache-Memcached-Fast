@@ -1283,7 +1283,7 @@ client_mark_failed(struct client *c, struct server *s)
 
 static inline
 void
-state_reinit(struct command_state *state)
+state_prepare(struct command_state *state)
 {
   state->iov = array_beg(state->iov_buf, struct iovec);
   state->iov_count = array_size(state->iov_buf);
@@ -1343,7 +1343,7 @@ client_execute(struct client *c)
 
           if (first_iter)
             {
-              state_reinit(state);
+              state_prepare(state);
 
               may_write = 1;
               may_read = (state->parse_reply != NULL
@@ -1536,8 +1536,8 @@ get_server_fd(struct client *c, struct server *s)
 
 
 static
-struct server *
-client_get_server(struct client *c, const char *key, size_t key_len)
+struct command_state *
+init_state(struct client *c, const char *key, size_t key_len)
 {
   struct server *s;
   int index, fd;
@@ -1552,7 +1552,7 @@ client_get_server(struct client *c, const char *key, size_t key_len)
   if (fd == -1)
     return NULL;
 
-  return s;
+  return &s->cmd_state;
 }
 
 
@@ -1623,17 +1623,15 @@ client_set(struct client *c, enum set_cmd_e cmd,
 
   int use_nowait = (noreply && c->nowait);
   int use_noreply;
-  struct server *s;
   struct command_state *state;
   int res;
 
   client_reset(c);
 
-  s = client_get_server(c, key, key_len);
-  if (! s)
+  state = init_state(c, key, key_len);
+  if (! state)
     return MEMCACHED_CLOSED;
 
-  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, request_size,
                       (use_noreply || use_nowait ? NULL : parse_set_reply));
@@ -1700,18 +1698,16 @@ client_cas(struct client *c, const char *key, size_t key_len,
 
   int use_nowait = (noreply && c->nowait);
   int use_noreply;
-  struct server *s;
   struct command_state *state;
   char *buf;
   int res;
 
   client_reset(c);
 
-  s = client_get_server(c, key, key_len);
-  if (! s)
+  state = init_state(c, key, key_len);
+  if (! state)
     return MEMCACHED_CLOSED;
 
-  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, request_size,
                       (use_noreply || use_nowait ? NULL : parse_set_reply));
@@ -1752,17 +1748,15 @@ client_get(struct client *c, enum get_cmd_e cmd,
 {
   static const size_t request_size = 4;
 
-  struct server *s;
   struct command_state *state;
   int res;
 
   client_reset(c);
 
-  s = client_get_server(c, key, key_len);
-  if (! s)
+  state = init_state(c, key, key_len);
+  if (! state)
     return MEMCACHED_CLOSED;
 
-  state = &s->cmd_state;
   command_state_reset(state, 0, parse_get_reply);
   value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
 
@@ -1813,11 +1807,9 @@ client_mget(struct client *c, enum get_cmd_e cmd,
 
       key = get_key(o->arg, i, &key_len);
 
-      s = client_get_server(c, key, key_len);
-      if (! s)
+      state = init_state(c, key, key_len);
+      if (! state)
         continue;
-
-      state = &s->cmd_state;
 
       if (array_extend(state->iov_buf, struct iovec,
                        request_size, ARRAY_EXTEND_EXACT) == -1)
@@ -1880,18 +1872,16 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
 
   int use_nowait = (noreply && c->nowait);
   int use_noreply;
-  struct server *s;
   struct command_state *state;
   char *buf;
   int res;
 
   client_reset(c);
 
-  s = client_get_server(c, key, key_len);
-  if (! s)
+  state = init_state(c, key, key_len);
+  if (! state)
     return MEMCACHED_CLOSED;
 
-  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, request_size,
                       (use_noreply || use_nowait ? NULL : parse_arith_reply));
@@ -1941,18 +1931,16 @@ client_delete(struct client *c, const char *key, size_t key_len,
 
   int use_nowait = (noreply && c->nowait);
   int use_noreply;
-  struct server *s;
   struct command_state *state;
   char *buf;
   int res;
 
   client_reset(c);
 
-  s = client_get_server(c, key, key_len);
-  if (! s)
+  state = init_state(c, key, key_len);
+  if (! state)
     return MEMCACHED_CLOSED;
 
-  state = &s->cmd_state;
   use_noreply = (noreply && state->noreply);
   command_state_reset(state, request_size,
                       (use_noreply || use_nowait ? NULL : parse_delete_reply));
