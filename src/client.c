@@ -1935,7 +1935,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
 
   struct server *s;
   double ddelay = delay, delay_step = 0.0;
-  int i = 0;
+  int i;
 
   client_reset(c);
 
@@ -1943,7 +1943,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
     delay_step = ddelay / (array_size(c->servers) - 1);
   ddelay += delay_step;
 
-  for (array_each(c->servers, struct server, s))
+  for (i = 0, array_each(c->servers, struct server, s), ++i)
     {
       struct command_state *state;
       int fd;
@@ -1967,8 +1967,6 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
         iov_push(state, (void *) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
-
-      ++i;
     }
 
   return client_execute(c);
@@ -2016,11 +2014,11 @@ client_server_versions(struct client *c, struct value_object *o)
   static const size_t request_size = 1;
 
   struct server *s;
-  int i = 0;
+  int i;
 
   client_reset(c);
 
-  for (array_each(c->servers, struct server, s))
+  for (i = 0, array_each(c->servers, struct server, s), ++i)
     {
       struct command_state *state;
       int fd;
@@ -2037,8 +2035,6 @@ client_server_versions(struct client *c, struct value_object *o)
       embedded_state_reset(&state->u.embedded, o);
 
       iov_push(state, STR_WITH_LEN("version\r\n"));
-
-      ++i;
     }
 
   return client_execute(c);
