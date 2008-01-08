@@ -203,14 +203,6 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
 }
 
 
-struct xs_skey_result
-{
-  SV *sv;
-  flags_type flags;
-  cas_type cas;
-};
-
-
 static
 void *
 alloc_value(value_size_type value_size, void **opaque)
@@ -226,24 +218,6 @@ alloc_value(value_size_type value_size, void **opaque)
   *opaque = sv;
 
   return (void *) res;
-}
-
-
-static
-void
-skey_store(void *arg, void *opaque, int key_index, flags_type flags,
-           int use_cas, cas_type cas)
-{
-  struct xs_skey_result *skey_res;
-
-  /* Suppress warning about unused key_index and use_cas.  */
-  if (key_index || use_cas) {}
-
-  skey_res = (struct xs_skey_result *) arg;
-
-  skey_res->sv = (SV *) opaque;
-  skey_res->flags = flags;
-  skey_res->cas = cas;
 }
 
 
@@ -403,50 +377,10 @@ cas(memd, skey, cas, sval, flags, ...)
 
 
 void
-get(memd, skey)
+get(memd, ...)
         Cache_Memcached_Fast *  memd
-        SV *                    skey
     ALIAS:
         gets  =  CMD_GETS
-    PROTOTYPE: $$
-    PREINIT:
-        const char *key;
-        STRLEN key_len;
-        struct xs_skey_result skey_res;
-        struct value_object object =
-            { alloc_value, skey_store, free_value, &skey_res };
-    PPCODE:
-        key = SvPV(skey, key_len);
-        skey_res.sv = NULL;
-        client_reset(memd);
-        client_get(memd, ix, 0, key, key_len, &object);
-        client_execute(memd);
-        if (skey_res.sv != NULL)
-          {
-            dXSTARG;
-
-            if (ix == CMD_GET)
-              {
-                PUSHs(sv_2mortal(newRV_noinc(skey_res.sv)));
-              }
-            else
-              {
-                AV *cas_val = newAV();
-                av_extend(cas_val, 1);
-                av_push(cas_val, newSVuv(skey_res.cas));
-                av_push(cas_val, newRV_noinc(skey_res.sv));
-                PUSHs(sv_2mortal(newRV_noinc((SV *) cas_val)));
-              }
-            PUSHu(skey_res.flags);
-            XSRETURN(2);
-          }
-
-
-void
-mget(memd, ...)
-        Cache_Memcached_Fast *  memd
-    ALIAS:
-        mgets  =  CMD_GETS
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;

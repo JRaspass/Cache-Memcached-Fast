@@ -655,9 +655,10 @@ I<Return:> value associated with the I<$key>, or nothing.
 sub get {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($val, $flags) = $self->{_xs}->get(@_);
+    my ($val, $flags) = $self->{_xs}->get($_[0]);
+    $val = $val->[0];
 
-    if (defined $val and _unpack_value($self, $val, $flags)) {
+    if (defined $val and _unpack_value($self, $val, $flags->[0])) {
         return $$val;
     } else {
         return;
@@ -680,7 +681,7 @@ corresponding value.
 sub get_multi {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($vals, $flags) = $self->{_xs}->mget(@_);
+    my ($vals, $flags) = $self->{_xs}->get(@_);
 
     my $keys = \@_;
 
@@ -725,10 +726,11 @@ This command first appears in B<memcached> 1.2.4.
 sub gets {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($val, $flags) = $self->{_xs}->gets(@_);
+    my ($val, $flags) = $self->{_xs}->gets($_[0]);
+    $val = $val->[0];
 
-    if (defined $val and _unpack_value($self, $$val[1], $flags)) {
-        $$val[1] = ${$$val[1]};
+    if (defined $val and _unpack_value($self, $val->[1], $flags->[0])) {
+        $val->[1] = ${$val->[1]};
         return $val;
     } else {
         return;
@@ -753,7 +755,7 @@ This command first appears in B<memcached> 1.2.4.
 sub gets_multi {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($vals, $flags) = $self->{_xs}->mgets(@_);
+    my ($vals, $flags) = $self->{_xs}->gets(@_);
 
     my $keys = \@_;
 
