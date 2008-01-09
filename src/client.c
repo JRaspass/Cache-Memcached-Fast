@@ -1317,8 +1317,12 @@ state_prepare(struct command_state *state)
       char *buf = array_beg(state->client->str_buf, char);
       int count = state->iov_count, step = state->str_step;
 
-      iov += 3;
-      count -= 3;
+      if (state->key_count > 0)
+        {
+          iov += 3;
+          count -= 3;
+        }
+
       while (count > 0)
         {
           iov->iov_base = (void *) (buf + (int) (iov->iov_base));
@@ -1918,6 +1922,9 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
         iov_push(state, (void *) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
+
+      /* Suppress the shift over three iovec items in state_prepare().  */
+      --state->key_count;
     }
 
   return client_execute(c);
