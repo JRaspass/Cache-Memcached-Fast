@@ -936,11 +936,7 @@ parse_arith_reply(struct command_state *state)
                                   0, 0, 0);
 
   /* Value may be space padded.  */
-  res = swallow_eol(state, 1, 1);
-  if (res != MEMCACHED_SUCCESS)
-    return res;
-
-  return MEMCACHED_SUCCESS;
+  return swallow_eol(state, 1, 1);
 }
 
 
