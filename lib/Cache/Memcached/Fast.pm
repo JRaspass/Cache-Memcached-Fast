@@ -970,6 +970,13 @@ of them will never be):
 Current implementation never rehashes keys, instead L</max_failures>
 and L</failure_timeout> are used.
 
+If the client would rehash the keys, a consistency problem would
+arise: the client can't tell whether the server is down, or there's a
+(transient) network failure.  While some clients might fail to reach a
+particular server, others may still reach it, so some clients will
+start rehashing, while others will not, and they will no longer agree
+which key goes where.
+
 
 =item I<readonly>
 
