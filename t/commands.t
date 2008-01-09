@@ -11,7 +11,7 @@ use Memd;
 use constant count => 100;
 
 if ($Memd::memd) {
-    plan tests => 40;
+    plan tests => 41;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -30,6 +30,7 @@ is($Memd::memd->get($key), 'v3', 'Fetch');
 ok($Memd::memd->incr($key), 'Incr');
 ok($Memd::memd->get($key) == 1, 'Fetch');
 ok($Memd::memd->incr($key, 5), 'Incr');
+ok((not $Memd::memd->incr('no-such-key', 5)), 'Incr no_such_key');
 ok($Memd::memd->get($key) == 6, 'Fetch');
 ok($Memd::memd->decr($key), 'Decr');
 ok($Memd::memd->get($key) == 5, 'Fetch');
