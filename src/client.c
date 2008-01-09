@@ -135,7 +135,7 @@ struct command_state
 
   int phase;
   int nowait_count;
-  int command_count;
+  int reply_count;
 
   char *buf;
   char *pos;
@@ -292,7 +292,7 @@ void
 command_state_reset(struct command_state *state, int str_step,
                     parse_reply_func parse_reply)
 {
-  state->command_count = 0;
+  state->reply_count = 0;
   state->str_step = str_step;
   state->key_count = 1;
   state->parse_reply = parse_reply;
@@ -1129,7 +1129,7 @@ send_request(struct command_state *state, struct server *s)
       state->write_offset += res;
     }
 
-  if (state->command_count == 0)
+  if (state->reply_count == 0)
     deactivate(state);
 
   return MEMCACHED_SUCCESS;
@@ -1290,7 +1290,7 @@ process_reply(struct command_state *state, struct server *s)
         {
           --state->nowait_count;
         }
-      else if (--state->command_count == 0)
+      else if (--state->reply_count == 0)
         {
           if (state->iov_count == 0)
             deactivate(state);
@@ -1368,7 +1368,7 @@ client_execute(struct client *c)
               state_prepare(state);
 
               may_write = 1;
-              may_read = (state->command_count > 0
+              may_read = (state->reply_count > 0
                           || state->nowait_count > 0);
             }
           else
@@ -1428,7 +1428,7 @@ client_execute(struct client *c)
             {
               if (state->iov_count > 0)
                 FD_SET(state->fd, &write_set);
-              if (state->command_count > 0 || state->nowait_count > 0)
+              if (state->reply_count > 0 || state->nowait_count > 0)
                 FD_SET(state->fd, &read_set);
             }
         }
@@ -1608,7 +1608,7 @@ init_state(struct command_state *state, int index,
     }
 
   if (parse_reply)
-    ++state->command_count;
+    ++state->reply_count;
   else if (! *noreply)
     ++state->nowait_count;
 
@@ -1773,8 +1773,8 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
       /* Pop off trailing \r\n because we are about to add another key.  */
       array_pop(state->iov_buf);
       ++state->key_count;
-      /* get can't be in noreply mode, so command_count is positive.  */
-      --state->command_count;
+      /* get can't be in noreply mode, so reply_count is positive.  */
+      --state->reply_count;
     }
   else
     {
@@ -1948,12 +1948,13 @@ client_nowait_push(struct client *c)
         continue;
 
       /*
-        In order to wait the final pending reply we decrease
-        nowait_count, and set parse function to parse_nowait_reply.
+        In order to wait the final pending reply we pretend that one
+        command was never a nowait command, and set parse function to
+        parse_nowait_reply.
       */
       --state->nowait_count;
       command_state_reset(state, 0, parse_nowait_reply);
-      ++state->command_count;
+      ++state->reply_count;
     }
 
   return client_execute(c);
