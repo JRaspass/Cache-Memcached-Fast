@@ -45,7 +45,7 @@
 
 
 /* REPLY_BUF_SIZE should be large enough to contain first reply line.  */
-#define REPLY_BUF_SIZE  1024
+#define REPLY_BUF_SIZE  1536
 
 
 #define FLAGS_STUB  "4294967295"
