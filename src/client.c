@@ -1005,24 +1005,7 @@ static
 int
 parse_nowait_reply(struct command_state *state)
 {
-  int done, res;
-
-  if (state->nowait_count > 0)
-    {
-      --state->nowait_count;
-      done = (state->nowait_count == 0 && ! state->parse_reply);
-      if (! done)
-        state->phase = PHASE_RECEIVE;
-    }
-  else
-    {
-      /*
-        (state->nowait_count == 0) would mean that we were called
-        directly from client_nowait_push(), and we are about to read
-        the last pending reply.
-      */
-      done = 1;
-    }
+  int res;
 
   /*
     Cast to enum parse_keyword_e to get compiler warning when some
@@ -1033,25 +1016,25 @@ parse_nowait_reply(struct command_state *state)
     case MATCH_DELETED:
     case MATCH_OK:
     case MATCH_STORED:
-      return swallow_eol(state, 0, done);
+      return swallow_eol(state, 0, 1);
 
     case MATCH_0: case MATCH_1: case MATCH_2: case MATCH_3: case MATCH_4:
     case MATCH_5: case MATCH_6: case MATCH_7: case MATCH_8: case MATCH_9:
-      return swallow_eol(state, 1, done);
+      return swallow_eol(state, 1, 1);
 
     case MATCH_EXISTS:
     case MATCH_NOT_FOUND:
     case MATCH_NOT_STORED:
-      res = swallow_eol(state, 0, done);
+      res = swallow_eol(state, 0, 1);
       return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
 
     case MATCH_ERROR:
-      res = swallow_eol(state, 0, done);
+      res = swallow_eol(state, 0, 1);
       return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
 
     case MATCH_CLIENT_ERROR:
     case MATCH_SERVER_ERROR:
-      res = swallow_eol(state, 1, done);
+      res = swallow_eol(state, 1, 1);
       return (res == MEMCACHED_SUCCESS ? MEMCACHED_ERROR : res);
 
     case NO_MATCH:
@@ -1068,8 +1051,41 @@ parse_nowait_reply(struct command_state *state)
 
 
 static
+void
+client_mark_failed(struct client *c, struct server *s)
+{
+  if (s->cmd_state.fd != -1)
+    {
+      close(s->cmd_state.fd);
+      s->cmd_state.fd = -1;
+      s->cmd_state.nowait_count = 0;
+      s->cmd_state.pos = s->cmd_state.end = s->cmd_state.eol =
+        s->cmd_state.buf;
+    }
+
+  if (c->max_failures > 0)
+    {
+      time_t now = time(NULL);
+      if (s->failure_expires < now)
+        s->failure_count = 0;
+      ++s->failure_count;
+      /*
+        Set timeout on first failure, and on max_failures.  The idea
+        is that if max_failures had happened during failure_timeout,
+        we do not retry in another failure_timeout seconds.  This is
+        not entirely true: we remember the time of the first failure,
+        but for exact accounting we would have to keep time of each
+        failure.  However such exact measurement is not necessary.
+      */
+      if (s->failure_count == 1 || s->failure_count == c->max_failures)
+        s->failure_expires = now + c->failure_timeout;
+    }
+}
+
+
+static
 int
-send_request(struct command_state *state)
+send_request(struct command_state *state, struct server *s)
 {
   while (state->iov_count > 0)
     {
@@ -1094,7 +1110,12 @@ send_request(struct command_state *state)
       if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
         return MEMCACHED_EAGAIN;
       if (res <= 0)
-        return MEMCACHED_CLOSED;
+        {
+          deactivate(state);
+          client_mark_failed(state->client, s);
+
+          return MEMCACHED_CLOSED;
+        }
 
       while ((size_t) res >= len)
         {
@@ -1107,6 +1128,9 @@ send_request(struct command_state *state)
         }
       state->write_offset += res;
     }
+
+  if (state->command_count == 0)
+    deactivate(state);
 
   return MEMCACHED_SUCCESS;
 }
@@ -1200,9 +1224,9 @@ parse_reply(struct command_state *state)
 
 static
 int
-process_reply(struct command_state *state)
+process_reply(struct command_state *state, struct server *s)
 {
-  int res;
+  int res = 0;
 
   while (1)
     {
@@ -1211,7 +1235,7 @@ process_reply(struct command_state *state)
         case PHASE_RECEIVE:
           res = receive_reply(state);
           if (res != MEMCACHED_SUCCESS)
-            return res;
+            break;
 
           state->match = parse_keyword(&state->pos);
 
@@ -1222,67 +1246,59 @@ process_reply(struct command_state *state)
         case PHASE_PARSE:
           res = parse_reply(state);
           if (res != MEMCACHED_SUCCESS)
-            return res;
+            break;
 
           if (state->phase != PHASE_DONE)
-            break;
+            continue;
 
           /* Fall into below.  */
 
         case PHASE_DONE:
-          if (--state->command_count > 0)
-            {
-              state->phase = PHASE_RECEIVE;
-              break;
-            }
+          res = MEMCACHED_SUCCESS;
 
-          if (state->pos != state->end)
-            return MEMCACHED_UNKNOWN;
-
-          return MEMCACHED_SUCCESS;
+          break;
 
         case PHASE_VALUE:
           res = read_value(state);
           if (res != MEMCACHED_SUCCESS)
-            return res;
+            break;
 
           state->phase = PHASE_RECEIVE;
-
-          break;
+          continue;
         }
-    }
-}
 
+      switch (res)
+        {
+        case MEMCACHED_ERROR:
+          if (! (state->client->close_on_error || state->noreply))
+            break;
 
-static
-void
-client_mark_failed(struct client *c, struct server *s)
-{
-  if (s->cmd_state.fd != -1)
-    {
-      close(s->cmd_state.fd);
-      s->cmd_state.fd = -1;
-      s->cmd_state.nowait_count = 0;
-      s->cmd_state.pos = s->cmd_state.end = s->cmd_state.eol =
-        s->cmd_state.buf;
-    }
+          /* else fall into below.  */
 
-  if (c->max_failures > 0)
-    {
-      time_t now = time(NULL);
-      if (s->failure_expires < now)
-        s->failure_count = 0;
-      ++s->failure_count;
-      /*
-        Set timeout on first failure, and on max_failures.  The idea
-        is that if max_failures had happened during failure_timeout,
-        we do not retry in another failure_timeout seconds.  This is
-        not entirely true: we remember the time of the first failure,
-        but for exact accounting we would have to keep time of each
-        failure.  However such exact measurement is not necessary.
-      */
-      if (s->failure_count == 1 || s->failure_count == c->max_failures)
-        s->failure_expires = now + c->failure_timeout;
+        case MEMCACHED_UNKNOWN:
+        case MEMCACHED_CLOSED:
+          deactivate(state);
+          client_mark_failed(state->client, s);
+
+          /* Fall into below.  */
+
+        case MEMCACHED_EAGAIN:
+          return res;
+        }
+
+      if (state->nowait_count > 0)
+        {
+          --state->nowait_count;
+        }
+      else if (--state->command_count == 0)
+        {
+          if (state->iov_count == 0)
+            deactivate(state);
+
+          return res;
+        }
+
+      state->phase = PHASE_RECEIVE;
     }
 }
 
@@ -1352,7 +1368,7 @@ client_execute(struct client *c)
               state_prepare(state);
 
               may_write = 1;
-              may_read = (state->parse_reply != NULL
+              may_read = (state->command_count > 0
                           || state->nowait_count > 0);
             }
           else
@@ -1374,44 +1390,16 @@ client_execute(struct client *c)
 
               if (may_write)
                 {
-                  res = send_request(state);
-                  if (res == MEMCACHED_SUCCESS)
-                    {
-                      if (! state->parse_reply)
-                        deactivate(state);
-                    }
-                  else if (res == MEMCACHED_CLOSED)
-                    {
-                      may_read = 0;
-                    }
+                  res = send_request(state, s);
+                  if (res == MEMCACHED_CLOSED)
+                    may_read = 0;
                 }
 
               if (may_read)
                 {
-                  res = process_reply(state);
-                  if (res != MEMCACHED_EAGAIN)
-                    {
-                      state->parse_reply = NULL;
-                      if (state->iov_count == 0)
-                        deactivate(state);
-                      if (res == MEMCACHED_SUCCESS)
-                        result = MEMCACHED_SUCCESS;
-                    }
-                }
-
-              switch (res)
-                {
-                case MEMCACHED_ERROR:
-                  if (! (c->close_on_error || state->noreply))
-                    break;
-
-                  /* else fall into below.  */
-
-                case MEMCACHED_UNKNOWN:
-                case MEMCACHED_CLOSED:
-                  deactivate(state);
-                  client_mark_failed(c, s);
-                  break;
+                  res = process_reply(state, s);
+                  if (res == MEMCACHED_SUCCESS)
+                    result = MEMCACHED_SUCCESS;
                 }
 
               if (is_active(state))
@@ -1440,7 +1428,7 @@ client_execute(struct client *c)
             {
               if (state->iov_count > 0)
                 FD_SET(state->fd, &write_set);
-              if (state->parse_reply || state->nowait_count > 0)
+              if (state->command_count > 0 || state->nowait_count > 0)
                 FD_SET(state->fd, &read_set);
             }
         }
@@ -1785,6 +1773,7 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
       /* Pop off trailing \r\n because we are about to add another key.  */
       array_pop(state->iov_buf);
       ++state->key_count;
+      /* get can't be in noreply mode, so command_count is positive.  */
       --state->command_count;
     }
   else
@@ -1964,6 +1953,7 @@ client_nowait_push(struct client *c)
       */
       --state->nowait_count;
       command_state_reset(state, 0, parse_nowait_reply);
+      ++state->command_count;
     }
 
   return client_execute(c);

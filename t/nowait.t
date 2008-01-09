@@ -25,6 +25,9 @@ foreach my $k (@keys) {
     $Memd::memd->set($k, $k);
 }
 
+$Memd::memd->replace('no-such-key', 1);
+$Memd::memd->replace('no-such-key', 1);
+
 my $res = $Memd::memd->get_multi(@keys);
 isa_ok($res, 'HASH');
 is(scalar keys %$res, count, 'Fetched all keys');
