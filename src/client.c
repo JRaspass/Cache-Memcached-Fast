@@ -65,7 +65,7 @@ typedef unsigned long long generation_type;
 
 struct value_state
 {
-  struct value_object *object;
+  struct result_object *object;
   void *opaque;
   flags_type flags;
   void *ptr;
@@ -77,7 +77,7 @@ struct value_state
 
 static inline
 void
-value_state_reset(struct value_state *state, struct value_object *o,
+value_state_reset(struct value_state *state, struct result_object *o,
                   int use_cas)
 {
   state->object = o;
@@ -92,7 +92,7 @@ value_state_reset(struct value_state *state, struct value_object *o,
 
 struct embedded_state
 {
-  struct value_object *object;
+  struct result_object *object;
   void *opaque;
   void *ptr;
 };
@@ -100,7 +100,7 @@ struct embedded_state
 
 static inline
 void
-embedded_state_reset(struct embedded_state *state, struct value_object *o)
+embedded_state_reset(struct embedded_state *state, struct result_object *o)
 {
   state->object = o;
 }
@@ -1761,7 +1761,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
 
 int
 client_get(struct client *c, enum get_cmd_e cmd, int key_index,
-           const char *key, size_t key_len, struct value_object *o)
+           const char *key, size_t key_len, struct result_object *o)
 {
   static const size_t request_size = 4;
 
@@ -1807,7 +1807,7 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
 int
 client_arith(struct client *c, enum arith_cmd_e cmd,
              const char *key, size_t key_len,
-             arith_type arg, struct value_object *o, int noreply)
+             arith_type arg, struct result_object *o, int noreply)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
@@ -1969,7 +1969,7 @@ client_nowait_push(struct client *c)
 
 
 int
-client_server_versions(struct client *c, struct value_object *o)
+client_server_versions(struct client *c, struct result_object *o)
 {
   static const size_t request_size = 1;
 

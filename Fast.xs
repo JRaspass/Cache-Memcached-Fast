@@ -384,7 +384,7 @@ get(memd, ...)
     PROTOTYPE: $@
     PREINIT:
         struct xs_mkey_result mkey_res;
-        struct value_object object =
+        struct result_object object =
             { alloc_value, mkey_store, free_value, &mkey_res };
         int i, key_count;
     PPCODE:
@@ -420,7 +420,7 @@ incr(memd, skey, ...)
         const char *key;
         STRLEN key_len;
         arith_type arg = 1;
-        struct value_object object =
+        struct result_object object =
             { alloc_value, embedded_store, NULL, NULL };
         int noreply;
     CODE:
@@ -494,7 +494,7 @@ server_versions(memd)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     PREINIT:
-        struct value_object object =
+        struct result_object object =
             { alloc_value, embedded_store, NULL, NULL };
     CODE:
         RETVAL = newAV();

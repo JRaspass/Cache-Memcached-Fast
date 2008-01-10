@@ -72,7 +72,7 @@ typedef void (*store_value_func)(void *arg, void *opaque, int key_index,
                                  flags_type flags, int use_cas, cas_type cas);
 typedef void (*free_value_func)(void *opaque);
 
-struct value_object
+struct result_object
 {
   alloc_value_func alloc;
   store_value_func store;
@@ -151,13 +151,13 @@ client_cas(struct client *c, const char *key, size_t key_len,
 extern
 int
 client_get(struct client *c, enum get_cmd_e cmd, int key_index,
-           const char *key, size_t key_len, struct value_object *o);
+           const char *key, size_t key_len, struct result_object *o);
 
 extern
 int
 client_arith(struct client *c, enum arith_cmd_e cmd,
              const char *key, size_t key_len,
-             arith_type arg, struct value_object *o, int noreply);
+             arith_type arg, struct result_object *o, int noreply);
 
 extern
 int
@@ -174,7 +174,7 @@ client_nowait_push(struct client *c);
 
 extern
 int
-client_server_versions(struct client *c, struct value_object *o);
+client_server_versions(struct client *c, struct result_object *o);
 
 extern
 int
