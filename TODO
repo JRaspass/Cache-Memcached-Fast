@@ -8,9 +8,6 @@
 
 - Set $! on errors.
 
-- Better result value: distinct between negative outcome (false) and
-  failure (undef).
-
 - Mention server patches in docs.
 
 - Binary protocol!
@@ -24,6 +21,8 @@
 - In find_bin() replace binary search with interpolation search.
 
 - Add test for noreply, do not list it in MANIFEST.
+
+- out_utf8 and out_taint parameters.
 
 
 For 0.07:

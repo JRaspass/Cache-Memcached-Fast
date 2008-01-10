@@ -22,6 +22,12 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Fixed bug in nowait mode could cause incorrect subsequent
         results under some circumstances.
 
+        Commands that previously returned boolean value now return
+        true for positive server reply, false for negative server
+        reply, and undef on error.
+
+        flush_all now returns a hash server_name -> bool_result.
+
 
 0.06  2007-12-20
         - this release fixes a serious bug and features the 'nowait'

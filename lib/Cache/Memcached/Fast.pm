@@ -523,7 +523,8 @@ Optional I<$expiration_time> is a positive integer number of seconds
 after which the value will expire and wouldn't be accessible any
 longer.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
 
 =cut
 
@@ -551,7 +552,11 @@ L</gets_multi>.
 See L</set> for I<$key>, I<$value>, I<$expiration_time> parameters
 description.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.  Thus if the key
+exists on the server, false would mean that some other client has
+updated the value, and L</gets>, L</cas> command sequence should be
+repeated.
 
 This command first appeared in B<memcached> 1.2.4.
 
@@ -579,7 +584,8 @@ key B<doesn't> exists on the server.
 See L</set> for I<$key>, I<$value>, I<$expiration_time> parameters
 description.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
 
 =cut
 
@@ -605,7 +611,8 @@ key B<does> exists on the server.
 See L</set> for I<$key>, I<$value>, I<$expiration_time> parameters
 description.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
 
 =cut
 
@@ -630,7 +637,8 @@ I<$key>.
 I<$key> and I<$value> should be scalars, as well as current value on
 the server.  C<append> doesn't affect expiration time of the value.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
 
 This command first appeared in B<memcached> 1.2.4.
 
@@ -658,7 +666,8 @@ I<$key>.
 I<$key> and I<$value> should be scalars, as well as current value on
 the server.  C<prepend> doesn't affect expiration time of the value.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
 
 This command first appeared in B<memcached> 1.2.4.
 
@@ -820,7 +829,8 @@ number, zero is assumed.  An optional I<$increment> should be a
 positive integer, when not given 1 is assumed.  Note that the server
 doesn't check for overflow.
 
-I<Return:> unsigned integer, new value for the I<$key>, or nothing.
+I<Return:> unsigned integer, new value for the I<$key>, or false for
+negative server reply, or I<undef> in case of some error.
 
 =cut
 
@@ -843,9 +853,11 @@ Decrement the value for the I<$key>.  If current value is not a
 number, zero is assumed.  An optional I<$decrement> should be a
 positive integer, when not given 1 is assumed.  Note that the server
 I<does> check for underflow, attempt to decrement the value below zero
-would set the value to zero.
+would set the value to zero.  Similar to L<DBI|DBI>, zero is returned
+as "0E0", and evaluates to true in a boolean context.
 
-I<Return:> unsigned integer, new value for the I<$key>, or nothing.
+I<Return:> unsigned integer, new value for the I<$key>, or false for
+negative server reply, or I<undef> in case of some error.
 
 =cut
 
@@ -869,7 +881,8 @@ non-negative integer number of seconds to delay the operation.  During
 this time L</add> and L</replace> commands will be rejected by the
 server.  When omitted, zero is assumed, i.e. delete immediately.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
 
 =cut
 
@@ -897,14 +910,20 @@ have three servers, and call C<flush_all(30)>, the servers would get
 30, 15, 0 seconds delays respectively.  When omitted, zero is assumed,
 i.e. flush immediately.
 
-I<Return:> boolean, true if operation succeeded, false otherwise.
+I<Return:> reference to hash, where I<$href-E<gt>{$server}> holds
+corresponding result value.  I<$server> is either I<host:port> or
+F</path/to/unix.sock>, as described in L</servers>.  Result value is a
+boolean, true for positive server reply, false for negative server
+reply, or I<undef> in case of some error.
 
 =cut
 
 sub flush_all {
     my Cache::Memcached::Fast $self = shift;
     if (defined wantarray) {
-        return $self->{_xs}->flush_all(@_)->[0];
+        my $servers = $self->{servers};
+        my $results = $self->{_xs}->flush_all(@_);
+        return Cache::Memcached::Fast::_xs::_rvav2rvhv($servers, $results);
     } else {
         $self->{_xs}->flush_all(@_);
     }

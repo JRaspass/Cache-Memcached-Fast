@@ -273,7 +273,10 @@ result_store(void *arg, void *opaque, int key_index, void *meta)
   /* Suppress warning about unused opaque and meta.  */
   if (meta) {}
 
-  av_store(av, key_index, newSViv(res));
+  if (res)
+    av_store(av, key_index, newSViv(res));
+  else
+    av_store(av, key_index, newSVpvn("", 0));
 }
 
 
