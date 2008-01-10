@@ -820,25 +820,23 @@ static
 int
 parse_set_reply(struct command_state *state)
 {
-  int res;
-
   switch (state->match)
     {
     case MATCH_STORED:
       store_result(state, 1);
-      return swallow_eol(state, 0, 1);
+      break;
 
     case MATCH_NOT_STORED:
     case MATCH_NOT_FOUND:
     case MATCH_EXISTS:
       store_result(state, 0);
-      res = swallow_eol(state, 0, 1);
-
-      return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+      break;
 
     default:
       return MEMCACHED_UNKNOWN;
     }
+
+  return swallow_eol(state, 0, 1);
 }
 
 
@@ -846,23 +844,21 @@ static
 int
 parse_delete_reply(struct command_state *state)
 {
-  int res;
-
   switch (state->match)
     {
     case MATCH_DELETED:
       store_result(state, 1);
-      return swallow_eol(state, 0, 1);
+      break;
 
     case MATCH_NOT_FOUND:
       store_result(state, 0);
-      res = swallow_eol(state, 0, 1);
-
-      return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+      break;
 
     default:
       return MEMCACHED_UNKNOWN;
     }
+
+  return swallow_eol(state, 0, 1);
 }
 
 
@@ -872,7 +868,6 @@ parse_arith_reply(struct command_state *state)
 {
   char *beg;
   size_t len;
-  int res;
 
   state->index = get_index(state);
   next_index(state);
@@ -880,9 +875,7 @@ parse_arith_reply(struct command_state *state)
   switch (state->match)
     {
     case MATCH_NOT_FOUND:
-      res = swallow_eol(state, 0, 1);
-
-      return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
+      return swallow_eol(state, 0, 1);
 
     default:
       return MEMCACHED_UNKNOWN;
@@ -998,17 +991,14 @@ parse_nowait_reply(struct command_state *state)
     case MATCH_DELETED:
     case MATCH_OK:
     case MATCH_STORED:
+    case MATCH_EXISTS:
+    case MATCH_NOT_FOUND:
+    case MATCH_NOT_STORED:
       return swallow_eol(state, 0, 1);
 
     case MATCH_0: case MATCH_1: case MATCH_2: case MATCH_3: case MATCH_4:
     case MATCH_5: case MATCH_6: case MATCH_7: case MATCH_8: case MATCH_9:
       return swallow_eol(state, 1, 1);
-
-    case MATCH_EXISTS:
-    case MATCH_NOT_FOUND:
-    case MATCH_NOT_STORED:
-      res = swallow_eol(state, 0, 1);
-      return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
 
     case MATCH_ERROR:
       res = swallow_eol(state, 0, 1);
@@ -1318,7 +1308,6 @@ state_prepare(struct command_state *state)
 int
 client_execute(struct client *c)
 {
-  int result = MEMCACHED_FAILURE;
   struct timeval to, *pto = c->io_timeout > 0 ? &to : NULL;
   fd_set write_set, read_set;
   int first_iter = 1;
@@ -1332,7 +1321,7 @@ client_execute(struct client *c)
   ignore.sa_flags = 0;
   res = sigaction(SIGPIPE, &ignore, &orig);
   if (res == -1)
-    return result;
+    return MEMCACHED_FAILURE;
 #endif /* ! MSG_NOSIGNAL */
 
   while (1)
@@ -1382,11 +1371,7 @@ client_execute(struct client *c)
                 }
 
               if (may_read)
-                {
-                  res = process_reply(state, s);
-                  if (res == MEMCACHED_SUCCESS)
-                    result = MEMCACHED_SUCCESS;
-                }
+                res = process_reply(state, s);
 
               if (is_active(state))
                 {
@@ -1472,7 +1457,7 @@ client_execute(struct client *c)
   sigaction(SIGPIPE, &orig, NULL);
 #endif /* ! MSG_NOSIGNAL */
 
-  return result;
+  return MEMCACHED_SUCCESS;
 }
 
 
