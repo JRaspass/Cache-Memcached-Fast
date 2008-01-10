@@ -1645,11 +1645,11 @@ client_reset(struct client *c)
 
 
 int
-client_set(struct client *c, enum set_cmd_e cmd,
-           const char *key, size_t key_len,
-           flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size,
-           struct result_object *o, int noreply)
+client_prepare_set(struct client *c, enum set_cmd_e cmd,
+                   const char *key, size_t key_len,
+                   flags_type flags, exptime_type exptime,
+                   const void *value, value_size_type value_size,
+                   struct result_object *o, int noreply)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1657,8 +1657,6 @@ client_set(struct client *c, enum set_cmd_e cmd,
            " " NOREPLY "\r\n");
 
   struct command_state *state;
-
-  client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
                     parse_set_reply, o, &noreply);
@@ -1704,15 +1702,15 @@ client_set(struct client *c, enum set_cmd_e cmd,
   iov_push(state, (void *) value, value_size);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
-  return client_execute(c);
+  return MEMCACHED_SUCCESS;
 }
 
 
 int
-client_cas(struct client *c, const char *key, size_t key_len,
-           cas_type cas, flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size,
-           struct result_object *o, int noreply)
+client_prepare_cas(struct client *c, const char *key, size_t key_len,
+                   cas_type cas, flags_type flags, exptime_type exptime,
+                   const void *value, value_size_type value_size,
+                   struct result_object *o, int noreply)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1720,8 +1718,6 @@ client_cas(struct client *c, const char *key, size_t key_len,
            " " CAS_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
-
-  client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
                     parse_set_reply, o, &noreply);
@@ -1747,13 +1743,13 @@ client_cas(struct client *c, const char *key, size_t key_len,
   iov_push(state, (void *) value, value_size);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
-  return client_execute(c);
+  return MEMCACHED_SUCCESS;
 }
 
 
 int
-client_get(struct client *c, enum get_cmd_e cmd, int key_index,
-           const char *key, size_t key_len, struct result_object *o)
+client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
+                   const char *key, size_t key_len, struct result_object *o)
 {
   static const size_t request_size = 4;
 
@@ -1799,16 +1795,14 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
 
 
 int
-client_arith(struct client *c, enum arith_cmd_e cmd,
-             const char *key, size_t key_len,
-             arith_type arg, struct result_object *o, int noreply)
+client_prepare_arith(struct client *c, enum arith_cmd_e cmd,
+                     const char *key, size_t key_len,
+                     arith_type arg, struct result_object *o, int noreply)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
-
-  client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
                     parse_arith_reply, o, &noreply);
@@ -1838,20 +1832,18 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
     array_append(c->str_buf, str_size);
   }
 
-  return client_execute(c);
+  return MEMCACHED_SUCCESS;
 }
 
 
 int
-client_delete(struct client *c, const char *key, size_t key_len,
-              delay_type delay, struct result_object *o, int noreply)
+client_prepare_delete(struct client *c, const char *key, size_t key_len,
+                      delay_type delay, struct result_object *o, int noreply)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
-
-  client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
                     parse_delete_reply, o, &noreply);
@@ -1873,7 +1865,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
     array_append(c->str_buf, str_size);
   }
 
-  return client_execute(c);
+  return MEMCACHED_SUCCESS;
 }
 
 

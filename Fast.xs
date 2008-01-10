@@ -355,8 +355,10 @@ set(memd, skey, sval, flags, ...)
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
         noreply = (GIMME_V == G_VOID);
-        client_set(memd, ix, key, key_len, flags, exptime,
-                   buf, buf_len, &object, noreply);
+        client_reset(memd);
+        client_prepare_set(memd, ix, key, key_len, flags, exptime,
+                           buf, buf_len, &object, noreply);
+        client_execute(memd);
     OUTPUT:
         RETVAL
 
@@ -388,8 +390,10 @@ cas(memd, skey, cas, sval, flags, ...)
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
         noreply = (GIMME_V == G_VOID);
-        client_cas(memd, key, key_len, cas, flags, exptime,
-                   buf, buf_len, &object, noreply);
+        client_reset(memd);
+        client_prepare_cas(memd, key, key_len, cas, flags, exptime,
+                           buf, buf_len, &object, noreply);
+        client_execute(memd);
     OUTPUT:
         RETVAL
 
@@ -418,7 +422,7 @@ get(memd, ...)
             STRLEN key_len;
 
             key = SvPV(ST(i + 1), key_len);
-            client_get(memd, ix, i, key, key_len, &object);
+            client_prepare_get(memd, ix, i, key, key_len, &object);
           }
         client_execute(memd);
         EXTEND(SP, 2);
@@ -450,7 +454,9 @@ incr(memd, skey, ...)
           arg = SvUV(ST(2));
         key = SvPV(skey, key_len);
         noreply = (GIMME_V == G_VOID);
-        client_arith(memd, ix, key, key_len, arg, &object, noreply);
+        client_reset(memd);
+        client_prepare_arith(memd, ix, key, key_len, arg, &object, noreply);
+        client_execute(memd);
     OUTPUT:
         RETVAL
 
@@ -480,7 +486,9 @@ delete(memd, skey, ...)
           delay = SvUV(ST(2));
         key = SvPV(skey, key_len);
         noreply = (GIMME_V == G_VOID);
-        client_delete(memd, key, key_len, delay, &object, noreply);
+        client_reset(memd);
+        client_prepare_delete(memd, key, key_len, delay, &object, noreply);
+        client_execute(memd);
     OUTPUT:
         RETVAL
 

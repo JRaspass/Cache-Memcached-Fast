@@ -142,34 +142,38 @@ client_reset(struct client *c);
 
 extern
 int
-client_set(struct client *c, enum set_cmd_e cmd,
-           const char *key, size_t key_len,
-           flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size,
-           struct result_object *o, int noreply);
+client_prepare_set(struct client *c, enum set_cmd_e cmd,
+                   const char *key, size_t key_len,
+                   flags_type flags, exptime_type exptime,
+                   const void *value, value_size_type value_size,
+                   struct result_object *o, int noreply);
 
 extern
 int
-client_cas(struct client *c, const char *key, size_t key_len,
-           cas_type cas, flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size,
-           struct result_object *o, int noreply);
+client_prepare_cas(struct client *c, const char *key, size_t key_len,
+                   cas_type cas, flags_type flags, exptime_type exptime,
+                   const void *value, value_size_type value_size,
+                   struct result_object *o, int noreply);
 
 extern
 int
-client_get(struct client *c, enum get_cmd_e cmd, int key_index,
-           const char *key, size_t key_len, struct result_object *o);
+client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
+                   const char *key, size_t key_len, struct result_object *o);
 
 extern
 int
-client_arith(struct client *c, enum arith_cmd_e cmd,
-             const char *key, size_t key_len,
-             arith_type arg, struct result_object *o, int noreply);
+client_prepare_arith(struct client *c, enum arith_cmd_e cmd,
+                     const char *key, size_t key_len,
+                     arith_type arg, struct result_object *o, int noreply);
 
 extern
 int
-client_delete(struct client *c, const char *key, size_t key_len,
-              delay_type delay, struct result_object *o, int noreply);
+client_prepare_delete(struct client *c, const char *key, size_t key_len,
+                      delay_type delay, struct result_object *o, int noreply);
+
+extern
+int
+client_execute(struct client *c);
 
 extern
 int
@@ -183,10 +187,6 @@ client_nowait_push(struct client *c);
 extern
 int
 client_server_versions(struct client *c, struct result_object *o);
-
-extern
-int
-client_execute(struct client *c);
 
 
 #endif /* ! CLIENT_H */
