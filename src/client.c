@@ -868,6 +868,7 @@ parse_arith_reply(struct command_state *state)
 {
   char *beg;
   size_t len;
+  int zero;
 
   state->index = get_index(state);
   next_index(state);
@@ -875,6 +876,15 @@ parse_arith_reply(struct command_state *state)
   switch (state->match)
     {
     case MATCH_NOT_FOUND:
+      /* On NOT_FOUND we store the defined empty string.  */
+      state->u.embedded.ptr =
+        state->object->alloc(0, &state->u.embedded.opaque);
+      if (! state->u.embedded.ptr)
+        return MEMCACHED_FAILURE;
+
+      state->object->store(state->object->arg, state->u.embedded.opaque,
+                           state->index, NULL);
+
       return swallow_eol(state, 0, 1);
 
     default:
@@ -902,11 +912,18 @@ parse_arith_reply(struct command_state *state)
         }
     }
 
+  zero = (*beg == '0' && len == 1);
+  if (zero)
+    len = 3;
+
   state->u.embedded.ptr = state->object->alloc(len, &state->u.embedded.opaque);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
-  memcpy(state->u.embedded.ptr, beg, len);
+  if (! zero)
+    memcpy(state->u.embedded.ptr, beg, len);
+  else
+    memcpy(state->u.embedded.ptr, "0E0", 3);
 
   state->object->store(state->object->arg, state->u.embedded.opaque,
                        state->index, NULL);
