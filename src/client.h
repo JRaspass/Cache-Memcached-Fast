@@ -65,11 +65,9 @@ typedef unsigned long long arith_type;
 #define FMT_ARITH "%llu"
 
 
-typedef char *(*get_key_func)(void *arg, int key_index, size_t *key_len);
-
 typedef void *(*alloc_value_func)(value_size_type value_size, void **opaque);
 typedef void (*store_value_func)(void *arg, void *opaque, int key_index,
-                                 flags_type flags, int use_cas, cas_type cas);
+                                 void *meta);
 typedef void (*free_value_func)(void *opaque);
 
 struct result_object
@@ -79,6 +77,13 @@ struct result_object
   free_value_func free;
 
   void *arg;
+};
+
+struct meta_object
+{
+  flags_type flags;
+  int use_cas;
+  cas_type cas;
 };
 
 

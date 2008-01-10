@@ -67,11 +67,9 @@ struct value_state
 {
   struct result_object *object;
   void *opaque;
-  flags_type flags;
   void *ptr;
   value_size_type size;
-  int use_cas;
-  cas_type cas;
+  struct meta_object meta;
 };
 
 
@@ -81,7 +79,7 @@ value_state_reset(struct value_state *state, struct result_object *o,
                   int use_cas)
 {
   state->object = o;
-  state->use_cas = use_cas;
+  state->meta.use_cas = use_cas;
 
 #if 0 /* No need to initialize the following.  */
   state->ptr = NULL;
@@ -722,8 +720,7 @@ read_value(struct command_state *state)
 
   state->u.value.object->store(state->u.value.object->arg,
                                state->u.value.opaque,
-                               state->index, state->u.value.flags,
-                               state->u.value.use_cas, state->u.value.cas);
+                               state->index, &state->u.value.meta);
 
   return MEMCACHED_SUCCESS;
 }
@@ -804,19 +801,19 @@ parse_get_reply(struct command_state *state)
   res = parse_ull(state, &num);
   if (res != MEMCACHED_SUCCESS)
     return res;
-  state->u.value.flags = num;
+  state->u.value.meta.flags = num;
 
   res = parse_ull(state, &num);
   if (res != MEMCACHED_SUCCESS)
     return res;
   state->u.value.size = num;
 
-  if (state->u.value.use_cas)
+  if (state->u.value.meta.use_cas)
     {
       res = parse_ull(state, &num);
       if (res != MEMCACHED_SUCCESS)
         return res;
-      state->u.value.cas = num;
+      state->u.value.meta.cas = num;
     }
 
   res = swallow_eol(state, 0, 0);
@@ -933,7 +930,7 @@ parse_arith_reply(struct command_state *state)
 
   state->u.embedded.object->store(state->u.embedded.object->arg,
                                   state->u.embedded.opaque, state->index,
-                                  0, 0, 0);
+                                  NULL);
 
   /* Value may be space padded.  */
   return swallow_eol(state, 1, 1);
@@ -995,7 +992,7 @@ parse_version_reply(struct command_state *state)
 
   state->u.embedded.object->store(state->u.embedded.object->arg,
                                   state->u.embedded.opaque, state->index,
-                                  0, 0, 0);
+                                  NULL);
 
   return MEMCACHED_SUCCESS;
 }

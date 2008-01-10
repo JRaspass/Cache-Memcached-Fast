@@ -240,17 +240,13 @@ struct xs_mkey_result
 
 static
 void
-mkey_store(void *arg, void *opaque, int key_index, flags_type flags,
-           int use_cas, cas_type cas)
+mkey_store(void *arg, void *opaque, int key_index, void *meta)
 {
-  struct xs_mkey_result *mkey_res;
-  SV *value_sv;
+  SV *value_sv = (SV *) opaque;
+  struct xs_mkey_result *mkey_res = (struct xs_mkey_result *) arg;
+  struct meta_object *m = (struct meta_object *) meta;
 
-  value_sv = (SV *) opaque;
-
-  mkey_res = (struct xs_mkey_result *) arg;
-
-  if (! use_cas)
+  if (! m->use_cas)
     {
       av_store(mkey_res->vals, key_index, newRV_noinc(value_sv));
     }
@@ -258,28 +254,25 @@ mkey_store(void *arg, void *opaque, int key_index, flags_type flags,
     {
       AV *cas_val = newAV();
       av_extend(cas_val, 1);
-      av_push(cas_val, newSVuv(cas));
+      av_push(cas_val, newSVuv(m->cas));
       av_push(cas_val, newRV_noinc(value_sv));
       av_store(mkey_res->vals, key_index, newRV_noinc((SV *) cas_val));
     }
 
-  av_store(mkey_res->flags, key_index, newSVuv(flags));
+  av_store(mkey_res->flags, key_index, newSVuv(m->flags));
 }
 
 
 static
 void
-embedded_store(void *arg, void *opaque, int key_index, flags_type flags,
-               int use_cas, cas_type cas)
+embedded_store(void *arg, void *opaque, int key_index, void *meta)
 {
-  AV *av;
-  SV *sv;
+  AV *av = (AV *) arg;
+  SV *sv = (SV *) opaque;
 
-  /* Suppress warning about unused flags, use_cas and cas.  */
-  if (flags || use_cas || cas) {}
+  /* Suppress warning about unused meta.  */
+  if (meta) {}
 
-  av = (AV *) arg;
-  sv = (SV *) opaque;
   av_store(av, key_index, sv);
 }
 
