@@ -268,7 +268,7 @@ command_state_reset(struct command_state *state, int str_step,
 {
   state->reply_count = 0;
   state->str_step = str_step;
-  state->key_count = 1;
+  state->key_count = 0;
   state->parse_reply = parse_reply;
 
   state->phase = PHASE_RECEIVE;
@@ -1665,6 +1665,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
   if (! state)
     return MEMCACHED_FAILURE;
 
+  ++state->key_count;
+
   switch (cmd)
     {
     case CMD_SET:
@@ -1726,6 +1728,8 @@ client_cas(struct client *c, const char *key, size_t key_len,
   if (! state)
     return MEMCACHED_FAILURE;
 
+  ++state->key_count;
+
   iov_push(state, STR_WITH_LEN("cas"));
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
@@ -1760,11 +1764,13 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
   if (! state)
     return MEMCACHED_FAILURE;
 
+  ++state->key_count;
+
   if (! array_empty(state->iov_buf))
     {
       /* Pop off trailing \r\n because we are about to add another key.  */
       array_pop(state->iov_buf);
-      ++state->key_count;
+
       /* get can't be in noreply mode, so reply_count is positive.  */
       --state->reply_count;
     }
@@ -1809,6 +1815,8 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   if (! state)
     return MEMCACHED_FAILURE;
 
+  ++state->key_count;
+
   switch (cmd)
     {
     case CMD_INCR:
@@ -1849,6 +1857,8 @@ client_delete(struct client *c, const char *key, size_t key_len,
                     parse_delete_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
+
+  ++state->key_count;
 
   iov_push(state, STR_WITH_LEN("delete"));
   iov_push(state, c->prefix, c->prefix_len);
@@ -1909,9 +1919,6 @@ client_flush_all(struct client *c, delay_type delay,
         iov_push(state, (void *) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
-
-      /* Suppress the shift over three iovec items in state_prepare().  */
-      --state->key_count;
     }
 
   return client_execute(c);
