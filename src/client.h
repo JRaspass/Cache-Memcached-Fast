@@ -145,13 +145,15 @@ int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size, int noreply);
+           const void *value, value_size_type value_size,
+           struct result_object *o, int noreply);
 
 extern
 int
 client_cas(struct client *c, const char *key, size_t key_len,
            cas_type cas, flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size, int noreply);
+           const void *value, value_size_type value_size,
+           struct result_object *o, int noreply);
 
 extern
 int
@@ -167,11 +169,12 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
 extern
 int
 client_delete(struct client *c, const char *key, size_t key_len,
-              delay_type delay, int noreply);
+              delay_type delay, struct result_object *o, int noreply);
 
 extern
 int
-client_flush_all(struct client *c, delay_type delay, int noreply);
+client_flush_all(struct client *c, delay_type delay,
+                 struct result_object *o, int noreply);
 
 extern
 int

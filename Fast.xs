@@ -231,7 +231,7 @@ free_value(void *opaque)
 }
 
 
-struct xs_mkey_result
+struct xs_value_result
 {
   AV *vals;
   AV *flags;
@@ -240,15 +240,15 @@ struct xs_mkey_result
 
 static
 void
-mkey_store(void *arg, void *opaque, int key_index, void *meta)
+value_store(void *arg, void *opaque, int key_index, void *meta)
 {
   SV *value_sv = (SV *) opaque;
-  struct xs_mkey_result *mkey_res = (struct xs_mkey_result *) arg;
+  struct xs_value_result *value_res = (struct xs_value_result *) arg;
   struct meta_object *m = (struct meta_object *) meta;
 
   if (! m->use_cas)
     {
-      av_store(mkey_res->vals, key_index, newRV_noinc(value_sv));
+      av_store(value_res->vals, key_index, newRV_noinc(value_sv));
     }
   else
     {
@@ -256,10 +256,24 @@ mkey_store(void *arg, void *opaque, int key_index, void *meta)
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(m->cas));
       av_push(cas_val, newRV_noinc(value_sv));
-      av_store(mkey_res->vals, key_index, newRV_noinc((SV *) cas_val));
+      av_store(value_res->vals, key_index, newRV_noinc((SV *) cas_val));
     }
 
-  av_store(mkey_res->flags, key_index, newSVuv(m->flags));
+  av_store(value_res->flags, key_index, newSVuv(m->flags));
+}
+
+
+static
+void
+result_store(void *arg, void *opaque, int key_index, void *meta)
+{
+  AV *av = (AV *) arg;
+  int res = (int) opaque;
+
+  /* Suppress warning about unused opaque and meta.  */
+  if (meta) {}
+
+  av_store(av, key_index, newSViv(res));
 }
 
 
@@ -307,7 +321,7 @@ DESTROY(memd)
         client_destroy(memd);
 
 
-bool
+AV *
 set(memd, skey, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
@@ -325,22 +339,26 @@ set(memd, skey, sval, flags, ...)
         const void *buf;
         STRLEN buf_len;
         exptime_type exptime = 0;
-        int noreply, res;
+        int noreply;
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
     CODE:
+        RETVAL = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) RETVAL);
+        object.arg = RETVAL;
         if (items > 4 && SvOK(ST(4)))
           exptime = SvIV(ST(4));
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
         noreply = (GIMME_V == G_VOID);
-        res = client_set(memd, ix, key, key_len, flags, exptime,
-                         buf, buf_len, noreply);
-        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
-        RETVAL = (res == MEMCACHED_SUCCESS);
+        client_set(memd, ix, key, key_len, flags, exptime,
+                   buf, buf_len, &object, noreply);
     OUTPUT:
         RETVAL
 
 
-bool
+AV *
 cas(memd, skey, cas, sval, flags, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
@@ -354,17 +372,21 @@ cas(memd, skey, cas, sval, flags, ...)
         const void *buf;
         STRLEN buf_len;
         exptime_type exptime = 0;
-        int noreply, res;
+        int noreply;
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
     CODE:
+        RETVAL = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) RETVAL);
+        object.arg = RETVAL;
         if (items > 4 && SvOK(ST(4)))
           exptime = SvIV(ST(4));
         key = SvPV(skey, key_len);
         buf = (void *) SvPV(sval, buf_len);
         noreply = (GIMME_V == G_VOID);
-        res = client_cas(memd, key, key_len, cas, flags, exptime,
-                         buf, buf_len, noreply);
-        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
-        RETVAL = (res == MEMCACHED_SUCCESS);
+        client_cas(memd, key, key_len, cas, flags, exptime,
+                   buf, buf_len, &object, noreply);
     OUTPUT:
         RETVAL
 
@@ -376,16 +398,16 @@ get(memd, ...)
         gets  =  CMD_GETS
     PROTOTYPE: $@
     PREINIT:
-        struct xs_mkey_result mkey_res;
+        struct xs_value_result value_res;
         struct result_object object =
-            { alloc_value, mkey_store, free_value, &mkey_res };
+            { alloc_value, value_store, free_value, &value_res };
         int i, key_count;
     PPCODE:
         key_count = items - 1;
-        mkey_res.vals = newAV();
-        mkey_res.flags = newAV();
-        av_extend(mkey_res.vals, key_count);
-        av_extend(mkey_res.flags, key_count);
+        value_res.vals = newAV();
+        value_res.flags = newAV();
+        av_extend(value_res.vals, key_count);
+        av_extend(value_res.flags, key_count);
         client_reset(memd);
         for (i = 0; i < key_count; ++i)
           {
@@ -397,8 +419,8 @@ get(memd, ...)
           }
         client_execute(memd);
         EXTEND(SP, 2);
-        PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.vals)));
-        PUSHs(sv_2mortal(newRV_noinc((SV *) mkey_res.flags)));
+        PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.vals)));
+        PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.flags)));
         XSRETURN(2);
 
 
@@ -430,7 +452,7 @@ incr(memd, skey, ...)
         RETVAL
 
 
-bool
+AV*
 delete(memd, skey, ...)
         Cache_Memcached_Fast *  memd
         SV *                    skey
@@ -441,35 +463,43 @@ delete(memd, skey, ...)
         const char *key;
         STRLEN key_len;
         delay_type delay = 0;
-        int noreply, res;
+        int noreply;
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
     CODE:
+        RETVAL = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) RETVAL);
+        object.arg = RETVAL;
         /* Suppress warning about unused ix.  */
         if (ix) {}
         if (items > 2 && SvOK(ST(2)))
           delay = SvUV(ST(2));
         key = SvPV(skey, key_len);
         noreply = (GIMME_V == G_VOID);
-        res = client_delete(memd, key, key_len, delay, noreply);
-        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
-        RETVAL = (res == MEMCACHED_SUCCESS);
+        client_delete(memd, key, key_len, delay, &object, noreply);
     OUTPUT:
         RETVAL
 
 
-bool
+AV *
 flush_all(memd, ...)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $;$
     PREINIT:
         delay_type delay = 0;
-        int noreply, res;
+        int noreply;
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
     CODE:
+        RETVAL = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) RETVAL);
+        object.arg = RETVAL;
         if (items > 1 && SvOK(ST(1)))
           delay = SvUV(ST(1));
         noreply = (GIMME_V == G_VOID);
-        res = client_flush_all(memd, delay, noreply);
-        /* FIXME: use XSRETURN_{YES|NO} or even TARG.  */
-        RETVAL = (res == MEMCACHED_SUCCESS);
+        client_flush_all(memd, delay, &object, noreply);
     OUTPUT:
         RETVAL
 

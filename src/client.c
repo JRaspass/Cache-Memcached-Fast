@@ -65,7 +65,6 @@ typedef unsigned long long generation_type;
 
 struct value_state
 {
-  struct result_object *object;
   void *opaque;
   void *ptr;
   value_size_type size;
@@ -73,35 +72,11 @@ struct value_state
 };
 
 
-static inline
-void
-value_state_reset(struct value_state *state, struct result_object *o,
-                  int use_cas)
-{
-  state->object = o;
-  state->meta.use_cas = use_cas;
-
-#if 0 /* No need to initialize the following.  */
-  state->ptr = NULL;
-  state->size = 0;
-#endif
-}
-
-
 struct embedded_state
 {
-  struct result_object *object;
   void *opaque;
   void *ptr;
 };
-
-
-static inline
-void
-embedded_state_reset(struct embedded_state *state, struct result_object *o)
-{
-  state->object = o;
-}
 
 
 struct command_state;
@@ -151,6 +126,7 @@ struct command_state
   int index_tail;
 
   parse_reply_func parse_reply;
+  struct result_object *object;
 
   union
   {
@@ -690,7 +666,7 @@ read_value(struct command_state *state)
               if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
                 return MEMCACHED_EAGAIN;
 
-              state->u.value.object->free(state->u.value.opaque);
+              state->object->free(state->u.value.opaque);
               return MEMCACHED_CLOSED;
             }
 
@@ -712,15 +688,14 @@ read_value(struct command_state *state)
 
   if (memcmp(state->pos, eol, sizeof(eol)) != 0)
     {
-      state->u.value.object->free(state->u.value.opaque);
+      state->object->free(state->u.value.opaque);
       return MEMCACHED_UNKNOWN;
     }
   state->pos += sizeof(eol);
   state->eol = state->pos;
 
-  state->u.value.object->store(state->u.value.object->arg,
-                               state->u.value.opaque,
-                               state->index, &state->u.value.meta);
+  state->object->store(state->object->arg, state->u.value.opaque,
+                       state->index, &state->u.value.meta);
 
   return MEMCACHED_SUCCESS;
 }
@@ -820,15 +795,24 @@ parse_get_reply(struct command_state *state)
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  state->u.value.ptr =
-    state->u.value.object->alloc(state->u.value.size,
-                                 &state->u.value.opaque);
+  state->u.value.ptr = state->object->alloc(state->u.value.size,
+                                            &state->u.value.opaque);
   if (! state->u.value.ptr)
     return MEMCACHED_FAILURE;
 
   state->phase = PHASE_VALUE;
 
   return MEMCACHED_SUCCESS;
+}
+
+
+static inline
+void
+store_result(struct command_state *state, int res)
+{
+  int index = get_index(state);
+  next_index(state);
+  state->object->store(state->object->arg, (void *) res, index, NULL);
 }
 
 
@@ -841,11 +825,13 @@ parse_set_reply(struct command_state *state)
   switch (state->match)
     {
     case MATCH_STORED:
+      store_result(state, 1);
       return swallow_eol(state, 0, 1);
 
     case MATCH_NOT_STORED:
     case MATCH_NOT_FOUND:
     case MATCH_EXISTS:
+      store_result(state, 0);
       res = swallow_eol(state, 0, 1);
 
       return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
@@ -865,9 +851,11 @@ parse_delete_reply(struct command_state *state)
   switch (state->match)
     {
     case MATCH_DELETED:
+      store_result(state, 1);
       return swallow_eol(state, 0, 1);
 
     case MATCH_NOT_FOUND:
+      store_result(state, 0);
       res = swallow_eol(state, 0, 1);
 
       return (res == MEMCACHED_SUCCESS ? MEMCACHED_FAILURE : res);
@@ -921,16 +909,14 @@ parse_arith_reply(struct command_state *state)
         }
     }
 
-  state->u.embedded.ptr =
-    state->u.embedded.object->alloc(len, &state->u.embedded.opaque);
+  state->u.embedded.ptr = state->object->alloc(len, &state->u.embedded.opaque);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
   memcpy(state->u.embedded.ptr, beg, len);
 
-  state->u.embedded.object->store(state->u.embedded.object->arg,
-                                  state->u.embedded.opaque, state->index,
-                                  NULL);
+  state->object->store(state->object->arg, state->u.embedded.opaque,
+                       state->index, NULL);
 
   /* Value may be space padded.  */
   return swallow_eol(state, 1, 1);
@@ -944,6 +930,7 @@ parse_ok_reply(struct command_state *state)
   switch (state->match)
     {
     case MATCH_OK:
+      store_result(state, 1);
       return swallow_eol(state, 0, 1);
 
     default:
@@ -983,16 +970,14 @@ parse_version_reply(struct command_state *state)
 
   len = state->pos - sizeof(eol) - beg;
 
-  state->u.embedded.ptr =
-    state->u.embedded.object->alloc(len, &state->u.embedded.opaque);
+  state->u.embedded.ptr = state->object->alloc(len, &state->u.embedded.opaque);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
   memcpy(state->u.embedded.ptr, beg, len);
 
-  state->u.embedded.object->store(state->u.embedded.object->arg,
-                                  state->u.embedded.opaque, state->index,
-                                  NULL);
+  state->object->store(state->object->arg, state->u.embedded.opaque,
+                       state->index, NULL);
 
   return MEMCACHED_SUCCESS;
 }
@@ -1467,7 +1452,7 @@ client_execute(struct client *c)
                     requires redesign.
                   */
                   if (state->phase == PHASE_VALUE)
-                    state->u.value.object->free(state->u.value.opaque);
+                    state->object->free(state->u.value.opaque);
 
                   client_mark_failed(c, s);
                 }
@@ -1573,10 +1558,12 @@ push_index(struct command_state *state, int index)
 
 static
 struct command_state *
-init_state(struct command_state *state, int index,
-           size_t request_size, size_t str_size,
-           parse_reply_func parse_reply, int *noreply)
+init_state(struct command_state *state, int index, size_t request_size,
+           size_t str_size, parse_reply_func parse_reply,
+           struct result_object *o, int *noreply)
 {
+  state->object = o;
+
   if (noreply && *noreply)
     {
       if (state->client->nowait || state->noreply)
@@ -1621,7 +1608,7 @@ static
 struct command_state *
 get_state(struct client *c, int index, const char *key, size_t key_len,
           size_t request_size, size_t str_size,
-          parse_reply_func parse_reply, int *noreply)
+          parse_reply_func parse_reply, struct result_object *o, int *noreply)
 {
   struct server *s;
   int server_index, fd;
@@ -1637,7 +1624,7 @@ get_state(struct client *c, int index, const char *key, size_t key_len,
     return NULL;
 
   return init_state(&s->cmd_state, index, request_size, str_size,
-                    parse_reply, noreply);
+                    parse_reply, o, noreply);
 }
 
 
@@ -1659,7 +1646,8 @@ int
 client_set(struct client *c, enum set_cmd_e cmd,
            const char *key, size_t key_len,
            flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size, int noreply)
+           const void *value, value_size_type value_size,
+           struct result_object *o, int noreply)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1671,7 +1659,7 @@ client_set(struct client *c, enum set_cmd_e cmd,
   client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
-                    parse_set_reply, &noreply);
+                    parse_set_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1719,7 +1707,8 @@ client_set(struct client *c, enum set_cmd_e cmd,
 int
 client_cas(struct client *c, const char *key, size_t key_len,
            cas_type cas, flags_type flags, exptime_type exptime,
-           const void *value, value_size_type value_size, int noreply)
+           const void *value, value_size_type value_size,
+           struct result_object *o, int noreply)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1731,7 +1720,7 @@ client_cas(struct client *c, const char *key, size_t key_len,
   client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
-                    parse_set_reply, &noreply);
+                    parse_set_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1765,7 +1754,7 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, 0,
-                    parse_get_reply, NULL);
+                    parse_get_reply, o, NULL);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1779,7 +1768,7 @@ client_get(struct client *c, enum get_cmd_e cmd, int key_index,
     }
   else
     {
-      value_state_reset(&state->u.value, o, (cmd == CMD_GETS));
+      state->u.value.meta.use_cas = (cmd == CMD_GETS);
 
       switch (cmd)
         {
@@ -1814,11 +1803,9 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
   client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
-                    parse_arith_reply, &noreply);
+                    parse_arith_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
-
-  embedded_state_reset(&state->u.embedded, o);
 
   switch (cmd)
     {
@@ -1847,7 +1834,7 @@ client_arith(struct client *c, enum arith_cmd_e cmd,
 
 int
 client_delete(struct client *c, const char *key, size_t key_len,
-              delay_type delay, int noreply)
+              delay_type delay, struct result_object *o, int noreply)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
@@ -1857,7 +1844,7 @@ client_delete(struct client *c, const char *key, size_t key_len,
   client_reset(c);
 
   state = get_state(c, 0, key, key_len, request_size, str_size,
-                    parse_delete_reply, &noreply);
+                    parse_delete_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1879,7 +1866,8 @@ client_delete(struct client *c, const char *key, size_t key_len,
 
 
 int
-client_flush_all(struct client *c, delay_type delay, int noreply)
+client_flush_all(struct client *c, delay_type delay,
+                 struct result_object *o, int noreply)
 {
   static const size_t request_size = 1;
   static const size_t str_size =
@@ -1907,7 +1895,7 @@ client_flush_all(struct client *c, delay_type delay, int noreply)
         continue;
 
       state = init_state(&s->cmd_state, i, request_size, str_size,
-                         parse_ok_reply, &noreply);
+                         parse_ok_reply, o, &noreply);
       if (! state)
         continue;
 
@@ -1985,11 +1973,9 @@ client_server_versions(struct client *c, struct result_object *o)
         continue;
 
       state = init_state(&s->cmd_state, i, request_size, 0,
-                         parse_version_reply, NULL);
+                         parse_version_reply, o, NULL);
       if (! state)
         continue;
-
-      embedded_state_reset(&state->u.embedded, o);
 
       iov_push(state, STR_WITH_LEN("version\r\n"));
     }

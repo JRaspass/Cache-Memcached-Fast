@@ -530,7 +530,11 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
 sub set {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 1, 1, _pack_value($self, $_[1]));
-    return $self->{_xs}->set(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->set(@_)->[0];
+    } else {
+        $self->{_xs}->set(@_);
+    }
 }
 
 
@@ -556,7 +560,11 @@ This command first appeared in B<memcached> 1.2.4.
 sub cas {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 2, 1, _pack_value($self, $_[2]));
-    return $self->{_xs}->cas(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->cas(@_)->[0];
+    } else {
+        $self->{_xs}->cas(@_);
+    }
 }
 
 
@@ -578,7 +586,11 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
 sub add {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 1, 1, _pack_value($self, $_[1]));
-    return $self->{_xs}->add(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->add(@_)->[0];
+    } else {
+        $self->{_xs}->add(@_);
+    }
 }
 
 
@@ -600,7 +612,11 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
 sub replace {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 1, 1, _pack_value($self, $_[1]));
-    return $self->{_xs}->replace(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->replace(@_)->[0];
+    } else {
+        $self->{_xs}->replace(@_);
+    }
 }
 
 
@@ -624,7 +640,11 @@ sub append {
     my Cache::Memcached::Fast $self = shift;
     # append() does not affect flags.
     splice(@_, 1, 1, \$_[1], 0);
-    return $self->{_xs}->append(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->append(@_)->[0];
+    } else {
+        $self->{_xs}->append(@_);
+    }
 }
 
 
@@ -648,7 +668,11 @@ sub prepend {
     my Cache::Memcached::Fast $self = shift;
     # prepend() does not affect flags.
     splice(@_, 1, 1, \$_[1], 0);
-    return $self->{_xs}->prepend(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->prepend(@_)->[0];
+    } else {
+        $self->{_xs}->prepend(@_);
+    }
 }
 
 
@@ -853,7 +877,11 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
 # have to document it as a separate =item.
 sub delete {
     my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->delete(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->delete(@_)->[0];
+    } else {
+        $self->{_xs}->delete(@_);
+    }
 }
 
 
@@ -875,7 +903,11 @@ I<Return:> boolean, true if operation succeeded, false otherwise.
 
 sub flush_all {
     my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->flush_all(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->flush_all(@_)->[0];
+    } else {
+        $self->{_xs}->flush_all(@_);
+    }
 }
 
 
@@ -932,7 +964,11 @@ sub server_versions {
 sub AUTOLOAD {
     my Cache::Memcached::Fast $self = shift;
     my ($method) = $AUTOLOAD =~ /::([^:]+)$/;
-    return $self->{_xs}->$method(@_);
+    if (defined wantarray) {
+        return $self->{_xs}->$method(@_)->[0];
+    } else {
+        $self->{_xs}->$method(@_);
+    }
 }
 
 
