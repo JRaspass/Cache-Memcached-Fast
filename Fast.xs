@@ -440,30 +440,51 @@ get(memd, ...)
 
 
 AV*
-incr(memd, skey, ...)
+incr(memd, ...)
         Cache_Memcached_Fast *  memd
-        SV *                    skey
     ALIAS:
         decr  =  CMD_DECR
-    PROTOTYPE: $$;$
+    PROTOTYPE: $@
     PREINIT:
-        const char *key;
-        STRLEN key_len;
-        arith_type arg = 1;
         struct result_object object =
             { alloc_value, embedded_store, NULL, NULL };
-        int noreply;
+        int i, noreply;
     CODE:
         RETVAL = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
-        if (items > 2 && SvOK(ST(2)))
-          arg = SvUV(ST(2));
-        key = SvPV(skey, key_len);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd);
-        client_prepare_arith(memd, ix, key, key_len, arg, &object, noreply);
+        for (i = 1; i < items; ++i)
+          {
+            SV *sv;
+            AV *av;
+            const char *key;
+            STRLEN key_len;
+            arith_type arg = 1;
+
+            sv = ST(i);
+            if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
+              croak("Not an array reference");
+
+            av = (AV *) SvRV(sv);
+            /*
+              The following values should be defined, so we do not do
+              any additional checks for speed.
+            */
+            key = SvPV(*av_fetch(av, 0, 0), key_len);
+            if (av_len(av) >= 1)
+              {
+                /* exptime doesn't have to be defined.  */
+                SV **ps = av_fetch(av, 1, 0);
+                if (ps)
+                  arg = SvUV(*ps);
+              }
+ 
+            client_prepare_incr(memd, ix, i - 1, key, key_len, arg,
+                                &object, noreply);
+          }
         client_execute(memd);
     OUTPUT:
         RETVAL

@@ -554,7 +554,7 @@ I<$expiration_time>.
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
 
-I<Return:> in list context returns the list of boolean results, each
+I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> hols the result value.  See L</set> to
@@ -630,7 +630,7 @@ I<$expiration_time>.
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
 
-I<Return:> in list context returns the list of boolean results, each
+I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> hols the result value.  See L</cas> to
@@ -701,7 +701,7 @@ I<$expiration_time>.
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
 
-I<Return:> in list context returns the list of boolean results, each
+I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> hols the result value.  See L</add> to
@@ -770,7 +770,7 @@ I<$expiration_time>.
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
 
-I<Return:> in list context returns the list of boolean results, each
+I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> hols the result value.  See L</replace> to
@@ -839,7 +839,7 @@ array references each holding I<$key>, I<$value>.
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
 
-I<Return:> in list context returns the list of boolean results, each
+I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> hols the result value.  See L</append> to
@@ -911,7 +911,7 @@ array references each holding I<$key>, I<$value>.
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
 
-I<Return:> in list context returns the list of boolean results, each
+I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> hols the result value.  See L</prepend> to
@@ -1093,7 +1093,45 @@ negative server reply, or I<undef> in case of some error.
 sub incr {
     my Cache::Memcached::Fast $self = shift;
     if (defined wantarray) {
-        return $self->{_xs}->incr(@_)->[0];
+        return $self->{_xs}->incr(\@_)->[0];
+    } else {
+        $self->{_xs}->incr(\@_);
+    }
+}
+
+
+=item C<incr_multi>
+
+  $memd->incr_multi(
+      [$key],
+      [$key, $increment],
+      ...
+  );
+
+Like L</incr>, but operates on more than one key.  Takes the list of
+array references each holding I<$key> and optional I<$increment>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</incr> to
+learn what the result value is.
+
+=cut
+
+sub incr_multi {
+    my Cache::Memcached::Fast $self = shift;
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->incr(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->incr(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
     } else {
         $self->{_xs}->incr(@_);
     }
@@ -1120,7 +1158,45 @@ negative server reply, or I<undef> in case of some error.
 sub decr {
     my Cache::Memcached::Fast $self = shift;
     if (defined wantarray) {
-        return $self->{_xs}->decr(@_)->[0];
+        return $self->{_xs}->decr(\@_)->[0];
+    } else {
+        $self->{_xs}->decr(\@_);
+    }
+}
+
+
+=item C<decr_multi>
+
+  $memd->decr_multi(
+      [$key],
+      [$key, $decrement],
+      ...
+  );
+
+Like L</decr>, but operates on more than one key.  Takes the list of
+array references each holding I<$key> and optional I<$decrement>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</decr> to
+learn what the result value is.
+
+=cut
+
+sub decr_multi {
+    my Cache::Memcached::Fast $self = shift;
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->decr(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->decr(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
     } else {
         $self->{_xs}->decr(@_);
     }

@@ -164,9 +164,9 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
 
 extern
 int
-client_prepare_arith(struct client *c, enum arith_cmd_e cmd,
-                     const char *key, size_t key_len,
-                     arith_type arg, struct result_object *o, int noreply);
+client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
+                    const char *key, size_t key_len,
+                    arith_type arg, struct result_object *o, int noreply);
 
 extern
 int
