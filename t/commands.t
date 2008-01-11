@@ -9,7 +9,7 @@ use lib "$FindBin::Bin";
 use Memd;
 
 if ($Memd::memd) {
-    plan tests => 61;
+    plan tests => 64;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -134,8 +134,8 @@ SKIP: {
 
 
 ok($Memd::memd->delete($key), 'Delete');
-$count = 0;
-foreach my $k (@keys) {
-    ++$count if $Memd::memd->delete($k);
-}
-is($count, count);
+ok($Memd::memd->delete($keys[0]));
+ok($Memd::memd->remove($keys[1]));
+@res = $Memd::memd->delete_multi(map { [ $_ ] } @keys);
+is(@res, count);
+is((grep { not $_ } @res), 2);
