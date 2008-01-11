@@ -42,22 +42,40 @@ our $VERSION = '0.07';
       nowait => 1,
   });
 
+  # Get server versions.
+  my $versions = $memd->server_versions;
+  while (my ($server, $version) = each %$versions) {
+      ...
+  }
+
   # Store scalars.
   $memd->add('skey', 'text');
+  $memd->add_multi(['skey2', 'text2'], ['skey3', 'text3', 10]);
+
   $memd->replace('skey', 'val');
+  $memd->replace_multi(['skey2', 'val2'], ['skey3', 'val3']);
+
   $memd->set('nkey', 5);
+  $memd->set_multi(['nkey2', 10], ['skey3', 'text', 5]);
 
   # Store arbitrary Perl data structures.
   my %hash = (a => 1, b => 2);
+  my @list = (1, 2);
   $memd->set('hash', \%hash);
+  $memd->set_multi(['scalar', 1], ['list', \@list]);
 
   # Add to strings.
   $memd->prepend('skey', 'This is a ');
-  $memd->append('skey', 'ule.');
+  $memd->prepend_multi(['skey2', 'This is a '], ['skey3', 'garbage']);
+  $memd->append('skey', 'ue.');
+  $memd->prepend_multi(['skey2', 'ue.'], ['skey3', 'garbage']);
 
   # Do arithmetic.
   $memd->incr('nkey', 10);
   print "OK\n" if $memd->decr('nkey', 3) == 12;
+
+  my @counters = qw(c1 c2);
+  $memd->incr_multi(map { [ $_ ] } @counters);
 
   # Retrieve values.
   my $val = $memd->get('skey');
@@ -77,6 +95,12 @@ our $VERSION = '0.07';
 
   # Delete some data.
   $memd->delete('skey');
+
+  my @keys = qw(k1 k2 k3);
+  $memd->delete_multi(map { [ $_ ] } @keys);
+
+  # Wait for all commands that were executed in nowait mode.
+  $memd->nowait_push;
 
   # Wipe out all cached data.
   $memd->flush_all;
