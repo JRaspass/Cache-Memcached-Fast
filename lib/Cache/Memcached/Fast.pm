@@ -1378,9 +1378,9 @@ sub AUTOLOAD {
     my Cache::Memcached::Fast $self = shift;
     my ($method) = $AUTOLOAD =~ /::([^:]+)$/;
     if (defined wantarray) {
-        return $self->{_xs}->$method(@_)->[0];
+        return $self->{_xs}->$method(\@_)->[0];
     } else {
-        $self->{_xs}->$method(@_);
+        $self->{_xs}->$method(\@_);
     }
 }
 
