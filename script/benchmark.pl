@@ -16,13 +16,16 @@ use FindBin;
 @ARGV >= 1
     or die "Usage: $FindBin::Script HOST:PORT... [COUNT]\n";
 
-my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 100_000);
+my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 1_000);
 
 my @addrs = @ARGV;
 
 my $max_keys = $count / 2;
-my $keys_multi = 100;
 my $value = 'x' x 40;
+
+use constant key_count => 100;
+use constant NOWAIT => 1;
+use constant NOREPLY => 1;
 
 
 use Cache::Memcached::Fast;
@@ -31,22 +34,19 @@ use Benchmark qw(:hireswallclock timethese cmpthese);
 
 use constant CAS => 1;
 
-use constant NOWAIT => 1;
-use constant NOREPLY => 0;
 
-
-my $new_nowait = new Cache::Memcached::Fast {
+my $new = new Cache::Memcached::Fast {
     servers   => [@addrs],
     namespace => 'Cache::Memcached::nowait',
     ketama_points => 150,
     nowait => NOWAIT,
 };
 
-my $version = $new_nowait->server_versions;
+my $version = $new->server_versions;
 if (keys %$version != @addrs) {
     warn "No server is running at "
         . join(', ', grep { not exists $version->{$_} }
-               @{$new_nowait->{servers}})
+               @{$new->{servers}})
         . "\n";
     exit 1;
 }
@@ -54,7 +54,7 @@ if (keys %$version != @addrs) {
 
 @addrs = map { +{ address => $_, noreply => NOREPLY } } @addrs;
 
-my $new = new Cache::Memcached::Fast {
+my $new_noreply = new Cache::Memcached::Fast {
     servers   => [@addrs],
     namespace => 'Cache::Memcached::_plain',
     ketama_points => 150,
@@ -67,83 +67,83 @@ sub get_key {
 
 
 sub run {
-    my ($method, $keys, $nowait, $noreply, $value, $cas) = @_;
-
-    my $title = "$method";
-    if (defined $value) {
-        use bytes;
-        $title .= '(' . length($value) . ' bytes)';
-    } elsif ($keys > 1) {
-        $title .= "($keys keys)";
-    }
+    my ($method, $value, $cas) = @_;
 
     my $res;
 
     my $params = sub {
-        my @params = map { get_key() } (1 .. $keys);
+        my @params;
+        push @params, get_key();
         push @params, 0 if $cas;
         push @params, $value if defined $value;
         return @params;
     };
 
-    my @test = (
-        "$title"  => sub { $res = $new->$method(&$params) },
-    );
-
-    if ($nowait) {
-        push @test, (
-             "$title nowait"  => sub { $new_nowait->$method(&$params) },
-        );
-    }
-
-    if ($noreply) {
-        push @test, (
-             "$title noreply"  => sub { $new->$method(&$params) },
-        );
-    }
-
-    cmpthese(timethese(int($count / $keys), {@test}));
-}
-
-
-sub run_multi {
-    my ($method, $keys) = @_;
+    my $params_multi = sub {
+        my @res;
+        for (my $i = 0; $i < key_count; ++$i) {
+            my @params;
+            push @params, get_key();
+            if ($cas or defined $value) {
+                push @params, 0 if $cas;
+                push @params, $value if defined $value;
+                push @res, \@params;
+            } else {
+                push @res, @params;
+            }
+        }
+        return @res;
+    };
 
     my $method_multi = "${method}_multi";
-
-    my $res;
-
-    my @keys = map { int(rand($max_keys)) } (1 .. $keys);
-
     my @test = (
-        "$method x $keys"
-                => sub { $res = $new->$method($_) foreach (@keys) },
-        "$method_multi($keys)"
-                => sub { $res = $new->$method_multi(@keys) },
+        "$method" => sub { $res = $new->$method(&$params)
+                               foreach (1..key_count) },
+        "${method}_multi"
+                => sub { $res = $new->$method_multi(&$params_multi) },
     );
 
-    cmpthese(timethese(int($count / $keys), {@test}));
+    if (defined $value and NOWAIT) {
+        push @test, (
+             "$method nowait"  => sub { $new->$method(&$params)
+                                            foreach (1..key_count) },
+             "${method}_multi nowait"
+                     => sub { $new->$method_multi(&$params_multi) },
+        );
+    }
+
+    if (defined $value and NOREPLY) {
+        push @test, (
+             "$method noreply"  => sub { $new_noreply->$method(&$params)
+                                             foreach (1..key_count) },
+             "${method}_multi noreply"
+                     => sub { $new_noreply->$method_multi(&$params_multi) },
+        );
+    }
+
+    cmpthese(timethese($count, {@test}));
 }
 
 
 my @methods = (
-    [add        => \&run, 1, NOWAIT, NOREPLY, $value],
-    [set        => \&run, 1, NOWAIT, NOREPLY, $value],
-    [append     => \&run, 1, NOWAIT, NOREPLY, $value],
-    [prepend    => \&run, 1, NOWAIT, NOREPLY, $value],
-    [replace    => \&run, 1, NOWAIT, NOREPLY, $value],
-    [cas        => \&run, 1, NOWAIT, NOREPLY, $value, CAS],
-    [get        => \&run, 1],
-    [get_multi  => \&run, $keys_multi],
-    [gets       => \&run, 1],
-    [gets_multi => \&run, $keys_multi],
-    [get        => \&run_multi, $keys_multi],
-    [gets       => \&run_multi, $keys_multi],
-    [incr       => \&run, 1, NOWAIT, NOREPLY],
-    [decr       => \&run, 1, NOWAIT, NOREPLY],
-    [delete     => \&run, 1, NOWAIT, NOREPLY],
+    [add        => \&run, $value],
+    [set        => \&run, $value],
+    [append     => \&run, $value],
+    [prepend    => \&run, $value],
+    [replace    => \&run, $value],
+    [cas        => \&run, $value, CAS],
+    [get        => \&run], 
+    [gets       => \&run],
+    [incr       => \&run, 1],
+    [decr       => \&run, 1],
+    [delete     => \&run, 0],
 );
 
+
+print "Servers: @{[ keys %$version ]}\n";
+print "Iteration count: $count\n";
+print 'Keys per iteration: ', key_count, "\n";
+print 'Value size: ', length($value), " bytes\n";
 
 srand(1);
 foreach my $args (@methods) {
