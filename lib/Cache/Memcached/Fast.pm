@@ -45,7 +45,7 @@ our $VERSION = '0.07';
   # Get server versions.
   my $versions = $memd->server_versions;
   while (my ($server, $version) = each %$versions) {
-      ...
+      #...
   }
 
   # Store scalars.
