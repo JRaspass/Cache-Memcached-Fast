@@ -69,7 +69,7 @@ sub get_key {
 sub run {
     my ($method, $value, $cas) = @_;
 
-    my $res;
+    my ($res, @res);
 
     my $params = sub {
         my @params;
@@ -80,43 +80,50 @@ sub run {
     };
 
     my $params_multi = sub {
-        my @res;
+        my @result;
         for (my $i = 0; $i < key_count; ++$i) {
             my @params;
             push @params, get_key();
             if ($cas or defined $value) {
                 push @params, 0 if $cas;
                 push @params, $value if defined $value;
-                push @res, \@params;
+                push @result, \@params;
             } else {
-                push @res, @params;
+                push @result, @params;
             }
         }
-        return @res;
+        return @result;
     };
 
     my $method_multi = "${method}_multi";
     my @test = (
         "$method" => sub { $res = $new->$method(&$params)
                                foreach (1..key_count) },
-        "${method}_multi"
+        "${method}_multi" . (defined $value ? ' (%h)' : '')
                 => sub { $res = $new->$method_multi(&$params_multi) },
     );
 
+    if (defined $value) {
+        push @test, (
+             "${method}_multi (\@a)"
+                     => sub { @res = $new->$method_multi(&$params_multi) },
+        );
+    }
+
     if (defined $value and NOWAIT) {
         push @test, (
-             "$method nowait"  => sub { $new->$method(&$params)
-                                            foreach (1..key_count) },
-             "${method}_multi nowait"
+            "$method nowait"  => sub { $new->$method(&$params)
+                                           foreach (1..key_count) },
+            "${method}_multi nowait"
                      => sub { $new->$method_multi(&$params_multi) },
         );
     }
 
     if (defined $value and NOREPLY) {
         push @test, (
-             "$method noreply"  => sub { $new_noreply->$method(&$params)
-                                             foreach (1..key_count) },
-             "${method}_multi noreply"
+            "$method noreply"  => sub { $new_noreply->$method(&$params)
+                                            foreach (1..key_count) },
+            "${method}_multi noreply"
                      => sub { $new_noreply->$method_multi(&$params_multi) },
         );
     }
