@@ -40,6 +40,10 @@ For 0.07:
 
 - Rename bins to buckets.
 
+
+- Do not return the value from _pack_value() by reference, change it
+  in place.
+
 - Add tests for new multi commands.
 
 - Test that the example works.
@@ -50,3 +54,5 @@ For 0.07:
 
 - Investigate why %h and @a have such bug difference in wallclock
   time.
+
+- Memd.pm should not assume equal server versions.
