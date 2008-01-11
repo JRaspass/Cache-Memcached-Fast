@@ -70,8 +70,6 @@ sub get_key {
 sub run {
     my ($method, $value, $cas) = @_;
 
-    my ($res, @res);
-
     my $params = sub {
         my @params;
         push @params, $_[0] . '-' . get_key();
@@ -81,34 +79,35 @@ sub run {
     };
 
     my $params_multi = sub {
-        my @result;
+        my @res;
         for (my $i = 0; $i < key_count; ++$i) {
             my @params;
             push @params, $_[0] . '-' . get_key();
             if ($cas or defined $value) {
                 push @params, 0 if $cas;
                 push @params, $value if defined $value;
-                push @result, \@params;
+                push @res, \@params;
             } else {
-                push @result, @params;
+                push @res, @params;
             }
         }
-        return @result;
+        return @res;
     };
 
     my $method_multi = "${method}_multi";
     my @test = (
-        "$method" => sub { $res = $new->$method(&$params('p$'))
+        "$method" => sub { my $res = $new->$method(&$params('p$'))
                                foreach (1..$count * key_count) },
         "${method}_multi" . (defined $value ? ' (%h)' : '')
-                => sub { $res = $new->$method_multi(&$params_multi('m%'))
+                => sub { my $res = $new->$method_multi(&$params_multi('m%'))
                              foreach (1..$count) },
     );
 
     if (defined $value) {
         push @test, (
              "${method}_multi (\@a)"
-                     => sub { @res = $new->$method_multi(&$params_multi('m@'))
+                     => sub { my @res =
+                                $new->$method_multi(&$params_multi('m@'))
                                   foreach (1..$count) },
         );
     }

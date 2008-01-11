@@ -27,8 +27,6 @@
 
 For 0.07:
 
-- delete_multi, set_multi based on nowait framework.
-
 - Document how to inherit from C::M::F for Custom Serialization for
   instance.
 
@@ -41,3 +39,14 @@ For 0.07:
 - Describe how to report a bug (-vv, -g).
 
 - Rename bins to buckets.
+
+- Add tests for new multi commands.
+
+- Test that the example works.
+
+- Do separate timethese, then combine the results and call cmpthese.
+
+- Merge compare.pl into benchmark.pl.
+
+- Investigate why %h and @a have such bug difference in wallclock
+  time.
