@@ -686,6 +686,48 @@ sub add {
 }
 
 
+=item C<add_multi>
+
+  $memd->add_multi(
+      [$key, $value],
+      [$key, $value, $expiration_time],
+      ...
+  );
+
+Like L</add>, but operates on more than one key.  Takes the list of
+array references each holding I<$key>, I<$value> and optional
+I<$expiration_time>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of boolean results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</add> to
+learn what the result value is.
+
+=cut
+
+sub add_multi {
+    my Cache::Memcached::Fast $self = shift;
+    foreach my $v (@_) {
+        splice(@$v, 1, 1, _pack_value($self, $v->[1]));
+    }
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->add(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->add(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
+    } else {
+        $self->{_xs}->add(@_);
+    }
+}
+
+
 =item C<replace>
 
  $memd->replace($key, $value);
@@ -709,6 +751,48 @@ sub replace {
         return $self->{_xs}->replace(\@_)->[0];
     } else {
         $self->{_xs}->replace(\@_);
+    }
+}
+
+
+=item C<replace_multi>
+
+  $memd->replace_multi(
+      [$key, $value],
+      [$key, $value, $expiration_time],
+      ...
+  );
+
+Like L</replace>, but operates on more than one key.  Takes the list
+of array references each holding I<$key>, I<$value> and optional
+I<$expiration_time>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of boolean results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</replace> to
+learn what the result value is.
+
+=cut
+
+sub replace_multi {
+    my Cache::Memcached::Fast $self = shift;
+    foreach my $v (@_) {
+        splice(@$v, 1, 1, _pack_value($self, $v->[1]));
+    }
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->replace(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->replace(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
+    } else {
+        $self->{_xs}->replace(@_);
     }
 }
 
@@ -742,6 +826,49 @@ sub append {
 }
 
 
+=item C<append_multi>
+
+  $memd->append_multi(
+      [$key, $value],
+      ...
+  );
+
+Like L</append>, but operates on more than one key.  Takes the list of
+array references each holding I<$key>, I<$value>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of boolean results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</append> to
+learn what the result value is.
+
+B<append> command first appeared in B<memcached> 1.2.4.
+
+=cut
+
+sub append_multi {
+    my Cache::Memcached::Fast $self = shift;
+    foreach my $v (@_) {
+        # append() does not affect flags.
+        splice(@$v, 1, 1, \$v->[1], 0);
+    }
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->append(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->append(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
+    } else {
+        $self->{_xs}->append(@_);
+    }
+}
+
+
 =item C<prepend>
 
   $memd->prepend($key, $value);
@@ -767,6 +894,49 @@ sub prepend {
         return $self->{_xs}->prepend(\@_)->[0];
     } else {
         $self->{_xs}->prepend(\@_);
+    }
+}
+
+
+=item C<prepend_multi>
+
+  $memd->prepend_multi(
+      [$key, $value],
+      ...
+  );
+
+Like L</prepend>, but operates on more than one key.  Takes the list of
+array references each holding I<$key>, I<$value>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of boolean results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</prepend> to
+learn what the result value is.
+
+B<prepend> command first appeared in B<memcached> 1.2.4.
+
+=cut
+
+sub prepend_multi {
+    my Cache::Memcached::Fast $self = shift;
+    foreach my $v (@_) {
+        # prepend() does not affect flags.
+        splice(@$v, 1, 1, \$v->[1], 0);
+    }
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->prepend(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->prepend(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
+    } else {
+        $self->{_xs}->prepend(@_);
     }
 }
 
