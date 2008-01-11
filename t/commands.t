@@ -136,6 +136,6 @@ SKIP: {
 ok($Memd::memd->delete($key), 'Delete');
 ok($Memd::memd->delete($keys[0]));
 ok($Memd::memd->remove($keys[1]));
-@res = $Memd::memd->delete_multi(map { [ $_ ] } @keys);
+@res = $Memd::memd->delete_multi(@keys);
 is(@res, count);
 is((grep { not $_ } @res), 2);

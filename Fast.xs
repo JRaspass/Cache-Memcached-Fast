@@ -465,21 +465,28 @@ incr(memd, ...)
             arith_type arg = 1;
 
             sv = ST(i);
-            if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
-              croak("Not an array reference");
-
-            av = (AV *) SvRV(sv);
-            /*
-              The following values should be defined, so we do not do
-              any additional checks for speed.
-            */
-            key = SvPV(*av_fetch(av, 0, 0), key_len);
-            if (av_len(av) >= 1)
+            if (! SvROK(sv))
               {
-                /* exptime doesn't have to be defined.  */
-                SV **ps = av_fetch(av, 1, 0);
-                if (ps)
-                  arg = SvUV(*ps);
+                key = SvPV(sv, key_len);
+              }
+            else
+              {
+                if (SvTYPE(SvRV(sv)) != SVt_PVAV)
+                  croak("Not an array reference");
+
+                av = (AV *) SvRV(sv);
+                /*
+                  The following values should be defined, so we do not
+                  do any additional checks for speed.
+                */
+                key = SvPV(*av_fetch(av, 0, 0), key_len);
+                if (av_len(av) >= 1)
+                  {
+                    /* exptime doesn't have to be defined.  */
+                    SV **ps = av_fetch(av, 1, 0);
+                    if (ps)
+                      arg = SvUV(*ps);
+                  }
               }
  
             client_prepare_incr(memd, ix, i - 1, key, key_len, arg,
@@ -518,22 +525,30 @@ delete(memd, ...)
             delay_type delay = 0;
 
             sv = ST(i);
-            if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
-              croak("Not an array reference");
-
-            av = (AV *) SvRV(sv);
-            /*
-              The following values should be defined, so we do not do
-              any additional checks for speed.
-            */
-            key = SvPV(*av_fetch(av, 0, 0), key_len);
-            if (av_len(av) >= 1)
+            if (! SvROK(sv))
               {
-                /* exptime doesn't have to be defined.  */
-                SV **ps = av_fetch(av, 1, 0);
-                if (ps)
-                  delay = SvUV(*ps);
+                key = SvPV(sv, key_len);
               }
+            else
+              {
+                if (SvTYPE(SvRV(sv)) != SVt_PVAV)
+                  croak("Not an array reference");
+
+                av = (AV *) SvRV(sv);
+                /*
+                  The following values should be defined, so we do not
+                  do any additional checks for speed.
+                */
+                key = SvPV(*av_fetch(av, 0, 0), key_len);
+                if (av_len(av) >= 1)
+                  {
+                    /* exptime doesn't have to be defined.  */
+                    SV **ps = av_fetch(av, 1, 0);
+                    if (ps)
+                      delay = SvUV(*ps);
+                  }
+              }
+
             client_prepare_delete(memd, i - 1, key, key_len, delay,
                                   &object, noreply);
           }

@@ -75,7 +75,7 @@ our $VERSION = '0.07';
   print "OK\n" if $memd->decr('nkey', 3) == 12;
 
   my @counters = qw(c1 c2);
-  $memd->incr_multi(map { [ $_ ] } @counters);
+  $memd->incr_multi(['c3', 2], @counters, ['c4', 10]);
 
   # Retrieve values.
   my $val = $memd->get('skey');
@@ -97,7 +97,7 @@ our $VERSION = '0.07';
   $memd->delete('skey');
 
   my @keys = qw(k1 k2 k3);
-  $memd->delete_multi(map { [ $_ ] } @keys);
+  $memd->delete_multi(@keys, ['k5', 20]);
 
   # Wait for all commands that were executed in nowait mode.
   $memd->nowait_push;
@@ -1127,13 +1127,15 @@ sub incr {
 =item C<incr_multi>
 
   $memd->incr_multi(
+      @keys,
       [$key],
       [$key, $increment],
       ...
   );
 
 Like L</incr>, but operates on more than one key.  Takes the list of
-array references each holding I<$key> and optional I<$increment>.
+keys and array references each holding I<$key> and optional
+I<$increment>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
@@ -1192,13 +1194,15 @@ sub decr {
 =item C<decr_multi>
 
   $memd->decr_multi(
+      @keys,
       [$key],
       [$key, $decrement],
       ...
   );
 
 Like L</decr>, but operates on more than one key.  Takes the list of
-array references each holding I<$key> and optional I<$decrement>.
+keys and array references each holding I<$key> and optional
+I<$decrement>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
@@ -1257,13 +1261,14 @@ sub delete {
 =item C<delete_multi>
 
   $memd->delete_multi(
+      @keys,
       [$key],
       [$key, $delay],
       ...
   );
 
 Like L</delete>, but operates on more than one key.  Takes the list of
-array references each holding I<$key> and optional I<$delay>.
+keys and array references each holding I<$key> and optional I<$delay>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
