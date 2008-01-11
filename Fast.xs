@@ -325,47 +325,14 @@ DESTROY(memd)
 
 
 AV *
-set(memd, skey, sval, flags, ...)
+set(memd, ...)
         Cache_Memcached_Fast *  memd
-        SV *                    skey
-        Ref_SV                  sval
-        U32                     flags
     ALIAS:
         add      =  CMD_ADD
         replace  =  CMD_REPLACE
         append   =  CMD_APPEND
         prepend  =  CMD_PREPEND
-    PROTOTYPE: $$$$;$
-    PREINIT:
-        const char *key;
-        STRLEN key_len;
-        const void *buf;
-        STRLEN buf_len;
-        exptime_type exptime = 0;
-        int noreply;
-        struct result_object object =
-            { NULL, result_store, NULL, NULL };
-    CODE:
-        RETVAL = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
-        sv_2mortal((SV *) RETVAL);
-        object.arg = RETVAL;
-        if (items > 4 && SvOK(ST(4)))
-          exptime = SvIV(ST(4));
-        key = SvPV(skey, key_len);
-        buf = (void *) SvPV(sval, buf_len);
-        noreply = (GIMME_V == G_VOID);
-        client_reset(memd);
-        client_prepare_set(memd, ix, key, key_len, flags, exptime,
-                           buf, buf_len, &object, noreply);
-        client_execute(memd);
-    OUTPUT:
-        RETVAL
-
-
-AV *
-cas(memd, ...)
-        Cache_Memcached_Fast *  memd
+        cas      =  CMD_CAS
     PROTOTYPE: $@
     PREINIT:
         int i, noreply;
@@ -384,11 +351,16 @@ cas(memd, ...)
             AV *av;
             const char *key;
             STRLEN key_len;
-            cas_type cas;
+            /*
+              gcc-3.4.2 gives a warning about possibly uninitialized
+              cas, so we set it to zero.
+            */
+            cas_type cas = 0;
             const void *buf;
             STRLEN buf_len;
             flags_type flags;
             exptime_type exptime = 0;
+            int arg = 0;
 
             sv = ST(i);
             if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
@@ -399,20 +371,35 @@ cas(memd, ...)
               The following values should be defined, so we do not do
               any additional checks for speed.
             */
-            key = SvPV(*av_fetch(av, 0, 0), key_len);
-            cas = SvUV(*av_fetch(av, 1, 0));
-            buf = (void *) SvPV(SvRV(*av_fetch(av, 2, 0)), buf_len);
-            flags = SvUV(*av_fetch(av, 3, 0));
-            if (av_len(av) > 3)
+            key = SvPV(*av_fetch(av, arg, 0), key_len);
+            ++arg;
+            if (ix == CMD_CAS)
+              {
+                cas = SvUV(*av_fetch(av, arg, 0));
+                ++arg;
+              }
+            buf = (void *) SvPV(SvRV(*av_fetch(av, arg, 0)), buf_len);
+            ++arg;
+            flags = SvUV(*av_fetch(av, arg, 0));
+            ++arg;
+            if (av_len(av) >= arg)
               {
                 /* exptime doesn't have to be defined.  */
-                SV **ps = av_fetch(av, 4, 0);
+                SV **ps = av_fetch(av, arg, 0);
                 if (ps)
                   exptime = SvIV(*ps);
               }
 
-            client_prepare_cas(memd, i - 1, key, key_len, cas, flags, exptime,
-                               buf, buf_len, &object, noreply);
+            if (ix != CMD_CAS)
+              {
+                client_prepare_set(memd, ix, i - 1, key, key_len, flags,
+                                   exptime, buf, buf_len, &object, noreply);
+              }
+            else
+              {
+                client_prepare_cas(memd, i - 1, key, key_len, cas, flags,
+                                   exptime, buf, buf_len, &object, noreply);
+              }
           }
         client_execute(memd);
     OUTPUT:

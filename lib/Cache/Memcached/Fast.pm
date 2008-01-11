@@ -532,7 +532,49 @@ sub set {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 1, 1, _pack_value($self, $_[1]));
     if (defined wantarray) {
-        return $self->{_xs}->set(@_)->[0];
+        return $self->{_xs}->set(\@_)->[0];
+    } else {
+        $self->{_xs}->set(\@_);
+    }
+}
+
+
+=item C<set_multi>
+
+  $memd->set_multi(
+      [$key, $value],
+      [$key, $value, $expiration_time],
+      ...
+  );
+
+Like L</set>, but operates on more than one key.  Takes the list of
+array references each holding I<$key>, I<$value> and optional
+I<$expiration_time>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of boolean results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</set> to
+learn what the result value is.
+
+=cut
+
+sub set_multi {
+    my Cache::Memcached::Fast $self = shift;
+    foreach my $v (@_) {
+        splice(@$v, 1, 1, _pack_value($self, $v->[1]));
+    }
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->set(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->set(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
     } else {
         $self->{_xs}->set(@_);
     }
@@ -586,7 +628,7 @@ array references each holding I<$key>, I<$cas>, I<$value> and optional
 I<$expiration_time>.
 
 Note that multi commands are not all-or-nothing, some operations may
-succeed while others may fail.
+succeed, while others may fail.
 
 I<Return:> in list context returns the list of boolean results, each
 I<$list[$index]> is the result value corresponding to the argument at
@@ -637,9 +679,9 @@ sub add {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 1, 1, _pack_value($self, $_[1]));
     if (defined wantarray) {
-        return $self->{_xs}->add(@_)->[0];
+        return $self->{_xs}->add(\@_)->[0];
     } else {
-        $self->{_xs}->add(@_);
+        $self->{_xs}->add(\@_);
     }
 }
 
@@ -664,9 +706,9 @@ sub replace {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 1, 1, _pack_value($self, $_[1]));
     if (defined wantarray) {
-        return $self->{_xs}->replace(@_)->[0];
+        return $self->{_xs}->replace(\@_)->[0];
     } else {
-        $self->{_xs}->replace(@_);
+        $self->{_xs}->replace(\@_);
     }
 }
 
@@ -693,9 +735,9 @@ sub append {
     # append() does not affect flags.
     splice(@_, 1, 1, \$_[1], 0);
     if (defined wantarray) {
-        return $self->{_xs}->append(@_)->[0];
+        return $self->{_xs}->append(\@_)->[0];
     } else {
-        $self->{_xs}->append(@_);
+        $self->{_xs}->append(\@_);
     }
 }
 
@@ -722,9 +764,9 @@ sub prepend {
     # prepend() does not affect flags.
     splice(@_, 1, 1, \$_[1], 0);
     if (defined wantarray) {
-        return $self->{_xs}->prepend(@_)->[0];
+        return $self->{_xs}->prepend(\@_)->[0];
     } else {
-        $self->{_xs}->prepend(@_);
+        $self->{_xs}->prepend(\@_);
     }
 }
 

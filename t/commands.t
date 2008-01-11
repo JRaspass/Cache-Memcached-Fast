@@ -9,7 +9,7 @@ use lib "$FindBin::Bin";
 use Memd;
 
 if ($Memd::memd) {
-    plan tests => 54;
+    plan tests => 61;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -46,21 +46,30 @@ ok($Memd::memd->get($key) == 0, 'Fetch');
 
 ok($Memd::memd->get_multi(), 'get_multi() with empty list');
 
-my $count = 0;
-foreach my $k (@keys) {
-    ++$count if $Memd::memd->set($k, $k);
-}
-is($count, count);
+my $res = $Memd::memd->set_multi();
+isa_ok($res, 'HASH');
+is(scalar keys %$res, 0);
+my @res = $Memd::memd->set_multi();
+is(@res, 0);
+
+@res = $Memd::memd->set_multi(map { [$_, $_] } @keys);
+is(@res, count);
+is((grep { not $_ } @res), 0);
+$res = $Memd::memd->set_multi(map { [$_, $_] } @keys);
+isa_ok($res, 'HASH');
+is(keys %$res, count);
+is((grep { not $_ } values %$res), 0);
+
 
 my @extra_keys = @keys;
 for (1..count) {
     splice(@extra_keys, int(rand(@extra_keys + 1)), 0, "no_such_key-$_");
 }
 
-my $res = $Memd::memd->get_multi(@extra_keys);
+$res = $Memd::memd->get_multi(@extra_keys);
 isa_ok($res, 'HASH');
 is(scalar keys %$res, scalar @keys, 'Number of entries in result');
-$count = 0;
+my $count = 0;
 foreach my $k (@keys) {
     ++$count if exists $res->{$k} and $res->{$k} eq $k;
 }

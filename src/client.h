@@ -39,7 +39,8 @@ enum server_status {
   MEMCACHED_CLOSED
 };
 
-enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND };
+enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND,
+                 CMD_CAS };
 
 enum get_cmd_e { CMD_GET, CMD_GETS };
 
@@ -142,7 +143,7 @@ client_reset(struct client *c);
 
 extern
 int
-client_prepare_set(struct client *c, enum set_cmd_e cmd,
+client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
                    const char *key, size_t key_len,
                    flags_type flags, exptime_type exptime,
                    const void *value, value_size_type value_size,

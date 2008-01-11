@@ -1645,7 +1645,7 @@ client_reset(struct client *c)
 
 
 int
-client_prepare_set(struct client *c, enum set_cmd_e cmd,
+client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
                    const char *key, size_t key_len,
                    flags_type flags, exptime_type exptime,
                    const void *value, value_size_type value_size,
@@ -1658,7 +1658,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd,
 
   struct command_state *state;
 
-  state = get_state(c, 0, key, key_len, request_size, str_size,
+  state = get_state(c, key_index, key, key_len, request_size, str_size,
                     parse_set_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
@@ -1686,6 +1686,10 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd,
     case CMD_PREPEND:
       iov_push(state, STR_WITH_LEN("prepend"));
       break;
+
+    case CMD_CAS:
+      /* This can't happen.  */
+      return MEMCACHED_FAILURE;
     }
   iov_push(state, c->prefix, c->prefix_len);
   iov_push(state, (void *) key, key_len);
