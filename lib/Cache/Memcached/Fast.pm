@@ -1223,7 +1223,45 @@ server reply, or I<undef> in case of some error.
 sub delete {
     my Cache::Memcached::Fast $self = shift;
     if (defined wantarray) {
-        return $self->{_xs}->delete(@_)->[0];
+        return $self->{_xs}->delete(\@_)->[0];
+    } else {
+        $self->{_xs}->delete(\@_);
+    }
+}
+
+
+=item C<delete_multi>
+
+  $memd->delete_multi(
+      [$key],
+      [$key, $delay],
+      ...
+  );
+
+Like L</delete>, but operates on more than one key.  Takes the list of
+array references each holding I<$key> and optional I<$delay>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</delete> to
+learn what the result value is.
+
+=cut
+
+sub delete_multi {
+    my Cache::Memcached::Fast $self = shift;
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->delete(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->delete(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
     } else {
         $self->{_xs}->delete(@_);
     }

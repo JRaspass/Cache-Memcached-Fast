@@ -170,7 +170,8 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
 
 extern
 int
-client_prepare_delete(struct client *c, const char *key, size_t key_len,
+client_prepare_delete(struct client *c, int key_index,
+                      const char *key, size_t key_len,
                       delay_type delay, struct result_object *o, int noreply);
 
 extern

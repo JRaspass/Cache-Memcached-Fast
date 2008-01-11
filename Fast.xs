@@ -491,32 +491,52 @@ incr(memd, ...)
 
 
 AV*
-delete(memd, skey, ...)
+delete(memd, ...)
         Cache_Memcached_Fast *  memd
-        SV *                    skey
     ALIAS:
         remove  =  1
-    PROTOTYPE: $$;$
+    PROTOTYPE: $@
     PREINIT:
-        const char *key;
-        STRLEN key_len;
-        delay_type delay = 0;
-        int noreply;
+        int i, noreply;
         struct result_object object =
             { NULL, result_store, NULL, NULL };
     CODE:
+        /* Suppress warning about unused ix.  */
+        if (ix) {}
         RETVAL = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
-        /* Suppress warning about unused ix.  */
-        if (ix) {}
-        if (items > 2 && SvOK(ST(2)))
-          delay = SvUV(ST(2));
-        key = SvPV(skey, key_len);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd);
-        client_prepare_delete(memd, key, key_len, delay, &object, noreply);
+        for (i = 1; i < items; ++i)
+          {
+            SV *sv;
+            AV *av;
+            const char *key;
+            STRLEN key_len;
+            delay_type delay = 0;
+
+            sv = ST(i);
+            if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
+              croak("Not an array reference");
+
+            av = (AV *) SvRV(sv);
+            /*
+              The following values should be defined, so we do not do
+              any additional checks for speed.
+            */
+            key = SvPV(*av_fetch(av, 0, 0), key_len);
+            if (av_len(av) >= 1)
+              {
+                /* exptime doesn't have to be defined.  */
+                SV **ps = av_fetch(av, 1, 0);
+                if (ps)
+                  delay = SvUV(*ps);
+              }
+            client_prepare_delete(memd, i - 1, key, key_len, delay,
+                                  &object, noreply);
+          }
         client_execute(memd);
     OUTPUT:
         RETVAL

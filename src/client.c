@@ -1842,7 +1842,8 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
 
 
 int
-client_prepare_delete(struct client *c, const char *key, size_t key_len,
+client_prepare_delete(struct client *c, int key_index,
+                      const char *key, size_t key_len,
                       delay_type delay, struct result_object *o, int noreply)
 {
   static const size_t request_size = 4;
@@ -1850,7 +1851,7 @@ client_prepare_delete(struct client *c, const char *key, size_t key_len,
 
   struct command_state *state;
 
-  state = get_state(c, 0, key, key_len, request_size, str_size,
+  state = get_state(c, key_index, key, key_len, request_size, str_size,
                     parse_delete_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;
