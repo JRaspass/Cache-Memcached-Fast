@@ -364,20 +364,11 @@ set(memd, skey, sval, flags, ...)
 
 
 AV *
-cas(memd, skey, cas, sval, flags, ...)
+cas(memd, ...)
         Cache_Memcached_Fast *  memd
-        SV *                    skey
-        U32                     cas
-        Ref_SV                  sval
-        U32                     flags
-    PROTOTYPE: $$$$$;$
+    PROTOTYPE: $@
     PREINIT:
-        const char *key;
-        STRLEN key_len;
-        const void *buf;
-        STRLEN buf_len;
-        exptime_type exptime = 0;
-        int noreply;
+        int i, noreply;
         struct result_object object =
             { NULL, result_store, NULL, NULL };
     CODE:
@@ -385,14 +376,44 @@ cas(memd, skey, cas, sval, flags, ...)
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
-        if (items > 4 && SvOK(ST(4)))
-          exptime = SvIV(ST(4));
-        key = SvPV(skey, key_len);
-        buf = (void *) SvPV(sval, buf_len);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd);
-        client_prepare_cas(memd, key, key_len, cas, flags, exptime,
-                           buf, buf_len, &object, noreply);
+        for (i = 1; i < items; ++i)
+          {
+            SV *sv;
+            AV *av;
+            const char *key;
+            STRLEN key_len;
+            cas_type cas;
+            const void *buf;
+            STRLEN buf_len;
+            flags_type flags;
+            exptime_type exptime = 0;
+
+            sv = ST(i);
+            if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
+              croak("Not an array reference");
+
+            av = (AV *) SvRV(sv);
+            /*
+              The following values should be defined, so we do not do
+              any additional checks for speed.
+            */
+            key = SvPV(*av_fetch(av, 0, 0), key_len);
+            cas = SvUV(*av_fetch(av, 1, 0));
+            buf = (void *) SvPV(SvRV(*av_fetch(av, 2, 0)), buf_len);
+            flags = SvUV(*av_fetch(av, 3, 0));
+            if (av_len(av) > 3)
+              {
+                /* exptime doesn't have to be defined.  */
+                SV **ps = av_fetch(av, 4, 0);
+                if (ps)
+                  exptime = SvIV(*ps);
+              }
+
+            client_prepare_cas(memd, i - 1, key, key_len, cas, flags, exptime,
+                               buf, buf_len, &object, noreply);
+          }
         client_execute(memd);
     OUTPUT:
         RETVAL

@@ -1707,7 +1707,8 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd,
 
 
 int
-client_prepare_cas(struct client *c, const char *key, size_t key_len,
+client_prepare_cas(struct client *c, int key_index,
+                   const char *key, size_t key_len,
                    cas_type cas, flags_type flags, exptime_type exptime,
                    const void *value, value_size_type value_size,
                    struct result_object *o, int noreply)
@@ -1719,7 +1720,7 @@ client_prepare_cas(struct client *c, const char *key, size_t key_len,
 
   struct command_state *state;
 
-  state = get_state(c, 0, key, key_len, request_size, str_size,
+  state = get_state(c, key_index, key, key_len, request_size, str_size,
                     parse_set_reply, o, &noreply);
   if (! state)
     return MEMCACHED_FAILURE;

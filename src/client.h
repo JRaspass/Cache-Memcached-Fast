@@ -150,7 +150,8 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd,
 
 extern
 int
-client_prepare_cas(struct client *c, const char *key, size_t key_len,
+client_prepare_cas(struct client *c, int key_index,
+                   const char *key, size_t key_len,
                    cas_type cas, flags_type flags, exptime_type exptime,
                    const void *value, value_size_type value_size,
                    struct result_object *o, int noreply);

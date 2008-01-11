@@ -558,7 +558,7 @@ exists on the server, false would mean that some other client has
 updated the value, and L</gets>, L</cas> command sequence should be
 repeated.
 
-This command first appeared in B<memcached> 1.2.4.
+B<cas> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
@@ -566,7 +566,51 @@ sub cas {
     my Cache::Memcached::Fast $self = shift;
     splice(@_, 2, 1, _pack_value($self, $_[2]));
     if (defined wantarray) {
-        return $self->{_xs}->cas(@_)->[0];
+        return $self->{_xs}->cas(\@_)->[0];
+    } else {
+        $self->{_xs}->cas(\@_);
+    }
+}
+
+
+=item C<cas_multi>
+
+  $memd->cas_multi(
+      [$key, $cas, $value],
+      [$key, $cas, $value, $expiration_time],
+      ...
+  );
+
+Like L</cas>, but operates on more than one key.  Takes the list of
+array references each holding I<$key>, I<$cas>, I<$value> and optional
+I<$expiration_time>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed while others may fail.
+
+I<Return:> in list context returns the list of boolean results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> hols the result value.  See L</cas> to
+learn what the result value is.
+
+B<cas> command first appeared in B<memcached> 1.2.4.
+
+=cut
+
+sub cas_multi {
+    my Cache::Memcached::Fast $self = shift;
+    foreach my $v (@_) {
+        splice(@$v, 2, 1, _pack_value($self, $v->[2]));
+    }
+    if (defined wantarray) {
+        if (wantarray) {
+            return @{$self->{_xs}->cas(@_)};
+        } else {
+            my @keys = map { $_->[0] } @_;
+            my $results = $self->{_xs}->cas(@_);
+            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
+        }
     } else {
         $self->{_xs}->cas(@_);
     }
@@ -640,7 +684,7 @@ the server.  C<append> doesn't affect expiration time of the value.
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
 
-This command first appeared in B<memcached> 1.2.4.
+B<append> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
@@ -669,7 +713,7 @@ the server.  C<prepend> doesn't affect expiration time of the value.
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
 
-This command first appeared in B<memcached> 1.2.4.
+B<prepend> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
@@ -762,7 +806,7 @@ may conveniently pass it back to L</cas> with I<@$res>:
       $memd->cas($key, @$cas_val);
   }
 
-This command first appeared in B<memcached> 1.2.4.
+B<gets> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
@@ -791,7 +835,7 @@ I<@keys> should be an array of scalars.
 I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds a
 reference to an array I<[$cas, $value]>.  Compare with L</gets>.
 
-This command first appeared in B<memcached> 1.2.4.
+B<gets> command first appeared in B<memcached> 1.2.4.
 
 =cut
 

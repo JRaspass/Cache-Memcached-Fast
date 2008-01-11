@@ -8,13 +8,15 @@ use FindBin;
 use lib "$FindBin::Bin";
 use Memd;
 
-use constant count => 100;
-
 if ($Memd::memd) {
-    plan tests => 43;
+    plan tests => 54;
 } else {
     plan skip_all => 'Not connected';
 }
+
+
+# count should be >= 4.
+use constant count => 100;
 
 my $key = 'commands';
 my @keys = map { "commands-$_" } (1..count);
@@ -66,7 +68,7 @@ is($count, count);
 
 
 SKIP: {
-    skip "memcached 1.2.4 is required for cas/gets/append/prepend commands", 16
+    skip "memcached 1.2.4 is required for cas/gets/append/prepend commands", 27
       if $Memd::version_num < 10204;
 
     ok($Memd::memd->set($key, 'value'), 'Store');
@@ -97,6 +99,28 @@ SKIP: {
         ++$count if $res->{$k}->[1] eq $k;
     }
     is($count, count * 4);
+
+    my $hash = $res;
+    $res = $Memd::memd->cas_multi([$keys[0], @{$hash->{$keys[0]}}],
+                                  ['no-such-key', 123, 'value', 10],
+                                  [$keys[1], @{$hash->{$keys[1]}}, 1000]);
+    isa_ok($res, 'HASH');
+    is(scalar keys %$res, 3);
+    ok($res->{$keys[0]});
+    ok(defined $res->{'no-such-key'} and not $res->{'no-such-key'});
+    ok($res->{$keys[1]});
+
+    my @res = $Memd::memd->cas_multi([$keys[2], @{$hash->{$keys[2]}}],
+                                     ['no-such-key', 123, 'value', 10],
+                                     [$keys[3], @{$hash->{$keys[3]}}, 1000]);
+    is(@res, 3);
+    ok($res[0]);
+    ok(not $res[1]);
+    ok($res[2]);
+
+    $res = $Memd::memd->cas_multi();
+    isa_ok($res, 'HASH');
+    is(scalar keys %$res, 0);
 }
 
 
