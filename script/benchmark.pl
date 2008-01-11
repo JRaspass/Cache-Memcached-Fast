@@ -1,6 +1,6 @@
 #! /usr/bin/perl
 #
-# Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+# Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself, either Perl version 5.8.8
@@ -41,6 +41,15 @@ my $new_nowait = new Cache::Memcached::Fast {
     ketama_points => 150,
     nowait => NOWAIT,
 };
+
+my $version = $new_nowait->server_versions;
+if (keys %$version != @addrs) {
+    warn "No server is running at "
+        . join(', ', grep { not exists $version->{$_} }
+               @{$new_nowait->{servers}})
+        . "\n";
+    exit 1;
+}
 
 
 @addrs = map { +{ address => $_, noreply => NOREPLY } } @addrs;
