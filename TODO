@@ -50,8 +50,6 @@ For 0.07:
 
 - Do separate timethese, then combine the results and call cmpthese.
 
-- Merge compare.pl into benchmark.pl.
-
 - Investigate why %h and @a have such bug difference in wallclock
   time.
 

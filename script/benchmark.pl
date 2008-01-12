@@ -14,7 +14,10 @@ use strict;
 use FindBin;
 
 @ARGV >= 1
-    or die "Usage: $FindBin::Script HOST:PORT... [COUNT]\n";
+    or die "Usage: $FindBin::Script HOST:PORT... [COUNT] [\"compare\"]\n";
+
+my $compare = ($ARGV[$#ARGV] =~ /^compare$/);
+pop @ARGV if $compare;
 
 my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 250);
 
@@ -31,6 +34,19 @@ my $value = 'x' x 40;
 
 use Cache::Memcached::Fast;
 use Benchmark qw(:hireswallclock timethese cmpthese);
+
+my $old;
+my $old_method = qr/^(?:add|set|replace|incr|decr|delete|get)$/;
+my $old_method_multi = qr/^get$/;
+if ($compare) {
+    require Cache::Memcached;
+
+    $old = new Cache::Memcached {
+        servers   => [@addrs],
+        namespace => "Cache::Memcached::bench/$$/",
+    };
+    $old->enable_compress(0);
+}
 
 
 use constant CAS => 1;
@@ -103,6 +119,20 @@ sub run {
                              foreach (1..$count) },
     );
 
+    if (defined $old) {
+        push @test, (
+            "old $method" => sub { my $res = $old->$method(&$params('o$'))
+                                     foreach (1..$count * key_count) },
+        ) if $method =~ /$old_method/o;
+
+        push @test, (
+            "old ${method}_multi"
+                     => sub { my $res =
+                                $old->$method_multi(&$params_multi('om'))
+                                  foreach (1..$count) },
+        ) if $method =~ /$old_method_multi/o;
+    }
+
     if (defined $value) {
         push @test, (
              "${method}_multi (\@a)"
@@ -134,6 +164,12 @@ sub run {
                      => sub { $new_noreply->$method_multi(&$params_multi('mr'))
                                   foreach (1..$count) },
         );
+
+        push @test, (
+            "old $method noreply"
+                     => sub { $old->$method(&$params('or'))
+                                foreach (1..$count * key_count) },
+        ) if defined $old and $method =~ /$old_method/o;
     }
 
     cmpthese(timethese(repeat, {@test}));

@@ -28,6 +28,9 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         flush_all now returns a hash server_name -> bool_result.
 
+        script/compare.pl was removed.  Instead script/benchmark.pl
+        takes an optional last argument "compare".
+
 
 0.06  2007-12-20
         - this release fixes a serious bug and features the 'nowait'
