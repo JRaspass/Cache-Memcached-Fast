@@ -9,7 +9,7 @@ use lib "$FindBin::Bin";
 use Memd;
 
 if ($Memd::memd) {
-    plan tests => 64;
+    plan tests => 63;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -21,7 +21,7 @@ use constant count => 100;
 my $key = 'commands';
 my @keys = map { "commands-$_" } (1..count);
 
-ok(! $Memd::memd->get($key), "There is no key '$key' in the cache yet");
+$Memd::memd->delete($key);
 ok($Memd::memd->add($key, 'v1'), 'Add');
 is($Memd::memd->get($key), 'v1', 'Fetch');
 ok($Memd::memd->set($key, 'v2'), 'Set');
