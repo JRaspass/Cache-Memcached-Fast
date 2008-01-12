@@ -135,9 +135,6 @@ require XSLoader;
 XSLoader::load('Cache::Memcached::Fast', $VERSION);
 
 
-our $AUTOLOAD;
-
-
 # BIG FAT WARNING: Perl assignment copies the value, so below we try
 # to avoid any copying by passing references around.  Any code
 # modifications should try to preserve this.
@@ -430,12 +427,6 @@ sub new {
     }
 
     return $self;
-}
-
-
-sub DESTROY {
-    # Do nothing.  Destructor is required for not to call destructor
-    # of Cache::Memcached::Fast::_xs via AUTOLOAD.
 }
 
 
@@ -1231,7 +1222,7 @@ sub decr_multi {
 }
 
 
-=item C<delete> (or deprecated C<remove>)
+=item C<delete>
 
   $memd->delete($key);
   $memd->delete($key, $delay);
@@ -1246,8 +1237,6 @@ server reply, or I<undef> in case of some error.
 
 =cut
 
-# remove is still loaded via AUTOLOAD, if we mention is here we'll
-# have to document it as a separate =item.
 sub delete {
     my Cache::Memcached::Fast $self = shift;
     if (defined wantarray) {
@@ -1256,6 +1245,15 @@ sub delete {
         $self->{_xs}->delete(\@_);
     }
 }
+
+
+=item C<remove> (B<deprecated>)
+
+Alias for L</delete>, for compatibility with B<Cache::Memcached>.
+
+=cut
+
+*remove = \&delete;
 
 
 =item C<delete_multi>
@@ -1374,19 +1372,6 @@ sub server_versions {
     my $versions = $self->{_xs}->server_versions;
 
     return Cache::Memcached::Fast::_xs::_rvav2rvhv($servers, $versions);
-}
-
-
-# AOUTOLOAD is used for commands that are not yet official and
-# documented.
-sub AUTOLOAD {
-    my Cache::Memcached::Fast $self = shift;
-    my ($method) = $AUTOLOAD =~ /::([^:]+)$/;
-    if (defined wantarray) {
-        return $self->{_xs}->$method(\@_)->[0];
-    } else {
-        $self->{_xs}->$method(\@_);
-    }
 }
 
 
