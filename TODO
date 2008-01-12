@@ -41,9 +41,6 @@ For 0.07:
 - Rename bins to buckets.
 
 
-- Do not return the value from _pack_value() by reference, change it
-  in place.
-
 - Add tests for new multi commands.
 
 - Investigate why %h and @a have such bug difference in wallclock
