@@ -66,9 +66,9 @@ our $VERSION = '0.07';
 
   # Add to strings.
   $memd->prepend('skey', 'This is a ');
-  $memd->prepend_multi(['skey2', 'This is a '], ['skey3', 'garbage']);
+  $memd->prepend_multi(['skey2', 'This is a '], ['skey3', 'prefix ']);
   $memd->append('skey', 'ue.');
-  $memd->prepend_multi(['skey2', 'ue.'], ['skey3', 'garbage']);
+  $memd->prepend_multi(['skey2', 'ue.'], ['skey3', ' suffix']);
 
   # Do arithmetic.
   $memd->incr('nkey', 10);
