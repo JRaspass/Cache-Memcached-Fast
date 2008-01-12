@@ -11,26 +11,34 @@ use warnings;
 use strict;
 
 
+use constant default_iteration_count => 1_000;
+use constant key_count => 100;
+use constant NOWAIT => 1;
+use constant NOREPLY => 0;
+
+my $value = 'x' x 40;
+
+
 use FindBin;
 
 @ARGV >= 1
-    or die "Usage: $FindBin::Script HOST:PORT... [COUNT] [\"compare\"]\n";
+    or die("Usage: $FindBin::Script HOST:PORT... [COUNT] [\"compare\"]\n"
+           . "\n"
+           . "HOST:PORT...  - list of memcached server addresses.\n"
+           . "COUNT         - number of iterations (default "
+                              . default_iteration_count . ").\n"
+           . "                (each iteration will process "
+                              . key_count . " keys).\n"
+           . "\"compare\"     - literal string to enable comparison with\n"
+           . "                Cache::Memcached.\n");
 
 my $compare = ($ARGV[$#ARGV] =~ /^compare$/);
 pop @ARGV if $compare;
 
-my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : 250);
+my $count = ($ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : default_iteration_count);
+my $max_keys = $count * key_count / 2;
 
 my @addrs = @ARGV;
-
-use constant key_count => 100;
-use constant repeat => 4;
-use constant NOWAIT => 1;
-use constant NOREPLY => 0;
-
-my $max_keys = $count * key_count / 2;
-my $value = 'x' x 40;
-
 
 use Cache::Memcached::Fast;
 use Benchmark qw(:hireswallclock timethese cmpthese);
@@ -47,9 +55,6 @@ if ($compare) {
     };
     $old->enable_compress(0);
 }
-
-
-use constant CAS => 1;
 
 
 my $new = new Cache::Memcached::Fast {
@@ -83,6 +88,15 @@ sub get_key {
 }
 
 
+sub merge_hash {
+    my ($h1, $h2) = @_;
+
+    while (my ($k, $v) = each %$h2) {
+        $h1->{$k} = $v;
+    }
+}
+
+
 sub run {
     my ($method, $value, $cas) = @_;
 
@@ -110,69 +124,82 @@ sub run {
         return @res;
     };
 
-    my $method_multi = "${method}_multi";
     my @test = (
         "$method" => sub { my $res = $new->$method(&$params('p$'))
-                               foreach (1..$count * key_count) },
-        "${method}_multi" . (defined $value ? ' (%h)' : '')
-                => sub { my $res = $new->$method_multi(&$params_multi('m%'))
-                             foreach (1..$count) },
+                             foreach (1..key_count) },
     );
 
-    if (defined $old) {
-        push @test, (
-            "old $method" => sub { my $res = $old->$method(&$params('o$'))
-                                     foreach (1..$count * key_count) },
-        ) if $method =~ /$old_method/o;
-
-        push @test, (
-            "old ${method}_multi"
-                     => sub { my $res =
-                                $old->$method_multi(&$params_multi('om'))
-                                  foreach (1..$count) },
-        ) if $method =~ /$old_method_multi/o;
-    }
-
-    if (defined $value) {
-        push @test, (
-             "${method}_multi (\@a)"
-                     => sub { my @res =
-                                $new->$method_multi(&$params_multi('m@'))
-                                  foreach (1..$count) },
-        );
-    }
-
-    if (defined $value and NOWAIT) {
-        # Below we call nowait_push.  Otherwise the time of gathering
-        # the results would be added to the following commands.
-        push @test, (
-            "$method nowait"  => sub { $new->$method(&$params('pw'))
-                                           foreach (1..$count * key_count);
-                                       $new->nowait_push; },
-            "${method}_multi nowait"
-                     => sub { $new->$method_multi(&$params_multi('mw'))
-                                  foreach (1..$count);
-                              $new->nowait_push; },
-        );
-    }
+    push @test, (
+        "old $method" => sub { my $res = $old->$method(&$params('o$'))
+                                 foreach (1..key_count) },
+    ) if defined $old and $method =~ /$old_method/o;
 
     if (defined $value and NOREPLY) {
         push @test, (
-            "$method noreply"  => sub { $new_noreply->$method(&$params('pr'))
-                                            foreach (1..$count * key_count) },
-            "${method}_multi noreply"
-                     => sub { $new_noreply->$method_multi(&$params_multi('mr'))
-                                  foreach (1..$count) },
+            "$method noreply" => sub { $new_noreply->$method(&$params('pr'))
+                                         foreach (1..key_count) },
         );
 
         push @test, (
-            "old $method noreply"
-                     => sub { $old->$method(&$params('or'))
-                                foreach (1..$count * key_count) },
+            "old $method noreply" => sub { $old->$method(&$params('or'))
+                                             foreach (1..key_count) },
         ) if defined $old and $method =~ /$old_method/o;
     }
 
-    cmpthese(timethese(repeat, {@test}));
+    my $bench = timethese($count, {@test});
+
+    if (defined $value and NOWAIT) {
+        @test = (
+            "$method nowait" => sub { $new->$method(&$params('pw'))
+                                        foreach (1..key_count) },
+        );
+        merge_hash($bench, timethese($count, {@test}));
+        # We call nowait_push here.  Otherwise the time of gathering
+        # the results would be added to the following commands.
+        # However it's not quite correct that this time is not
+        # accounted at all.
+        $new->nowait_push; 
+    }
+
+    my $method_multi = "${method}_multi";
+    @test = (
+        "$method_multi" . (defined $value ? ' (%h)' : '')
+            => sub { my $res = $new->$method_multi(&$params_multi('m%')) },
+    );
+
+    push @test, (
+        "old $method_multi"
+            => sub { my $res = $old->$method_multi(&$params_multi('om')) },
+    ) if defined $old and $method =~ /$old_method_multi/o;
+
+    push @test, (
+        "$method_multi (\@a)"
+             => sub { my @res = $new->$method_multi(&$params_multi('m@')) },
+    ) if defined $value;
+
+    if (defined $value and NOREPLY) {
+        push @test, (
+            "$method_multi noreply"
+                => sub { $new_noreply->$method_multi(&$params_multi('mr')) },
+        );
+    }
+
+    merge_hash($bench, timethese($count, {@test}));
+
+    if (defined $value and NOWAIT) {
+        @test = (
+            "$method_multi nowait"
+                => sub { $new->$method_multi(&$params_multi('mw')) },
+        );
+        merge_hash($bench, timethese($count, {@test}));
+        # We call nowait_push here.  Otherwise the time of gathering
+        # the results would be added to the following commands.
+        # However it's not quite correct that this time is not
+        # accounted at all.
+        $new->nowait_push; 
+    }
+
+    cmpthese($bench);
 }
 
 
@@ -182,7 +209,7 @@ my @methods = (
     [append     => \&run, $value],
     [prepend    => \&run, $value],
     [replace    => \&run, $value],
-    [cas        => \&run, $value, CAS],
+    [cas        => \&run, $value, 'CAS'],
     [get        => \&run], 
     [gets       => \&run],
     [incr       => \&run, 1],
@@ -192,9 +219,8 @@ my @methods = (
 
 
 print "Servers: @{[ keys %$version ]}\n";
-print "Iteration count: ", $count * key_count, "/$count\n";
-print 'Keys per iteration: 1/', key_count, "\n";
-print 'Repeat count: ', repeat, "\n";
+print "Iteration count: $count\n";
+print 'Keys per iteration: ', key_count, "\n";
 print 'Value size: ', length($value), " bytes\n";
 
 srand(1);

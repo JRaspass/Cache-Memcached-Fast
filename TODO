@@ -48,9 +48,7 @@ For 0.07:
 
 - Test that the example works.
 
-- Do separate timethese, then combine the results and call cmpthese.
-
 - Investigate why %h and @a have such bug difference in wallclock
-  time.
+  time.  Also noreply and nowait.
 
 - Memd.pm should not assume equal server versions.
