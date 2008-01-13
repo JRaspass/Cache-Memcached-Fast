@@ -40,6 +40,7 @@ our $VERSION = '0.07';
       failure_timeout => 2,
       ketama_points => 150,
       nowait => 1,
+      utf8 => ($^V >= 5.008001 ? 1 : 0),
   });
 
   # Get server versions.
@@ -129,6 +130,7 @@ use Storable;
 
 use constant F_STORABLE => 0x1;
 use constant F_COMPRESS => 0x2;
+use constant F_UTF8     => 0x4;
 
 
 require XSLoader;
@@ -165,7 +167,7 @@ BEGIN {
 
 use fields qw(
     _xs servers
-    compress_threshold compress_ratio compress_methods
+    compress_threshold compress_ratio compress_methods utf8
 );
 
 
@@ -391,6 +393,18 @@ Zero value disables the Ketama algorithm.  See also server weight in
 L</servers> above.
 
 
+=item I<utf8> (B<experimental, Perl 5.8.1 and later only>)
+
+  utf8 => 1
+  (default: disabled)
+
+The value is a boolean which enables (true) or disables (false) the
+conversion of Perl character strings to octet sequences in UTF-8
+encoding on store, and the reverse conversion on fetch (when the
+retrieved data is marked as being UTF-8 octet sequence).  See
+L<perlunicode|perlunicode>.
+
+
 =back
 
 =back
@@ -412,6 +426,14 @@ sub new {
         carp "Compress algorithm '$conf->{compress_algo}' is not known to"
             . " Cache::Memcached::Fast, disabling compression";
         $self->{compress_threshold} = -1;
+    }
+
+    if ($conf->{utf8}) {
+        if ($^V >= 5.008001) {
+            $self->{utf8} = 1;
+        } else {
+            carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
+        }
     }
 
     $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
@@ -472,7 +494,15 @@ sub _pack_value {
         $val_ref = \Storable::nfreeze($_[0]);
         $flags |= F_STORABLE;
     } else {
-        $val_ref = \$_[0];
+        if ($self->{utf8} and utf8::is_utf8($_[0])) {
+            # We have to copy the value because we will modify it in place.
+            my $octets = $_[0];
+            utf8::encode($octets);
+            $flags |= F_UTF8;
+            $val_ref = \$octets;
+        } else {
+            $val_ref = \$_[0];
+        }
     }
 
     use bytes;
@@ -518,6 +548,8 @@ sub _unpack_value {
             $_[0] = \Storable::thaw(${$_[0]});
         };
         return if $@;
+    } elsif ($_[1] & F_UTF8 and $self->{utf8}) {
+        return unless utf8::decode(${$_[0]});
     }
 
     return 1;
@@ -1488,15 +1520,11 @@ or
 =back
 
 
-=head1 UTF-8 and tainted data
+=head1 Tainted data
 
-Current implementation does not preserve UTF-8 flag on scalars.
-Storing UTF-8 string and retrieving it back would return the same byte
-sequence, but UTF-8 flag will be forgotten.  See L<utf8|utf8>.
-
-Likewise, tainted flag is neither tested nor preserved, storing
-tainted data and retrieving it back would clear tainted flag.  See
-L<perlsec|perlsec>.
+In current implementation tainted flag is neither tested nor
+preserved, storing tainted data and retrieving it back would clear
+tainted flag.  See L<perlsec|perlsec>.
 
 
 =head1 BUGS
@@ -1563,6 +1591,8 @@ management, design suggestions, testing.
 =head1 ACKNOWLEDGEMENTS
 
 Development of this module is sponsored by S<Monashev Co. Ltd.>
+
+Thanks to Peter J. Holzer for enlightening on UTF-8 support.
 
 
 =head1 WARRANTY

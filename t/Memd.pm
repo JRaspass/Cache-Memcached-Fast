@@ -28,6 +28,7 @@ BEGIN {
         failure_timeout => 2,
         ketama_points => 150,
         nowait => 1,
+        utf8 => ($^V >= 5.008001 ? 1 : 0),
     );
 
     $memd = Cache::Memcached::Fast->new(\%params);

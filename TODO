@@ -22,8 +22,6 @@
 
 - Add test for noreply, do not list it in MANIFEST.
 
-- utf8 => 1 (in utf8 branch).
-
 - tainted_in, tainted_out parameters.
 
 

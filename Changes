@@ -31,6 +31,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
         script/compare.pl was removed.  Instead script/benchmark.pl
         takes an optional last argument "compare".
 
+        New 'utf8' parameter for constructor.
+
 
 0.06  2007-12-20
         - this release fixes a serious bug and features the 'nowait'
