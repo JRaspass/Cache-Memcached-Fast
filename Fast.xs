@@ -386,7 +386,7 @@ set(memd, ...)
               {
                 /* exptime doesn't have to be defined.  */
                 SV **ps = av_fetch(av, arg, 0);
-                if (ps)
+                if (ps && SvOK(*ps))
                   exptime = SvIV(*ps);
               }
 
@@ -484,7 +484,7 @@ incr(memd, ...)
                   {
                     /* exptime doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
-                    if (ps)
+                    if (ps && SvOK(*ps))
                       arg = SvUV(*ps);
                   }
               }
@@ -544,7 +544,7 @@ delete(memd, ...)
                   {
                     /* exptime doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
-                    if (ps)
+                    if (ps && SvOK(*ps))
                       delay = SvUV(*ps);
                   }
               }

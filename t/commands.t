@@ -22,9 +22,9 @@ my $key = 'commands';
 my @keys = map { "commands-$_" } (1..count);
 
 $Memd::memd->delete($key);
-ok($Memd::memd->add($key, 'v1'), 'Add');
+ok($Memd::memd->add($key, 'v1', undef), 'Add');
 is($Memd::memd->get($key), 'v1', 'Fetch');
-ok($Memd::memd->set($key, 'v2'), 'Set');
+ok($Memd::memd->set($key, 'v2', undef), 'Set');
 is($Memd::memd->get($key), 'v2', 'Fetch');
 ok($Memd::memd->replace($key, 'v3'), 'Replace');
 is($Memd::memd->get($key), 'v3', 'Fetch');
