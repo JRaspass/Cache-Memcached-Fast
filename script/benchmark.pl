@@ -41,7 +41,7 @@ my $max_keys = $count * key_count / 2;
 my @addrs = @ARGV;
 
 use Cache::Memcached::Fast;
-use Benchmark qw(:hireswallclock timethese cmpthese);
+use Benchmark qw(:hireswallclock timethese cmpthese timeit timesum timestr);
 
 my $old;
 my $old_method = qr/^(?:add|set|replace|incr|decr|delete|get)$/;
@@ -155,16 +155,19 @@ sub run {
     my $bench = timethese($count, {@test});
 
     if (defined $value and NOWAIT) {
-        @test = (
-            "$method nowait" => sub { $new->$method(&$params('pw'))
-                                        foreach (1..key_count) },
-        );
-        merge_hash($bench, timethese($count, {@test}));
+        my $title = "$method nowait";
+        print "Benchmark: timing $count iterations of $title...\n";
+        my $b1 = timeit($count, sub { $new->$method(&$params('pw'))
+                                        foreach (1..key_count) });
+
         # We call nowait_push here.  Otherwise the time of gathering
         # the results would be added to the following commands.
-        # However it's not quite correct that this time is not
-        # accounted at all.
-        $new->nowait_push; 
+        my $b2 = timeit(1, sub { $new->nowait_push });
+
+        my $res = timesum($b1, $b2);
+        print "$title: ", timestr($res, 'auto'), "\n";
+
+        merge_hash($bench, { $title => $res });
     }
 
     my $method_multi = "${method}_multi";
@@ -193,16 +196,19 @@ sub run {
     merge_hash($bench, timethese($count, {@test}));
 
     if (defined $value and NOWAIT) {
-        @test = (
-            "$method_multi nowait"
-                => sub { $new->$method_multi(&$params_multi('mw')) },
-        );
-        merge_hash($bench, timethese($count, {@test}));
+        my $title = "$method_multi nowait";
+        print "Benchmark: timing $count iterations of $title...\n";
+        my $b1 = timeit($count,
+                        sub { $new->$method_multi(&$params_multi('mw')) });
+
         # We call nowait_push here.  Otherwise the time of gathering
         # the results would be added to the following commands.
-        # However it's not quite correct that this time is not
-        # accounted at all.
-        $new->nowait_push; 
+        my $b2 = timeit(1, sub { $new->nowait_push });
+
+        my $res = timesum($b1, $b2);
+        print "$title: ", timestr($res, 'auto'), "\n";
+
+        merge_hash($bench, { $title => $res });
     }
 
     cmpthese($bench);
