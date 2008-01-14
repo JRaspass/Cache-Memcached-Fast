@@ -52,6 +52,8 @@ if ($compare) {
     $old = new Cache::Memcached {
         servers   => [@addrs],
         namespace => "Cache::Memcached::bench/$$/",
+        connect_timeout => 5,
+        select_timeout => 5,
     };
     $old->enable_compress(0);
 }
@@ -62,6 +64,8 @@ my $new = new Cache::Memcached::Fast {
     namespace => "Cache::Memcached::bench/$$/",
     ketama_points => 150,
     nowait => NOWAIT,
+    connect_timeout => 5,
+    io_timeout => 5,
 };
 
 my $version = $new->server_versions;
@@ -80,6 +84,8 @@ my $new_noreply = new Cache::Memcached::Fast {
     servers   => [@addrs],
     namespace => "Cache::Memcached::bench/$$/",
     ketama_points => 150,
+    connect_timeout => 5,
+    io_timeout => 5,
 };
 
 
