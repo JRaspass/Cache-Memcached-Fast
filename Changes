@@ -19,7 +19,7 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         New command server_version.
 
-        Fixed bug in nowait mode could cause incorrect subsequent
+        Fixed bug in nowait mode that could cause negative subsequent
         results under some circumstances.
 
         Commands that previously returned boolean value now return
@@ -32,6 +32,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
         takes an optional last argument "compare".
 
         New 'utf8' parameter for constructor.
+
+        decr returns "0E0" for positive zero reply.
 
 
 0.06  2007-12-20
