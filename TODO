@@ -24,6 +24,11 @@
 
 - tainted_in, tainted_out parameters.
 
+- 'more' flag for better streaming latency.
+
+- Instead of accumulating requests do I/O on every client_prepare_*()
+  to improve streaming speed.
+
 
 For 0.07:
 
@@ -43,7 +48,6 @@ For 0.07:
 
 - Add tests for new multi commands.
 
-- Investigate why %h and @a have such bug difference in wallclock
-  time.  Also noreply and nowait.
-
 - Memd.pm should not assume equal server versions.
+
+- Beat Cache::Memcached::LibMemcached on performance.
