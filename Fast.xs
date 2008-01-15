@@ -19,12 +19,17 @@
 #include <string.h>
 
 
-typedef struct client Cache_Memcached_Fast;
+struct xs_state
+{
+  struct client *c;
+};
+
+typedef struct xs_state Cache_Memcached_Fast;
 
 
 static
 void
-add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight, int noreply)
+add_server(struct client *c, SV *addr_sv, double weight, int noreply)
 {
   static const int delim = ':';
   const char *host, *port;
@@ -45,12 +50,12 @@ add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight, int noreply)
       host_len = port - host;
       ++port;
       port_len = len - host_len - 1;
-      res = client_add_server(memd, host, host_len, port, port_len,
+      res = client_add_server(c, host, host_len, port, port_len,
                               weight, noreply);
     }
   else
     {
-      res = client_add_server(memd, host, len, NULL, 0, weight, noreply);
+      res = client_add_server(c, host, len, NULL, 0, weight, noreply);
     }
   if (res != MEMCACHED_SUCCESS)
     croak("Not enough memory");
@@ -59,11 +64,11 @@ add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight, int noreply)
 
 static
 void
-parse_server(Cache_Memcached_Fast *memd, SV *sv)
+parse_server(struct client *c, SV *sv)
 {
   if (! SvROK(sv))
     {
-      add_server(memd, sv, 1.0, 0);
+      add_server(c, sv, 1.0, 0);
     }
   else
     {
@@ -85,7 +90,7 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
             ps = hv_fetch(hv, "noreply", 7, 0);
             if (ps)
               noreply = SvTRUE(*ps);
-            add_server(memd, *addr_sv, weight, noreply);
+            add_server(c, *addr_sv, weight, noreply);
           }
           break;
 
@@ -101,7 +106,7 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
             weight_sv = av_fetch(av, 1, 0);
             if (weight_sv)
               weight = SvNV(*weight_sv);
-            add_server(memd, *addr_sv, weight, 0);
+            add_server(c, *addr_sv, weight, 0);
           }
           break;
 
@@ -115,14 +120,14 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
 
 static
 void
-parse_config(Cache_Memcached_Fast *memd, HV *conf)
+parse_config(struct client *c, HV *conf)
 {
   SV **ps;
 
   ps = hv_fetch(conf, "ketama_points", 13, 0);
   if (ps)
     {
-      int res = client_set_ketama_points(memd, SvIV(*ps));
+      int res = client_set_ketama_points(c, SvIV(*ps));
       if (res != MEMCACHED_SUCCESS)
         croak("client_set_ketama() failed");
     }
@@ -143,7 +148,7 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
           if (! ps)
             continue;
 
-          parse_server(memd, *ps);
+          parse_server(c, *ps);
         }
     }
 
@@ -153,51 +158,51 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
       const char *ns;
       STRLEN len;
       ns = SvPV(*ps, len);
-      if (client_set_prefix(memd, ns, len) != MEMCACHED_SUCCESS)
+      if (client_set_prefix(c, ns, len) != MEMCACHED_SUCCESS)
         croak("Not enough memory");
     }
 
   ps = hv_fetch(conf, "connect_timeout", 15, 0);
   if (ps)
     {
-      client_set_connect_timeout(memd, SvNV(*ps) * 1000.0);
+      client_set_connect_timeout(c, SvNV(*ps) * 1000.0);
     }
 
   ps = hv_fetch(conf, "io_timeout", 10, 0);
   if (ps)
     {
-      client_set_io_timeout(memd, SvNV(*ps) * 1000.0);
+      client_set_io_timeout(c, SvNV(*ps) * 1000.0);
     }
 
   /* For compatibility with Cache::Memcached.  */
   ps = hv_fetch(conf, "select_timeout", 14, 0);
   if (ps)
     {
-      client_set_io_timeout(memd, SvNV(*ps) * 1000.0);
+      client_set_io_timeout(c, SvNV(*ps) * 1000.0);
     }
 
   ps = hv_fetch(conf, "max_failures", 12, 0);
   if (ps)
     {
-      client_set_max_failures(memd, SvIV(*ps));
+      client_set_max_failures(c, SvIV(*ps));
     }
 
   ps = hv_fetch(conf, "failure_timeout", 15, 0);
   if (ps)
     {
-      client_set_failure_timeout(memd, SvIV(*ps));
+      client_set_failure_timeout(c, SvIV(*ps));
     }
 
   ps = hv_fetch(conf, "close_on_error", 14, 0);
   if (ps)
     {
-      client_set_close_on_error(memd, SvTRUE(*ps));
+      client_set_close_on_error(c, SvTRUE(*ps));
     }
 
   ps = hv_fetch(conf, "nowait", 6, 0);
   if (ps)
     {
-      client_set_nowait(memd, SvTRUE(*ps));
+      client_set_nowait(c, SvTRUE(*ps));
     }
 }
 
@@ -304,12 +309,13 @@ new(class, conf)
     PREINIT:
         Cache_Memcached_Fast *memd;
     CODE:
-        memd = client_init();
-        if (! memd)
+        Newx(memd, 1, Cache_Memcached_Fast);
+        memd->c = client_init();
+        if (! memd->c)
           croak("Not enough memory");
         if (! SvROK(conf) || SvTYPE(SvRV(conf)) != SVt_PVHV)
           croak("Not a hash reference");
-        parse_config(memd, (HV *) SvRV(conf));
+        parse_config(memd->c, (HV *) SvRV(conf));
         RETVAL = memd;
     OUTPUT:
         RETVAL
@@ -320,7 +326,8 @@ DESTROY(memd)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     CODE:
-        client_destroy(memd);
+        client_destroy(memd->c);
+        Safefree(memd);
 
 
 AV *
@@ -343,7 +350,7 @@ set(memd, ...)
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd);
+        client_reset(memd->c);
         for (i = 1; i < items; ++i)
           {
             SV *sv;
@@ -391,16 +398,16 @@ set(memd, ...)
 
             if (ix != CMD_CAS)
               {
-                client_prepare_set(memd, ix, i - 1, key, key_len, flags,
+                client_prepare_set(memd->c, ix, i - 1, key, key_len, flags,
                                    exptime, buf, buf_len, &object, noreply);
               }
             else
               {
-                client_prepare_cas(memd, i - 1, key, key_len, cas, flags,
+                client_prepare_cas(memd->c, i - 1, key, key_len, cas, flags,
                                    exptime, buf, buf_len, &object, noreply);
               }
           }
-        client_execute(memd);
+        client_execute(memd->c);
     OUTPUT:
         RETVAL
 
@@ -422,16 +429,16 @@ get(memd, ...)
         value_res.flags = newAV();
         av_extend(value_res.vals, key_count);
         av_extend(value_res.flags, key_count);
-        client_reset(memd);
+        client_reset(memd->c);
         for (i = 0; i < key_count; ++i)
           {
             const char *key;
             STRLEN key_len;
 
             key = SvPV(ST(i + 1), key_len);
-            client_prepare_get(memd, ix, i, key, key_len, &object);
+            client_prepare_get(memd->c, ix, i, key, key_len, &object);
           }
-        client_execute(memd);
+        client_execute(memd->c);
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.vals)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.flags)));
@@ -454,7 +461,7 @@ incr(memd, ...)
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd);
+        client_reset(memd->c);
         for (i = 1; i < items; ++i)
           {
             SV *sv;
@@ -488,10 +495,10 @@ incr(memd, ...)
                   }
               }
  
-            client_prepare_incr(memd, ix, i - 1, key, key_len, arg,
+            client_prepare_incr(memd->c, ix, i - 1, key, key_len, arg,
                                 &object, noreply);
           }
-        client_execute(memd);
+        client_execute(memd->c);
     OUTPUT:
         RETVAL
 
@@ -514,7 +521,7 @@ delete(memd, ...)
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd);
+        client_reset(memd->c);
         for (i = 1; i < items; ++i)
           {
             SV *sv;
@@ -548,10 +555,10 @@ delete(memd, ...)
                   }
               }
 
-            client_prepare_delete(memd, i - 1, key, key_len, delay,
+            client_prepare_delete(memd->c, i - 1, key, key_len, delay,
                                   &object, noreply);
           }
-        client_execute(memd);
+        client_execute(memd->c);
     OUTPUT:
         RETVAL
 
@@ -573,7 +580,7 @@ flush_all(memd, ...)
         if (items > 1 && SvOK(ST(1)))
           delay = SvUV(ST(1));
         noreply = (GIMME_V == G_VOID);
-        client_flush_all(memd, delay, &object, noreply);
+        client_flush_all(memd->c, delay, &object, noreply);
     OUTPUT:
         RETVAL
 
@@ -583,7 +590,7 @@ nowait_push(memd)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     CODE:
-        client_nowait_push(memd);
+        client_nowait_push(memd->c);
 
 
 AV *
@@ -598,7 +605,7 @@ server_versions(memd)
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
         object.arg = RETVAL;
-        client_server_versions(memd, &object);
+        client_server_versions(memd->c, &object);
     OUTPUT:
         RETVAL
 
