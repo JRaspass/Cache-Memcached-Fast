@@ -600,7 +600,7 @@ set(memd, ...)
             cas_type cas = 0;
             const void *buf;
             STRLEN buf_len;
-            flags_type flags;
+            flags_type flags = 0;
             exptime_type exptime = 0;
             int arg = 0;
 
@@ -620,10 +620,11 @@ set(memd, ...)
                 cas = SvUV(*av_fetch(av, arg, 0));
                 ++arg;
               }
-            sv = SvRV(*av_fetch(av, arg, 0));
+            sv = *av_fetch(av, arg, 0);
             ++arg;
-            flags = SvUV(*av_fetch(av, arg, 0));
-            ++arg;
+            sv = serialize(memd, sv, &flags);
+            sv = compress(memd, sv, &flags);
+            buf = (void *) SvPV(sv, buf_len);
             if (av_len(av) >= arg)
               {
                 /* exptime doesn't have to be defined.  */
@@ -631,10 +632,6 @@ set(memd, ...)
                 if (ps && SvOK(*ps))
                   exptime = SvIV(*ps);
               }
-
-            sv = serialize(memd, sv, &flags);
-            sv = compress(memd, sv, &flags);
-            buf = (void *) SvPV(sv, buf_len);
 
             if (ix != CMD_CAS)
               {

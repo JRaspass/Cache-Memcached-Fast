@@ -479,16 +479,6 @@ sub enable_compress {
 }
 
 
-sub _pack_value {
-    my Cache::Memcached::Fast $self = shift;
-
-    my $flags = 0;
-    my $val_ref = \$_[0];
-
-    return ($val_ref, $flags);
-}
-
-
 sub _unpack_value {
     my Cache::Memcached::Fast $self = shift;
 
@@ -517,7 +507,6 @@ server reply, or I<undef> in case of some error.
 
 sub set {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 1, 1, _pack_value($self, $_[1]));
     if (defined wantarray) {
         return $self->{_xs}->set(\@_)->[0];
     } else {
@@ -551,9 +540,6 @@ learn what the result value is.
 
 sub set_multi {
     my Cache::Memcached::Fast $self = shift;
-    foreach my $v (@_) {
-        splice(@$v, 1, 1, _pack_value($self, $v->[1]));
-    }
     if (defined wantarray) {
         if (wantarray) {
             return @{$self->{_xs}->set(@_)};
@@ -593,7 +579,6 @@ B<cas> command first appeared in B<memcached> 1.2.4.
 
 sub cas {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 2, 1, _pack_value($self, $_[2]));
     if (defined wantarray) {
         return $self->{_xs}->cas(\@_)->[0];
     } else {
@@ -629,9 +614,6 @@ B<cas> command first appeared in B<memcached> 1.2.4.
 
 sub cas_multi {
     my Cache::Memcached::Fast $self = shift;
-    foreach my $v (@_) {
-        splice(@$v, 2, 1, _pack_value($self, $v->[2]));
-    }
     if (defined wantarray) {
         if (wantarray) {
             return @{$self->{_xs}->cas(@_)};
@@ -664,7 +646,6 @@ server reply, or I<undef> in case of some error.
 
 sub add {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 1, 1, _pack_value($self, $_[1]));
     if (defined wantarray) {
         return $self->{_xs}->add(\@_)->[0];
     } else {
@@ -698,9 +679,6 @@ learn what the result value is.
 
 sub add_multi {
     my Cache::Memcached::Fast $self = shift;
-    foreach my $v (@_) {
-        splice(@$v, 1, 1, _pack_value($self, $v->[1]));
-    }
     if (defined wantarray) {
         if (wantarray) {
             return @{$self->{_xs}->add(@_)};
@@ -733,7 +711,6 @@ server reply, or I<undef> in case of some error.
 
 sub replace {
     my Cache::Memcached::Fast $self = shift;
-    splice(@_, 1, 1, _pack_value($self, $_[1]));
     if (defined wantarray) {
         return $self->{_xs}->replace(\@_)->[0];
     } else {
@@ -767,9 +744,6 @@ learn what the result value is.
 
 sub replace_multi {
     my Cache::Memcached::Fast $self = shift;
-    foreach my $v (@_) {
-        splice(@$v, 1, 1, _pack_value($self, $v->[1]));
-    }
     if (defined wantarray) {
         if (wantarray) {
             return @{$self->{_xs}->replace(@_)};
@@ -803,8 +777,6 @@ B<append> command first appeared in B<memcached> 1.2.4.
 
 sub append {
     my Cache::Memcached::Fast $self = shift;
-    # append() does not affect flags.
-    splice(@_, 1, 1, \$_[1], 0);
     if (defined wantarray) {
         return $self->{_xs}->append(\@_)->[0];
     } else {
@@ -838,10 +810,6 @@ B<append> command first appeared in B<memcached> 1.2.4.
 
 sub append_multi {
     my Cache::Memcached::Fast $self = shift;
-    foreach my $v (@_) {
-        # append() does not affect flags.
-        splice(@$v, 1, 1, \$v->[1], 0);
-    }
     if (defined wantarray) {
         if (wantarray) {
             return @{$self->{_xs}->append(@_)};
@@ -875,8 +843,6 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 
 sub prepend {
     my Cache::Memcached::Fast $self = shift;
-    # prepend() does not affect flags.
-    splice(@_, 1, 1, \$_[1], 0);
     if (defined wantarray) {
         return $self->{_xs}->prepend(\@_)->[0];
     } else {
@@ -910,10 +876,6 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 
 sub prepend_multi {
     my Cache::Memcached::Fast $self = shift;
-    foreach my $v (@_) {
-        # prepend() does not affect flags.
-        splice(@$v, 1, 1, \$v->[1], 0);
-    }
     if (defined wantarray) {
         if (wantarray) {
             return @{$self->{_xs}->prepend(@_)};
