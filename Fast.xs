@@ -272,13 +272,15 @@ static inline
 SV *
 compress(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
 {
-  STRLEN len = sv_len(sv);
-
-  if (memd->compress_threshold > 0 && len >= (STRLEN) memd->compress_threshold)
+  if (memd->compress_threshold > 0)
     {
-      SV *csv, *res;
+      STRLEN len = sv_len(sv);
+      SV *csv, *bsv;
       int count;
       dSP;
+
+      if (len < (STRLEN) memd->compress_threshold)
+        return sv;
 
       csv = newSV(0);
 
@@ -294,8 +296,8 @@ compress(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
       if (count != 1)
         croak("Compress method returned nothing");
 
-      res = POPs;
-      if (SvTRUE(res) && sv_len(csv) <= len * memd->compress_ratio)
+      bsv = POPs;
+      if (SvTRUE(bsv) && sv_len(csv) <= len * memd->compress_ratio)
         {
           sv = csv;
           *flags |= F_COMPRESS;
