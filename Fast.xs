@@ -19,9 +19,16 @@
 #include <string.h>
 
 
+#define F_COMPRESS  0x2
+
+
 struct xs_state
 {
   struct client *c;
+  int compress_threshold;
+  double compress_ratio;
+  SV *compress_method;
+  SV *uncompress_method;
 };
 
 typedef struct xs_state Cache_Memcached_Fast;
@@ -120,12 +127,47 @@ parse_server(struct client *c, SV *sv)
 
 static
 void
-parse_config(struct client *c, HV *conf)
+parse_compress(Cache_Memcached_Fast *memd, HV *conf)
 {
   SV **ps;
 
+  memd->compress_threshold = -1;
+  memd->compress_ratio = 0.8;
+  memd->compress_method = NULL;
+  memd->uncompress_method = NULL;
+
+  ps = hv_fetch(conf, "compress_threshold", 18, 0);
+  if (ps && SvOK(*ps))
+    memd->compress_threshold = SvIV(*ps);
+
+  ps = hv_fetch(conf, "compress_ratio", 14, 0);
+  if (ps && SvOK(*ps))
+    memd->compress_ratio = SvNV(*ps);
+
+  ps = hv_fetch(conf, "compress_methods", 16, 0);
+  if (ps && SvOK(*ps))
+    {
+      AV *av = (AV *) SvRV(*ps);
+      memd->compress_method = newSVsv(*av_fetch(av, 0, 0));
+      memd->uncompress_method = newSVsv(*av_fetch(av, 1, 0));
+    }
+  else if (memd->compress_threshold > 0)
+    {
+      warn("Compression module was not found, disabling compression");
+      memd->compress_threshold = -1;
+    }
+}
+
+
+static
+void
+parse_config(Cache_Memcached_Fast *memd, HV *conf)
+{
+  struct client *c = memd->c;
+  SV **ps;
+
   ps = hv_fetch(conf, "ketama_points", 13, 0);
-  if (ps)
+  if (ps && SvOK(*ps))
     {
       int res = client_set_ketama_points(c, SvIV(*ps));
       if (res != MEMCACHED_SUCCESS)
@@ -190,6 +232,87 @@ parse_config(struct client *c, HV *conf)
   ps = hv_fetch(conf, "nowait", 6, 0);
   if (ps && SvOK(*ps))
     client_set_nowait(c, SvTRUE(*ps));
+
+  parse_compress(memd, conf);
+}
+
+
+static inline
+SV *
+compress(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
+{
+  STRLEN len = sv_len(sv);
+
+  if (memd->compress_threshold > 0 && len >= (STRLEN) memd->compress_threshold)
+    {
+      SV *csv, *res;
+      int count;
+      dSP;
+
+      csv = newSV(0);
+
+      PUSHMARK(SP);
+      XPUSHs(sv_2mortal(newRV(sv)));
+      XPUSHs(sv_2mortal(newRV_noinc(csv)));
+      PUTBACK;
+
+      count = call_sv(memd->compress_method, G_SCALAR);
+
+      SPAGAIN;
+
+      if (count != 1)
+        croak("Compress method returned nothing");
+
+      res = POPs;
+      if (SvTRUE(res) && sv_len(csv) <= len * memd->compress_ratio)
+        {
+          sv = csv;
+          *flags |= F_COMPRESS;
+        }
+
+      PUTBACK;
+    }
+
+  return sv;
+}
+
+
+static inline
+int
+uncompress(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
+{
+  int res = 1;
+
+  if (flags & F_COMPRESS)
+    {
+      SV *rsv, *bsv;
+      int count;
+      dSP;
+
+      rsv = sv_2mortal(newRV_noinc(newSV(0)));
+
+      PUSHMARK(SP);
+      XPUSHs(sv);
+      XPUSHs(rsv);
+      PUTBACK;
+
+      count = call_sv(memd->uncompress_method, G_SCALAR);
+
+      SPAGAIN;
+
+      if (count != 1)
+        croak("Uncompress method returned nothing");
+
+      bsv = POPs;
+      if (SvTRUE(bsv))
+        sv_setsv(sv, rsv);
+      else
+        res = 0;
+
+      PUTBACK;
+    }
+
+  return res;
 }
 
 
@@ -301,7 +424,7 @@ new(class, conf)
           croak("Not enough memory");
         if (! SvROK(conf) || SvTYPE(SvRV(conf)) != SVt_PVHV)
           croak("Not a hash reference");
-        parse_config(memd->c, (HV *) SvRV(conf));
+        parse_config(memd, (HV *) SvRV(conf));
         RETVAL = memd;
     OUTPUT:
         RETVAL
@@ -313,7 +436,24 @@ DESTROY(memd)
     PROTOTYPE: $
     CODE:
         client_destroy(memd->c);
+        if (memd->compress_method)
+          {
+            SvREFCNT_dec(memd->compress_method);
+            SvREFCNT_dec(memd->uncompress_method);
+          }
         Safefree(memd);
+
+
+void
+enable_compress(memd, enable)
+        Cache_Memcached_Fast *  memd
+        bool                    enable
+    PROTOTYPE: $$
+    CODE:
+        if (enable && ! memd->compress_method)
+          warn("Compression module was not found, can't enable compression");
+        else if ((memd->compress_threshold > 0) != enable)
+          memd->compress_threshold = -memd->compress_threshold;
 
 
 AV *
@@ -370,7 +510,7 @@ set(memd, ...)
                 cas = SvUV(*av_fetch(av, arg, 0));
                 ++arg;
               }
-            buf = (void *) SvPV(SvRV(*av_fetch(av, arg, 0)), buf_len);
+            sv = SvRV(*av_fetch(av, arg, 0));
             ++arg;
             flags = SvUV(*av_fetch(av, arg, 0));
             ++arg;
@@ -381,6 +521,9 @@ set(memd, ...)
                 if (ps && SvOK(*ps))
                   exptime = SvIV(*ps);
               }
+
+            sv = compress(memd, sv, &flags);
+            buf = (void *) SvPV(sv, buf_len);
 
             if (ix != CMD_CAS)
               {
@@ -425,6 +568,16 @@ get(memd, ...)
             client_prepare_get(memd->c, ix, i, key, key_len, &object);
           }
         client_execute(memd->c);
+        for (i = 0; i < key_count; ++i)
+          {
+            SV **ps = av_fetch(value_res.vals, i, 1);
+            if (ps && SvOK(*ps))
+              {
+                flags_type flags = SvUV(*av_fetch(value_res.flags, i, 0));
+                if (! uncompress(memd, *ps, flags))
+                  sv_setsv(*ps, &PL_sv_undef);
+              }
+          }
         EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.vals)));
         PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.flags)));

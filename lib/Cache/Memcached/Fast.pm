@@ -158,16 +158,16 @@ BEGIN {
 
     while (my ($c, $u) = splice(@algo, 0, 2)) {
         my $key = lc $c;
-        my $val = ["IO::Compress::$c", "IO::Compress::${c}::" . lc $c,
-                   "IO::Uncompress::$u", "IO::Uncompress::${u}::" . lc $u];
+        my $val = ["IO::Compress::$c", "IO::Uncompress::$u",
+                   "IO::Compress::${c}::" . lc $c,
+                   "IO::Uncompress::${u}::" . lc $u];
         $compress_algo{$key} = $val;
     }
 }
 
 
 use fields qw(
-    _xs servers
-    compress_threshold compress_ratio compress_methods utf8
+    _xs servers utf8
 );
 
 
@@ -417,26 +417,20 @@ sub new {
 
     $self = fields::new($self) unless ref($self);
 
-    # $conf->{compress_threshold} == 0 actually disables compression.
-    $self->{compress_threshold} = $conf->{compress_threshold} || -1;
-    $self->{compress_ratio} = $conf->{compress_ratio} || 0.8;
-    $self->{compress_methods} =
-      $compress_algo{lc($conf->{compress_algo} || 'gzip')};
-    unless (defined $self->{compress_methods}) {
+    my $compress = $compress_algo{lc($conf->{compress_algo} || 'gzip')};
+    if (defined $compress) {
+        if (eval "require $compress->[0]"
+            and eval "require $compress->[1]") {
+            no strict 'refs';
+            $conf->{compress_methods} = [ map { \&$_ } @{$compress}[2, 3] ];
+        } else {
+            undef $conf->{compress_methods};
+        }
+    } else {
         carp "Compress algorithm '$conf->{compress_algo}' is not known to"
             . " Cache::Memcached::Fast, disabling compression";
-        $self->{compress_threshold} = -1;
-    }
-    if (defined $self->{compress_methods}) {
-        unless (eval "require $self->{compress_methods}->[0]"
-                and eval "require $self->{compress_methods}->[2]") {
-            $self->{compress_methods} =
-              "Can't find module $self->{compress_methods}->[0],"
-                . " compression disabled";
-            if ($self->{compress_threshold} > 0) {
-                $self->enable_compress(0);
-            }
-        }
+        undef $conf->{compress_methods};
+        $conf->{compress_threshold} = -1;
     }
 
     if ($conf->{utf8}) {
@@ -484,19 +478,7 @@ I<Return:> none.
 
 sub enable_compress {
     my Cache::Memcached::Fast $self = shift;
-    my ($enable) = @_;
-
-    return unless defined $self->{compress_methods};
-
-    unless (ref($self->{compress_methods})) {
-        carp $self->{compress_methods};
-        undef $self->{compress_methods};
-        return;
-    }
-
-    if ($self->{compress_threshold} > 0 xor $enable) {
-        $self->{compress_threshold} = -$self->{compress_threshold};
-    }
+    $self->{_xs}->enable_compress(@_);
 }
 
 
@@ -523,33 +505,12 @@ sub _pack_value {
         }
     }
 
-    use bytes;
-    my $len = length $$val_ref;
-    if ($self->{compress_threshold} > 0
-        and $len >= $self->{compress_threshold}) {
-        my $methods = $self->{compress_methods};
-        no strict 'refs';
-        my $res = &{$$methods[1]}($val_ref, \my $compressed);
-        if ($res and length $compressed <= $len * $self->{compress_ratio}) {
-            $val_ref = \$compressed;
-            $flags |= F_COMPRESS;
-        }
-    }
-
     return ($val_ref, $flags);
 }
 
 
 sub _unpack_value {
     my Cache::Memcached::Fast $self = shift;
-
-    if ($_[1] & F_COMPRESS) {
-        my $methods = $self->{compress_methods};
-        no strict 'refs';
-        my $res = &{$$methods[3]}($_[0], \my $uncompressed);
-        return unless $res;
-        $_[0] = \$uncompressed;
-    }
 
     if ($_[1] & F_STORABLE) {
         eval {
