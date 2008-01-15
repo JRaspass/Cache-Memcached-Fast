@@ -422,10 +422,21 @@ sub new {
     $self->{compress_ratio} = $conf->{compress_ratio} || 0.8;
     $self->{compress_methods} =
       $compress_algo{lc($conf->{compress_algo} || 'gzip')};
-    unless ($self->{compress_methods}) {
+    unless (defined $self->{compress_methods}) {
         carp "Compress algorithm '$conf->{compress_algo}' is not known to"
             . " Cache::Memcached::Fast, disabling compression";
         $self->{compress_threshold} = -1;
+    }
+    if (defined $self->{compress_methods}) {
+        unless (eval "require $self->{compress_methods}->[0]"
+                and eval "require $self->{compress_methods}->[2]") {
+            $self->{compress_methods} =
+              "Can't find module $self->{compress_methods}->[0],"
+                . " compression disabled";
+            if ($self->{compress_threshold} > 0) {
+                $self->enable_compress(0);
+            }
+        }
     }
 
     if ($conf->{utf8}) {
@@ -475,8 +486,15 @@ sub enable_compress {
     my Cache::Memcached::Fast $self = shift;
     my ($enable) = @_;
 
-    if ($self->{compress_threshold} > 0
-        xor ($enable and $self->{compress_methods})) {
+    return unless defined $self->{compress_methods};
+
+    unless (ref($self->{compress_methods})) {
+        carp $self->{compress_methods};
+        undef $self->{compress_methods};
+        return;
+    }
+
+    if ($self->{compress_threshold} > 0 xor $enable) {
         $self->{compress_threshold} = -$self->{compress_threshold};
     }
 }
@@ -510,17 +528,11 @@ sub _pack_value {
     if ($self->{compress_threshold} > 0
         and $len >= $self->{compress_threshold}) {
         my $methods = $self->{compress_methods};
-        if (eval "require $$methods[0]") {
-            no strict 'refs';
-            my $res = &{$$methods[1]}($val_ref, \my $compressed);
-            if ($res
-                and length $compressed <= $len * $self->{compress_ratio}) {
-                $val_ref = \$compressed;
-                $flags |= F_COMPRESS;
-            }
-        } else {
-            carp "Can't find module $$methods[0]";
-            $self->enable_compress(0);
+        no strict 'refs';
+        my $res = &{$$methods[1]}($val_ref, \my $compressed);
+        if ($res and length $compressed <= $len * $self->{compress_ratio}) {
+            $val_ref = \$compressed;
+            $flags |= F_COMPRESS;
         }
     }
 
@@ -533,14 +545,10 @@ sub _unpack_value {
 
     if ($_[1] & F_COMPRESS) {
         my $methods = $self->{compress_methods};
-        if (eval "require $$methods[2]") {
-            no strict 'refs';
-            my $res = &{$$methods[3]}($_[0], \my $uncompressed);
-            return unless $res;
-            $_[0] = \$uncompressed;
-        } else {
-            return;
-        }
+        no strict 'refs';
+        my $res = &{$$methods[3]}($_[0], \my $uncompressed);
+        return unless $res;
+        $_[0] = \$uncompressed;
     }
 
     if ($_[1] & F_STORABLE) {

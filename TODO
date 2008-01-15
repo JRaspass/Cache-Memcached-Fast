@@ -4,8 +4,6 @@
 - Improve make files: libclient.a should not be installed (does it
   now?).
 
-- Move "require $compress_module" close to the place where name is set.
-
 - Set $! on errors.
 
 - Mention server patches in docs.
