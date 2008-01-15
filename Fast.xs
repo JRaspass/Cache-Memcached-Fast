@@ -85,10 +85,10 @@ parse_server(struct client *c, SV *sv)
             if (! addr_sv)
               croak("server should have { address => $addr }");
             ps = hv_fetch(hv, "weight", 6, 0);
-            if (ps)
+            if (ps && SvOK(*ps))
               weight = SvNV(*ps);
             ps = hv_fetch(hv, "noreply", 7, 0);
-            if (ps)
+            if (ps && SvOK(*ps))
               noreply = SvTRUE(*ps);
             add_server(c, *addr_sv, weight, noreply);
           }
@@ -133,7 +133,7 @@ parse_config(struct client *c, HV *conf)
     }
 
   ps = hv_fetch(conf, "servers", 7, 0);
-  if (ps)
+  if (ps && SvOK(*ps))
     {
       AV *a;
       int max_index, i;
@@ -153,7 +153,7 @@ parse_config(struct client *c, HV *conf)
     }
 
   ps = hv_fetch(conf, "namespace", 9, 0);
-  if (ps)
+  if (ps && SvOK(*ps))
     {
       const char *ns;
       STRLEN len;
@@ -163,47 +163,33 @@ parse_config(struct client *c, HV *conf)
     }
 
   ps = hv_fetch(conf, "connect_timeout", 15, 0);
-  if (ps)
-    {
-      client_set_connect_timeout(c, SvNV(*ps) * 1000.0);
-    }
+  if (ps && SvOK(*ps))
+    client_set_connect_timeout(c, SvNV(*ps) * 1000.0);
 
   ps = hv_fetch(conf, "io_timeout", 10, 0);
-  if (ps)
-    {
-      client_set_io_timeout(c, SvNV(*ps) * 1000.0);
-    }
+  if (ps && SvOK(*ps))
+    client_set_io_timeout(c, SvNV(*ps) * 1000.0);
 
   /* For compatibility with Cache::Memcached.  */
   ps = hv_fetch(conf, "select_timeout", 14, 0);
-  if (ps)
-    {
-      client_set_io_timeout(c, SvNV(*ps) * 1000.0);
-    }
+  if (ps && SvOK(*ps))
+    client_set_io_timeout(c, SvNV(*ps) * 1000.0);
 
   ps = hv_fetch(conf, "max_failures", 12, 0);
-  if (ps)
-    {
-      client_set_max_failures(c, SvIV(*ps));
-    }
+  if (ps && SvOK(*ps))
+    client_set_max_failures(c, SvIV(*ps));
 
   ps = hv_fetch(conf, "failure_timeout", 15, 0);
-  if (ps)
-    {
-      client_set_failure_timeout(c, SvIV(*ps));
-    }
+  if (ps && SvOK(*ps))
+    client_set_failure_timeout(c, SvIV(*ps));
 
   ps = hv_fetch(conf, "close_on_error", 14, 0);
-  if (ps)
-    {
-      client_set_close_on_error(c, SvTRUE(*ps));
-    }
+  if (ps && SvOK(*ps))
+    client_set_close_on_error(c, SvTRUE(*ps));
 
   ps = hv_fetch(conf, "nowait", 6, 0);
-  if (ps)
-    {
-      client_set_nowait(c, SvTRUE(*ps));
-    }
+  if (ps && SvOK(*ps))
+    client_set_nowait(c, SvTRUE(*ps));
 }
 
 
