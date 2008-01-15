@@ -19,7 +19,9 @@
 #include <string.h>
 
 
+#define F_STORABLE  0x1
 #define F_COMPRESS  0x2
+#define F_UTF8      0x4
 
 
 struct xs_state
@@ -29,6 +31,9 @@ struct xs_state
   double compress_ratio;
   SV *compress_method;
   SV *uncompress_method;
+  SV *nfreeze_method;
+  SV *thaw_method;
+  int utf8;
 };
 
 typedef struct xs_state Cache_Memcached_Fast;
@@ -122,6 +127,31 @@ parse_server(struct client *c, SV *sv)
           break;
         }
     }
+}
+
+
+static
+void
+parse_serialize(Cache_Memcached_Fast *memd, HV *conf)
+{
+  SV **ps;
+  CV *cv;
+
+  memd->utf8 = 0;
+
+  ps = hv_fetch(conf, "utf8", 4, 0);
+  if (ps && SvOK(*ps))
+    memd->utf8 = SvTRUE(*ps);
+
+  cv = get_cv("Storable::nfreeze", 0);
+  if (! cv)
+    croak("Can't locate Storable::nfreeze method");
+  memd->nfreeze_method = (SV *) cv;
+
+  cv = get_cv("Storable::thaw", 0);
+  if (! cv)
+    croak("Can't locate Storable::thaw method");
+  memd->thaw_method = (SV *) cv;
 }
 
 
@@ -234,6 +264,7 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
     client_set_nowait(c, SvTRUE(*ps));
 
   parse_compress(memd, conf);
+  parse_serialize(memd, conf);
 }
 
 
@@ -312,6 +343,83 @@ uncompress(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
       PUTBACK;
     }
 
+  return res;
+}
+
+
+static inline
+SV *
+serialize(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
+{
+  if (SvROK(sv))
+    {
+      int count;
+      dSP;
+
+      PUSHMARK(SP);
+      XPUSHs(sv);
+      PUTBACK;
+
+      count = call_sv(memd->nfreeze_method, G_SCALAR);
+
+      SPAGAIN;
+
+      if (count != 1)
+        croak("Serialize::nfreeze returned nothing");
+
+      sv = POPs;
+      *flags |= F_STORABLE;
+
+      PUTBACK;
+    }
+  else if (memd->utf8 && SvUTF8(sv))
+    {
+      /* Copy the value because we will modify it in place.  */
+      sv = sv_2mortal(newSVsv(sv));
+      sv_utf8_encode(sv);
+      *flags |= F_UTF8;
+    }
+
+  return sv;
+}
+
+
+static inline
+int
+deserialize(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
+{
+  int res = 1;
+
+  if (flags & F_STORABLE)
+    {
+      SV *rsv;
+      int count;
+      dSP;
+
+      PUSHMARK(SP);
+      XPUSHs(sv);
+      PUTBACK;
+
+      count = call_sv(memd->thaw_method, G_SCALAR | G_EVAL);
+
+      SPAGAIN;
+
+      if (count != 1)
+        croak("Storable::thaw method returned nothing");
+
+      rsv = POPs;
+      if (! SvTRUE(ERRSV))
+        sv_setsv(sv, rsv);
+      else
+        res = 0;
+
+      PUTBACK;
+    }
+  else if ((flags & F_UTF8) && memd->utf8)
+    {
+      res = sv_utf8_decode(sv);
+    }
+   
   return res;
 }
 
@@ -522,6 +630,7 @@ set(memd, ...)
                   exptime = SvIV(*ps);
               }
 
+            sv = serialize(memd, sv, &flags);
             sv = compress(memd, sv, &flags);
             buf = (void *) SvPV(sv, buf_len);
 
@@ -574,7 +683,8 @@ get(memd, ...)
             if (ps && SvOK(*ps))
               {
                 flags_type flags = SvUV(*av_fetch(value_res.flags, i, 0));
-                if (! uncompress(memd, *ps, flags))
+                if (! uncompress(memd, *ps, flags)
+                    || ! deserialize(memd, SvRV(*ps), flags))
                   sv_setsv(*ps, &PL_sv_undef);
               }
           }

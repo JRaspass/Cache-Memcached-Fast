@@ -167,7 +167,7 @@ BEGIN {
 
 
 use fields qw(
-    _xs servers utf8
+    _xs servers
 );
 
 
@@ -433,12 +433,9 @@ sub new {
         $conf->{compress_threshold} = -1;
     }
 
-    if ($conf->{utf8}) {
-        if ($^V >= 5.008001) {
-            $self->{utf8} = 1;
-        } else {
-            carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
-        }
+    if ($conf->{utf8} and $^V < 5.008001) {
+        carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
+        undef $conf->{utf8};
     }
 
     $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
@@ -486,24 +483,7 @@ sub _pack_value {
     my Cache::Memcached::Fast $self = shift;
 
     my $flags = 0;
-    my $val_ref;
-
-    # We use $val_ref to avoid both modifying original argument and
-    # copying the value when it is not a reference.
-    if (ref($_[0])) {
-        $val_ref = \Storable::nfreeze($_[0]);
-        $flags |= F_STORABLE;
-    } else {
-        if ($self->{utf8} and utf8::is_utf8($_[0])) {
-            # We have to copy the value because we will modify it in place.
-            my $octets = $_[0];
-            utf8::encode($octets);
-            $flags |= F_UTF8;
-            $val_ref = \$octets;
-        } else {
-            $val_ref = \$_[0];
-        }
-    }
+    my $val_ref = \$_[0];
 
     return ($val_ref, $flags);
 }
@@ -511,15 +491,6 @@ sub _pack_value {
 
 sub _unpack_value {
     my Cache::Memcached::Fast $self = shift;
-
-    if ($_[1] & F_STORABLE) {
-        eval {
-            $_[0] = \Storable::thaw(${$_[0]});
-        };
-        return if $@;
-    } elsif ($_[1] & F_UTF8 and $self->{utf8}) {
-        return unless utf8::decode(${$_[0]});
-    }
 
     return 1;
 }
