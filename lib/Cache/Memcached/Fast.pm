@@ -479,13 +479,6 @@ sub enable_compress {
 }
 
 
-sub _unpack_value {
-    my Cache::Memcached::Fast $self = shift;
-
-    return 1;
-}
-
-
 =item C<set>
 
   $memd->set($key, $value);
@@ -902,15 +895,7 @@ I<Return:> value associated with the I<$key>, or nothing.
 
 sub get {
     my Cache::Memcached::Fast $self = shift;
-
-    my ($val, $flags) = $self->{_xs}->get($_[0]);
-    $val = $val->[0];
-
-    if (defined $val and _unpack_value($self, $val, $flags->[0])) {
-        return $$val;
-    } else {
-        return;
-    }
+    return $self->{_xs}->get($_[0])->[0];
 }
 
 
@@ -929,23 +914,8 @@ corresponding value.
 sub get_multi {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($vals, $flags) = $self->{_xs}->get(@_);
-
     my $keys = \@_;
-
-    my $i = -1;
-    foreach my $v (@$vals) {
-        ++$i;
-
-        next unless defined $v;
-
-        if (_unpack_value($self, $v, $flags->[$i])) {
-            $v = $$v;
-        } else {
-            undef $v;
-        }
-    }
-
+    my $vals = $self->{_xs}->get(@_);
     return Cache::Memcached::Fast::_xs::_rvav2rvhv($keys, $vals);
 }
 
@@ -974,15 +944,7 @@ B<gets> command first appeared in B<memcached> 1.2.4.
 sub gets {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($val, $flags) = $self->{_xs}->gets($_[0]);
-    $val = $val->[0];
-
-    if (defined $val and _unpack_value($self, $val->[1], $flags->[0])) {
-        $val->[1] = ${$val->[1]};
-        return $val;
-    } else {
-        return;
-    }
+    return $self->{_xs}->gets($_[0])->[0];
 }
 
 
@@ -1003,23 +965,8 @@ B<gets> command first appeared in B<memcached> 1.2.4.
 sub gets_multi {
     my Cache::Memcached::Fast $self = shift;
 
-    my ($vals, $flags) = $self->{_xs}->gets(@_);
-
     my $keys = \@_;
-
-    my $i = -1;
-    foreach my $v (@$vals) {
-        ++$i;
-
-        next unless defined $v;
-
-        if (_unpack_value($self, $v->[1], $flags->[$i])) {
-            $v->[1] = ${$v->[1]};
-        } else {
-            undef $v;
-        }
-    }
-
+    my $vals = $self->{_xs}->gets(@_);
     return Cache::Memcached::Fast::_xs::_rvav2rvhv($keys, $vals);
 }
 

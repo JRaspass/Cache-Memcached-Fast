@@ -322,11 +322,11 @@ uncompress(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
       int count;
       dSP;
 
-      rsv = sv_2mortal(newRV_noinc(newSV(0)));
+      rsv = newSV(0);
 
       PUSHMARK(SP);
-      XPUSHs(sv);
-      XPUSHs(rsv);
+      XPUSHs(sv_2mortal(newRV(sv)));
+      XPUSHs(sv_2mortal(newRV_noinc(rsv)));
       PUTBACK;
 
       count = call_sv(memd->uncompress_method, G_SCALAR);
@@ -338,7 +338,7 @@ uncompress(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
 
       bsv = POPs;
       if (SvTRUE(bsv))
-        sv_setsv(sv, rsv);
+        SvSetSV(sv, rsv);
       else
         res = 0;
 
@@ -411,7 +411,7 @@ deserialize(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
 
       rsv = POPs;
       if (! SvTRUE(ERRSV))
-        sv_setsv(sv, rsv);
+        SvSetSV(sv, rsv);
       else
         res = 0;
 
@@ -456,8 +456,8 @@ free_value(void *opaque)
 
 struct xs_value_result
 {
+  Cache_Memcached_Fast *memd;  
   AV *vals;
-  AV *flags;
 };
 
 
@@ -469,20 +469,25 @@ value_store(void *arg, void *opaque, int key_index, void *meta)
   struct xs_value_result *value_res = (struct xs_value_result *) arg;
   struct meta_object *m = (struct meta_object *) meta;
 
+  if (! uncompress(value_res->memd, value_sv, m->flags)
+      || ! deserialize(value_res->memd, value_sv, m->flags))
+    {
+      free_value(value_sv);
+      return;
+    }
+
   if (! m->use_cas)
     {
-      av_store(value_res->vals, key_index, newRV_noinc(value_sv));
+      av_store(value_res->vals, key_index, value_sv);
     }
   else
     {
       AV *cas_val = newAV();
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(m->cas));
-      av_push(cas_val, newRV_noinc(value_sv));
+      av_push(cas_val, value_sv);
       av_store(value_res->vals, key_index, newRV_noinc((SV *) cas_val));
     }
-
-  av_store(value_res->flags, key_index, newSVuv(m->flags));
 }
 
 
@@ -662,10 +667,9 @@ get(memd, ...)
         int i, key_count;
     PPCODE:
         key_count = items - 1;
+        value_res.memd = memd;
         value_res.vals = newAV();
-        value_res.flags = newAV();
-        av_extend(value_res.vals, key_count);
-        av_extend(value_res.flags, key_count);
+        av_extend(value_res.vals, key_count - 1);
         client_reset(memd->c);
         for (i = 0; i < key_count; ++i)
           {
@@ -676,21 +680,8 @@ get(memd, ...)
             client_prepare_get(memd->c, ix, i, key, key_len, &object);
           }
         client_execute(memd->c);
-        for (i = 0; i < key_count; ++i)
-          {
-            SV **ps = av_fetch(value_res.vals, i, 1);
-            if (ps && SvOK(*ps))
-              {
-                flags_type flags = SvUV(*av_fetch(value_res.flags, i, 0));
-                if (! uncompress(memd, *ps, flags)
-                    || ! deserialize(memd, SvRV(*ps), flags))
-                  sv_setsv(*ps, &PL_sv_undef);
-              }
-          }
-        EXTEND(SP, 2);
         PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.vals)));
-        PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.flags)));
-        XSRETURN(2);
+        XSRETURN(1);
 
 
 AV*
