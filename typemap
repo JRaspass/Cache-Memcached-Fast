@@ -9,7 +9,6 @@
 
 TYPEMAP
 Cache_Memcached_Fast *      T_CACHE_MEMCACHED_FAST
-Ref_SV                      T_REF_SV
 
 
 INPUT
@@ -21,15 +20,8 @@ T_CACHE_MEMCACHED_FAST
           }
         else
           croak(\"$var is not of type Cache::Memcached::Fast::_xs\");
-T_REF_SV
-        if (SvROK($arg))
-          $var = (SV *) SvRV($arg);
-        else
-          croak(\"$var is not a reference\")
 
 
 OUTPUT
 T_CACHE_MEMCACHED_FAST
         sv_setref_pv($arg, class, (void*) $var);
-T_REF_SV
-        $arg = newRV((SV *) $var);

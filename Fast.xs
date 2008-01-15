@@ -20,7 +20,6 @@
 
 
 typedef struct client Cache_Memcached_Fast;
-typedef SV *Ref_SV;
 
 
 static
