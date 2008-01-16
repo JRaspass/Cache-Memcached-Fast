@@ -529,11 +529,11 @@ embedded_store(void *arg, void *opaque, int key_index, void *meta)
 }
 
 
-MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast::_xs
+MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast
 
 
 Cache_Memcached_Fast *
-new(class, conf)
+_new(class, conf)
         char *                  class
         SV *                    conf
     PROTOTYPE: $$

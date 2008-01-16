@@ -13,13 +13,13 @@ Cache_Memcached_Fast *      T_CACHE_MEMCACHED_FAST
 
 INPUT
 T_CACHE_MEMCACHED_FAST
-        if (sv_derived_from($arg, \"Cache::Memcached::Fast::_xs\"))
+        if (sv_derived_from($arg, \"Cache::Memcached::Fast\"))
           {
             IV tmp = SvIV((SV *) SvRV($arg));
             $var = INT2PTR(Cache_Memcached_Fast *, tmp);
           }
         else
-          croak(\"$var is not of type Cache::Memcached::Fast::_xs\");
+          croak(\"$var is not of type Cache::Memcached::Fast\");
 
 
 OUTPUT

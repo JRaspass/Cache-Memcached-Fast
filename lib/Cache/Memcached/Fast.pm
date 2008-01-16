@@ -161,11 +161,6 @@ BEGIN {
 }
 
 
-use fields qw(
-    _xs
-);
-
-
 =head1 CONSTRUCTOR
 
 =over
@@ -407,10 +402,8 @@ L<perlunicode|perlunicode>.
 =cut
 
 sub new {
-    my Cache::Memcached::Fast $self = shift;
+    my Cache::Memcached::Fast $class = shift;
     my ($conf) = @_;
-
-    $self = fields::new($self) unless ref($self);
 
     my $compress = $compress_algo{lc($conf->{compress_algo} || 'gzip')};
     if (defined $compress) {
@@ -433,9 +426,7 @@ sub new {
         undef $conf->{utf8};
     }
 
-    $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
-
-    return $self;
+    return Cache::Memcached::Fast::_new($class, $conf);
 }
 
 
@@ -458,10 +449,7 @@ I<Return:> none.
 
 =cut
 
-sub enable_compress {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->enable_compress(@_);
-}
+# See Fast.xs.
 
 
 =item C<set>
@@ -483,10 +471,7 @@ server reply, or I<undef> in case of some error.
 
 =cut
 
-sub set {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->set(@_);
-}
+# See Fast.xs.
 
 
 =item C<set_multi>
@@ -512,10 +497,7 @@ learn what the result value is.
 
 =cut
 
-sub set_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->set_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<cas>
@@ -541,10 +523,7 @@ B<cas> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub cas {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->cas(@_);
-}
+# See Fast.xs.
 
 
 =item C<cas_multi>
@@ -572,10 +551,7 @@ B<cas> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub cas_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->cas_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<add>
@@ -594,10 +570,7 @@ server reply, or I<undef> in case of some error.
 
 =cut
 
-sub add {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->add(@_);
-}
+# See Fast.xs.
 
 
 =item C<add_multi>
@@ -623,10 +596,7 @@ learn what the result value is.
 
 =cut
 
-sub add_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->add_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<replace>
@@ -645,10 +615,7 @@ server reply, or I<undef> in case of some error.
 
 =cut
 
-sub replace {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->replace(@_);
-}
+# See Fast.xs.
 
 
 =item C<replace_multi>
@@ -674,10 +641,7 @@ learn what the result value is.
 
 =cut
 
-sub replace_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->replace_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<append>
@@ -697,10 +661,7 @@ B<append> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub append {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->append(@_);
-}
+# See Fast.xs.
 
 
 =item C<append_multi>
@@ -726,10 +687,7 @@ B<append> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub append_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->append_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<prepend>
@@ -749,10 +707,7 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub prepend {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->prepend(@_);
-}
+# See Fast.xs.
 
 
 =item C<prepend_multi>
@@ -778,10 +733,7 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub prepend_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->prepend_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<get>
@@ -794,10 +746,7 @@ I<Return:> value associated with the I<$key>, or nothing.
 
 =cut
 
-sub get {
-    my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->get(@_);
-}
+# See Fast.xs.
 
 
 =item C<get_multi>
@@ -812,10 +761,7 @@ corresponding value.
 
 =cut
 
-sub get_multi {
-    my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->get_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<gets>
@@ -839,10 +785,7 @@ B<gets> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub gets {
-    my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->gets(@_);
-}
+# See Fast.xs.
 
 
 =item C<gets_multi>
@@ -859,10 +802,7 @@ B<gets> command first appeared in B<memcached> 1.2.4.
 
 =cut
 
-sub gets_multi {
-    my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->gets_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<incr>
@@ -880,10 +820,7 @@ negative server reply, or I<undef> in case of some error.
 
 =cut
 
-sub incr {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->incr(@_);
-}
+# See Fast.xs.
 
 
 =item C<incr_multi>
@@ -910,10 +847,7 @@ learn what the result value is.
 
 =cut
 
-sub incr_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->incr_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<decr>
@@ -933,10 +867,7 @@ negative server reply, or I<undef> in case of some error.
 
 =cut
 
-sub decr {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->decr(@_);
-}
+# See Fast.xs.
 
 
 =item C<decr_multi>
@@ -963,10 +894,7 @@ learn what the result value is.
 
 =cut
 
-sub decr_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->decr_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<delete>
@@ -984,10 +912,7 @@ server reply, or I<undef> in case of some error.
 
 =cut
 
-sub delete {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->delete(@_);
-}
+# See Fast.xs.
 
 
 =item C<remove> (B<deprecated>)
@@ -1022,10 +947,7 @@ learn what the result value is.
 
 =cut
 
-sub delete_multi {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->delete_multi(@_);
-}
+# See Fast.xs.
 
 
 =item C<flush_all>
@@ -1048,10 +970,7 @@ reply, or I<undef> in case of some error.
 
 =cut
 
-sub flush_all {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->flush_all(@_);
-}
+# See Fast.xs.
 
 
 =item C<nowait_push>
@@ -1074,10 +993,7 @@ I<Return:> nothing.
 
 =cut
 
-sub nowait_push {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->nowait_push;
-}
+# See Fast.xs.
 
 
 =item C<server_versions>
@@ -1092,10 +1008,7 @@ F</path/to/unix.sock>, as described in L</servers>.
 
 =cut
 
-sub server_versions {
-    my Cache::Memcached::Fast $self = shift;
-    $self->{_xs}->server_versions;
-}
+# See Fast.xs.
 
 
 1;
