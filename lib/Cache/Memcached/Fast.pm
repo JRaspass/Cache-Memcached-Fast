@@ -128,11 +128,6 @@ below for full details).
 use Carp;
 use Storable;
 
-use constant F_STORABLE => 0x1;
-use constant F_COMPRESS => 0x2;
-use constant F_UTF8     => 0x4;
-
-
 require XSLoader;
 XSLoader::load('Cache::Memcached::Fast', $VERSION);
 
@@ -167,7 +162,7 @@ BEGIN {
 
 
 use fields qw(
-    _xs servers
+    _xs
 );
 
 
@@ -439,16 +434,6 @@ sub new {
     }
 
     $self->{_xs} = new Cache::Memcached::Fast::_xs($conf);
-
-    foreach my $addr (@{$conf->{servers}}) {
-        if (ref($addr) eq 'HASH') {
-            push @{$self->{servers}}, $addr->{address};
-        } elsif (ref($addr) eq 'ARRAY') {
-            push @{$self->{servers}}, $addr->[0];
-        } else {
-            push @{$self->{servers}}, $addr;
-        }
-    }
 
     return $self;
 }
@@ -1198,13 +1183,7 @@ reply, or I<undef> in case of some error.
 
 sub flush_all {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        my $servers = $self->{servers};
-        my $results = $self->{_xs}->flush_all(@_);
-        return Cache::Memcached::Fast::_xs::_rvav2rvhv($servers, $results);
-    } else {
-        $self->{_xs}->flush_all(@_);
-    }
+    $self->{_xs}->flush_all(@_);
 }
 
 
@@ -1248,11 +1227,7 @@ F</path/to/unix.sock>, as described in L</servers>.
 
 sub server_versions {
     my Cache::Memcached::Fast $self = shift;
-
-    my $servers = $self->{servers};
-    my $versions = $self->{_xs}->server_versions;
-
-    return Cache::Memcached::Fast::_xs::_rvav2rvhv($servers, $versions);
+    $self->{_xs}->server_versions;
 }
 
 

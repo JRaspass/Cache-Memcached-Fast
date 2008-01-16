@@ -27,6 +27,7 @@
 struct xs_state
 {
   struct client *c;
+  AV *servers;
   int compress_threshold;
   double compress_ratio;
   SV *compress_method;
@@ -41,13 +42,16 @@ typedef struct xs_state Cache_Memcached_Fast;
 
 static
 void
-add_server(struct client *c, SV *addr_sv, double weight, int noreply)
+add_server(Cache_Memcached_Fast *memd, SV *addr_sv, double weight, int noreply)
 {
+  struct client *c = memd->c;
   static const int delim = ':';
   const char *host, *port;
   size_t host_len, port_len;
   STRLEN len;
   int res;
+
+  av_push(memd->servers, newSVsv(addr_sv));
 
   if (weight <= 0.0)
     croak("Server weight should be positive");
@@ -76,11 +80,11 @@ add_server(struct client *c, SV *addr_sv, double weight, int noreply)
 
 static
 void
-parse_server(struct client *c, SV *sv)
+parse_server(Cache_Memcached_Fast *memd, SV *sv)
 {
   if (! SvROK(sv))
     {
-      add_server(c, sv, 1.0, 0);
+      add_server(memd, sv, 1.0, 0);
     }
   else
     {
@@ -102,7 +106,7 @@ parse_server(struct client *c, SV *sv)
             ps = hv_fetch(hv, "noreply", 7, 0);
             if (ps && SvOK(*ps))
               noreply = SvTRUE(*ps);
-            add_server(c, *addr_sv, weight, noreply);
+            add_server(memd, *addr_sv, weight, noreply);
           }
           break;
 
@@ -118,7 +122,7 @@ parse_server(struct client *c, SV *sv)
             weight_sv = av_fetch(av, 1, 0);
             if (weight_sv)
               weight = SvNV(*weight_sv);
-            add_server(c, *addr_sv, weight, 0);
+            add_server(memd, *addr_sv, weight, 0);
           }
           break;
 
@@ -196,6 +200,8 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
   struct client *c = memd->c;
   SV **ps;
 
+  memd->servers = newAV();
+
   ps = hv_fetch(conf, "ketama_points", 13, 0);
   if (ps && SvOK(*ps))
     {
@@ -220,7 +226,7 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
           if (! ps)
             continue;
 
-          parse_server(c, *ps);
+          parse_server(memd, *ps);
         }
     }
 
@@ -556,6 +562,7 @@ DESTROY(memd)
             SvREFCNT_dec(memd->compress_method);
             SvREFCNT_dec(memd->uncompress_method);
           }
+        SvREFCNT_dec(memd->servers);
         Safefree(memd);
 
 
@@ -802,24 +809,40 @@ delete(memd, ...)
         RETVAL
 
 
-AV *
+HV *
 flush_all(memd, ...)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $;$
     PREINIT:
         delay_type delay = 0;
-        int noreply;
         struct result_object object =
             { NULL, result_store, NULL, NULL };
+        int noreply;
     CODE:
-        RETVAL = newAV();
+        RETVAL = newHV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
-        object.arg = RETVAL;
+        object.arg = sv_2mortal((SV *) newAV());
         if (items > 1 && SvOK(ST(1)))
           delay = SvUV(ST(1));
         noreply = (GIMME_V == G_VOID);
         client_flush_all(memd->c, delay, &object, noreply);
+        if (! noreply)
+          {
+            int i;
+            for (i = 0; i <= av_len(object.arg); ++i)
+              {
+                SV **server = av_fetch(memd->servers, i, 0);
+                SV **version = av_fetch(object.arg, i, 0);
+                if (version && SvOK(*version))
+                  {
+                    HE *he = hv_store_ent(RETVAL, *server,
+                                          SvREFCNT_inc(*version), 0);
+                    if (! he)
+                      SvREFCNT_dec(*version);
+                  }
+              }
+          }
     OUTPUT:
         RETVAL
 
@@ -832,19 +855,32 @@ nowait_push(memd)
         client_nowait_push(memd->c);
 
 
-AV *
+HV *
 server_versions(memd)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     PREINIT:
         struct result_object object =
             { alloc_value, embedded_store, NULL, NULL };
+        int i;
     CODE:
-        RETVAL = newAV();
+        RETVAL = newHV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
-        object.arg = RETVAL;
+        object.arg = sv_2mortal((SV *) newAV());
         client_server_versions(memd->c, &object);
+        for (i = 0; i <= av_len(object.arg); ++i)
+          {
+            SV **server = av_fetch(memd->servers, i, 0);
+            SV **version = av_fetch(object.arg, i, 0);
+            if (version && SvOK(*version))
+              {
+                HE *he = hv_store_ent(RETVAL, *server,
+                                      SvREFCNT_inc(*version), 0);
+                if (! he)
+                  SvREFCNT_dec(*version);
+              }
+          }
     OUTPUT:
         RETVAL
 
