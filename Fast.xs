@@ -692,6 +692,7 @@ set(memd, ...)
               }
           }
 
+
 void
 set_multi(memd, ...)
         Cache_Memcached_Fast *  memd
@@ -982,9 +983,14 @@ incr_multi(memd, ...)
                     SV **val = av_fetch(object.arg, i, 0);
                     if (val && SvOK(*val))
                       {
-                        SV *key = *av_fetch((AV *) SvRV(ST(i + 1)), 0, 0);
-                        HE *he = hv_store_ent(hv, key,
-                                              SvREFCNT_inc(*val), 0);
+                        SV *key;
+                        HE *he;
+
+                        key = ST(i + 1);
+                        if (SvROK(key))
+                          key = *av_fetch((AV *) SvRV(key), 0, 0);
+
+                        he = hv_store_ent(hv, key, SvREFCNT_inc(*val), 0);
                         if (! he)
                           SvREFCNT_dec(*val);
                       }
@@ -1109,9 +1115,14 @@ delete_multi(memd, ...)
                     SV **val = av_fetch(object.arg, i, 0);
                     if (val && SvOK(*val))
                       {
-                        SV *key = *av_fetch((AV *) SvRV(ST(i + 1)), 0, 0);
-                        HE *he = hv_store_ent(hv, key,
-                                              SvREFCNT_inc(*val), 0);
+                        SV *key;
+                        HE *he;
+
+                        key = ST(i + 1);
+                        if (SvROK(key))
+                          key = *av_fetch((AV *) SvRV(key), 0, 0);
+
+                        he = hv_store_ent(hv, key, SvREFCNT_inc(*val), 0);
                         if (! he)
                           SvREFCNT_dec(*val);
                       }
