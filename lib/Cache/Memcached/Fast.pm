@@ -986,11 +986,7 @@ server reply, or I<undef> in case of some error.
 
 sub delete {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->delete(\@_)->[0];
-    } else {
-        $self->{_xs}->delete(\@_);
-    }
+    $self->{_xs}->delete(@_);
 }
 
 
@@ -1028,17 +1024,7 @@ learn what the result value is.
 
 sub delete_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->delete(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->delete(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->delete(@_);
-    }
+    $self->{_xs}->delete_multi(@_);
 }
 
 

@@ -408,6 +408,7 @@ deserialize(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
       XPUSHs(sv);
       PUTBACK;
 
+      /* FIXME: do we need G_KEPEERR here?  */
       count = call_sv(memd->thaw_method, G_SCALAR | G_EVAL);
 
       SPAGAIN;
@@ -951,23 +952,57 @@ incr_multi(memd, ...)
           }
 
 
-AV*
+void
 delete(memd, ...)
         Cache_Memcached_Fast *  memd
-    ALIAS:
-        remove  =  1
     PROTOTYPE: $@
     PREINIT:
-        int i, noreply;
         struct result_object object =
             { NULL, result_store, NULL, NULL };
-    CODE:
-        /* Suppress warning about unused ix.  */
-        if (ix) {}
-        RETVAL = newAV();
+        int noreply;
+        const char *key;
+        STRLEN key_len;
+        delay_type delay = 0;
+    PPCODE:
+        object.arg = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
-        sv_2mortal((SV *) RETVAL);
-        object.arg = RETVAL;
+        sv_2mortal((SV *) object.arg);
+        noreply = (GIMME_V == G_VOID);
+        client_reset(memd->c);
+        key = SvPV(ST(1), key_len);
+        if (items > 2)
+          {
+            /* delay doesn't have to be defined.  */
+            SV *sv = ST(2);
+            if (SvOK(sv))
+              delay = SvUV(sv);
+          }
+        client_prepare_delete(memd->c, 0, key, key_len, delay,
+                              &object, noreply);
+        client_execute(memd->c);
+        if (! noreply)
+          {
+            SV **val = av_fetch(object.arg, 0, 0);
+            if (val)
+              {
+                PUSHs(*val);
+                XSRETURN(1);
+              }
+          }
+
+
+void
+delete_multi(memd, ...)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $@
+    PREINIT:
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
+        int i, noreply;
+    PPCODE:
+        object.arg = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
         for (i = 1; i < items; ++i)
@@ -996,19 +1031,52 @@ delete(memd, ...)
                 key = SvPV(*av_fetch(av, 0, 0), key_len);
                 if (av_len(av) >= 1)
                   {
-                    /* exptime doesn't have to be defined.  */
+                    /* delay doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
                     if (ps && SvOK(*ps))
                       delay = SvUV(*ps);
                   }
               }
-
+ 
             client_prepare_delete(memd->c, i - 1, key, key_len, delay,
                                   &object, noreply);
           }
         client_execute(memd->c);
-    OUTPUT:
-        RETVAL
+        if (! noreply)
+          {
+            if (GIMME_V == G_SCALAR)
+              {
+                HV *hv = newHV();
+                for (i = 0; i <= av_len(object.arg); ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val && SvOK(*val))
+                      {
+                        SV *key = *av_fetch((AV *) SvRV(ST(i + 1)), 0, 0);
+                        HE *he = hv_store_ent(hv, key,
+                                              SvREFCNT_inc(*val), 0);
+                        if (! he)
+                          SvREFCNT_dec(*val);
+                      }
+                  }
+                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                XSRETURN(1);
+              }
+            else
+              {
+                I32 max_index = av_len(object.arg);
+                EXTEND(SP, max_index + 1);
+                for (i = 0; i <= max_index; ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val)
+                      PUSHs(*val);
+                    else
+                      PUSHs(&PL_sv_undef);
+                  }
+                XSRETURN(max_index + 1);
+              }
+          }
 
 
 HV *
@@ -1082,39 +1150,6 @@ server_versions(memd)
                 if (! he)
                   SvREFCNT_dec(*version);
               }
-          }
-    OUTPUT:
-        RETVAL
-
-
-HV *
-_rvav2rvhv(keys, vals)
-        AV *                    keys
-        AV *                    vals
-    PROTOTYPE: $
-    PREINIT:
-        I32 max_index, i;
-    CODE:
-        RETVAL = newHV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
-        sv_2mortal((SV *) RETVAL);
-        max_index = av_len(vals);
-        for (i = 0; i <= max_index; ++i)
-          {
-            SV **pkey, **pval;
-            HE *he;
-
-            pval = av_fetch(vals, i, 0);
-            if (! (pval && SvOK(*pval)))
-              continue;
-
-            pkey = av_fetch(keys, i, 0);
-            if (! pkey)
-              croak("Undefined key in the list");
-
-            he = hv_store_ent(RETVAL, *pkey, SvREFCNT_inc(*pval), 0);
-            if (! he)
-              SvREFCNT_dec(*pval);
           }
     OUTPUT:
         RETVAL
