@@ -665,7 +665,9 @@ void
 get(memd, ...)
         Cache_Memcached_Fast *  memd
     ALIAS:
-        gets  =  CMD_GETS
+        gets        =  CMD_GETS
+        get_multi   =  CMD_GET_MULTI
+        gets_multi  =  CMD_GETS_MULTI
     PROTOTYPE: $@
     PREINIT:
         struct xs_value_result value_res;
@@ -676,6 +678,7 @@ get(memd, ...)
         key_count = items - 1;
         value_res.memd = memd;
         value_res.vals = newAV();
+        sv_2mortal((SV *) value_res.vals);
         av_extend(value_res.vals, key_count - 1);
         client_reset(memd->c);
         for (i = 0; i < key_count; ++i)
@@ -687,8 +690,35 @@ get(memd, ...)
             client_prepare_get(memd->c, ix, i, key, key_len, &object);
           }
         client_execute(memd->c);
-        PUSHs(sv_2mortal(newRV_noinc((SV *) value_res.vals)));
-        XSRETURN(1);
+        if (ix == CMD_GET || ix == CMD_GETS)
+          {
+            SV **val = av_fetch(value_res.vals, 0, 0);
+            if (val)
+              {
+                PUSHs(*val);
+                XSRETURN(1);
+              }
+            else
+              XSRETURN_EMPTY;
+          }
+        else
+          {
+            HV *hv = newHV();
+            for (i = 0; i <= av_len(value_res.vals); ++i)
+              {
+                SV **val = av_fetch(value_res.vals, i, 0);
+                if (val && SvOK(*val))
+                  {
+                    SV *key = ST(i + 1);
+                    HE *he = hv_store_ent(hv, key,
+                                          SvREFCNT_inc(*val), 0);
+                    if (! he)
+                      SvREFCNT_dec(*val);
+                  }
+              }
+            PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+            XSRETURN(1);
+          }
 
 
 AV*

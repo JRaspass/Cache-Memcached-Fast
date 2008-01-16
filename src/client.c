@@ -1777,15 +1777,17 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
     }
   else
     {
-      state->u.value.meta.use_cas = (cmd == CMD_GETS);
-
       switch (cmd)
         {
         case CMD_GET:
+        case CMD_GET_MULTI:
+          state->u.value.meta.use_cas = 0;
           iov_push(state, STR_WITH_LEN("get"));
           break;
 
         case CMD_GETS:
+        case CMD_GETS_MULTI:
+          state->u.value.meta.use_cas = 1;
           iov_push(state, STR_WITH_LEN("gets"));
           break;
         }

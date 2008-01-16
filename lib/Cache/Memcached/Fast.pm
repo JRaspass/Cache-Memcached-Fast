@@ -880,7 +880,7 @@ I<Return:> value associated with the I<$key>, or nothing.
 
 sub get {
     my Cache::Memcached::Fast $self = shift;
-    return $self->{_xs}->get($_[0])->[0];
+    return $self->{_xs}->get(@_);
 }
 
 
@@ -898,10 +898,7 @@ corresponding value.
 
 sub get_multi {
     my Cache::Memcached::Fast $self = shift;
-
-    my $keys = \@_;
-    my $vals = $self->{_xs}->get(@_);
-    return Cache::Memcached::Fast::_xs::_rvav2rvhv($keys, $vals);
+    return $self->{_xs}->get_multi(@_);
 }
 
 
@@ -928,8 +925,7 @@ B<gets> command first appeared in B<memcached> 1.2.4.
 
 sub gets {
     my Cache::Memcached::Fast $self = shift;
-
-    return $self->{_xs}->gets($_[0])->[0];
+    return $self->{_xs}->gets(@_);
 }
 
 
@@ -949,10 +945,7 @@ B<gets> command first appeared in B<memcached> 1.2.4.
 
 sub gets_multi {
     my Cache::Memcached::Fast $self = shift;
-
-    my $keys = \@_;
-    my $vals = $self->{_xs}->gets(@_);
-    return Cache::Memcached::Fast::_xs::_rvav2rvhv($keys, $vals);
+    return $self->{_xs}->gets_multi(@_);
 }
 
 
