@@ -31,7 +31,7 @@ struct xs_state
   int compress_threshold;
   double compress_ratio;
   SV *compress_method;
-  SV *uncompress_method;
+  SV *decompress_method;
   SV *nfreeze_method;
   SV *thaw_method;
   int utf8;
@@ -168,7 +168,7 @@ parse_compress(Cache_Memcached_Fast *memd, HV *conf)
   memd->compress_threshold = -1;
   memd->compress_ratio = 0.8;
   memd->compress_method = NULL;
-  memd->uncompress_method = NULL;
+  memd->decompress_method = NULL;
 
   ps = hv_fetch(conf, "compress_threshold", 18, 0);
   if (ps && SvOK(*ps))
@@ -183,7 +183,7 @@ parse_compress(Cache_Memcached_Fast *memd, HV *conf)
     {
       AV *av = (AV *) SvRV(*ps);
       memd->compress_method = newSVsv(*av_fetch(av, 0, 0));
-      memd->uncompress_method = newSVsv(*av_fetch(av, 1, 0));
+      memd->decompress_method = newSVsv(*av_fetch(av, 1, 0));
     }
   else if (memd->compress_threshold > 0)
     {
@@ -318,7 +318,7 @@ compress(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
 
 static inline
 int
-uncompress(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
+decompress(Cache_Memcached_Fast *memd, SV **sv, flags_type flags)
 {
   int res = 1;
 
@@ -331,22 +331,28 @@ uncompress(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
       rsv = newSV(0);
 
       PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newRV(sv)));
-      XPUSHs(sv_2mortal(newRV_noinc(rsv)));
+      XPUSHs(sv_2mortal(newRV(*sv)));
+      XPUSHs(sv_2mortal(newRV(rsv)));
       PUTBACK;
 
-      count = call_sv(memd->uncompress_method, G_SCALAR);
+      count = call_sv(memd->decompress_method, G_SCALAR);
 
       SPAGAIN;
 
       if (count != 1)
-        croak("Uncompress method returned nothing");
+        croak("Decompress method returned nothing");
 
       bsv = POPs;
       if (SvTRUE(bsv))
-        SvSetSV(sv, rsv);
+        {
+          SvREFCNT_dec(*sv);
+          *sv = rsv;
+        }
       else
-        res = 0;
+        {
+          SvREFCNT_dec(rsv);
+          res = 0;
+        }
 
       PUTBACK;
     }
@@ -394,7 +400,7 @@ serialize(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
 
 static inline
 int
-deserialize(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
+deserialize(Cache_Memcached_Fast *memd, SV **sv, flags_type flags)
 {
   int res = 1;
 
@@ -405,7 +411,7 @@ deserialize(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
       dSP;
 
       PUSHMARK(SP);
-      XPUSHs(sv);
+      XPUSHs(*sv);
       PUTBACK;
 
       /* FIXME: do we need G_KEPEERR here?  */
@@ -418,15 +424,20 @@ deserialize(Cache_Memcached_Fast *memd, SV *sv, flags_type flags)
 
       rsv = POPs;
       if (! SvTRUE(ERRSV))
-        SvSetSV(sv, rsv);
+        {
+          SvREFCNT_dec(*sv);
+          *sv = SvREFCNT_inc(rsv);
+        }
       else
-        res = 0;
+        {
+          res = 0;
+        }
 
       PUTBACK;
     }
   else if ((flags & F_UTF8) && memd->utf8)
     {
-      res = sv_utf8_decode(sv);
+      res = sv_utf8_decode(*sv);
     }
    
   return res;
@@ -479,8 +490,8 @@ svalue_store(void *arg, void *opaque, int key_index, void *meta)
   /* Suppress warning about unused key_index.  */
   if (key_index) {}
 
-  if (! uncompress(value_res->memd, value_sv, m->flags)
-      || ! deserialize(value_res->memd, value_sv, m->flags))
+  if (! decompress(value_res->memd, &value_sv, m->flags)
+      || ! deserialize(value_res->memd, &value_sv, m->flags))
     {
       free_value(value_sv);
       return;
@@ -509,8 +520,8 @@ mvalue_store(void *arg, void *opaque, int key_index, void *meta)
   struct xs_value_result *value_res = (struct xs_value_result *) arg;
   struct meta_object *m = (struct meta_object *) meta;
 
-  if (! uncompress(value_res->memd, value_sv, m->flags)
-      || ! deserialize(value_res->memd, value_sv, m->flags))
+  if (! decompress(value_res->memd, &value_sv, m->flags)
+      || ! deserialize(value_res->memd, &value_sv, m->flags))
     {
       free_value(value_sv);
       return;
@@ -594,7 +605,7 @@ DESTROY(memd)
         if (memd->compress_method)
           {
             SvREFCNT_dec(memd->compress_method);
-            SvREFCNT_dec(memd->uncompress_method);
+            SvREFCNT_dec(memd->decompress_method);
           }
         SvREFCNT_dec(memd->servers);
         Safefree(memd);
