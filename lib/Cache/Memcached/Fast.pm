@@ -485,11 +485,7 @@ server reply, or I<undef> in case of some error.
 
 sub set {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->set(\@_)->[0];
-    } else {
-        $self->{_xs}->set(\@_);
-    }
+    $self->{_xs}->set(@_);
 }
 
 
@@ -518,17 +514,7 @@ learn what the result value is.
 
 sub set_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->set(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->set(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->set(@_);
-    }
+    $self->{_xs}->set_multi(@_);
 }
 
 
@@ -557,11 +543,7 @@ B<cas> command first appeared in B<memcached> 1.2.4.
 
 sub cas {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->cas(\@_)->[0];
-    } else {
-        $self->{_xs}->cas(\@_);
-    }
+    $self->{_xs}->cas(@_);
 }
 
 
@@ -592,17 +574,7 @@ B<cas> command first appeared in B<memcached> 1.2.4.
 
 sub cas_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->cas(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->cas(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->cas(@_);
-    }
+    $self->{_xs}->cas_multi(@_);
 }
 
 
@@ -624,11 +596,7 @@ server reply, or I<undef> in case of some error.
 
 sub add {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->add(\@_)->[0];
-    } else {
-        $self->{_xs}->add(\@_);
-    }
+    $self->{_xs}->add(@_);
 }
 
 
@@ -657,17 +625,7 @@ learn what the result value is.
 
 sub add_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->add(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->add(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->add(@_);
-    }
+    $self->{_xs}->add_multi(@_);
 }
 
 
@@ -689,11 +647,7 @@ server reply, or I<undef> in case of some error.
 
 sub replace {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->replace(\@_)->[0];
-    } else {
-        $self->{_xs}->replace(\@_);
-    }
+    $self->{_xs}->replace(@_);
 }
 
 
@@ -722,17 +676,7 @@ learn what the result value is.
 
 sub replace_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->replace(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->replace(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->replace(@_);
-    }
+    $self->{_xs}->replace_multi(@_);
 }
 
 
@@ -755,11 +699,7 @@ B<append> command first appeared in B<memcached> 1.2.4.
 
 sub append {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->append(\@_)->[0];
-    } else {
-        $self->{_xs}->append(\@_);
-    }
+    $self->{_xs}->append(@_);
 }
 
 
@@ -788,17 +728,7 @@ B<append> command first appeared in B<memcached> 1.2.4.
 
 sub append_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->append(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->append(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->append(@_);
-    }
+    $self->{_xs}->append_multi(@_);
 }
 
 
@@ -821,11 +751,7 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 
 sub prepend {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->prepend(\@_)->[0];
-    } else {
-        $self->{_xs}->prepend(\@_);
-    }
+    $self->{_xs}->prepend(@_);
 }
 
 
@@ -854,17 +780,7 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 
 sub prepend_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->prepend(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->prepend(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->prepend(@_);
-    }
+    $self->{_xs}->prepend_multi(@_);
 }
 
 

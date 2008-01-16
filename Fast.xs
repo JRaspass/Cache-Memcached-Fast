@@ -578,25 +578,93 @@ enable_compress(memd, enable)
           memd->compress_threshold = -memd->compress_threshold;
 
 
-AV *
+void
 set(memd, ...)
         Cache_Memcached_Fast *  memd
     ALIAS:
-        add      =  CMD_ADD
-        replace  =  CMD_REPLACE
-        append   =  CMD_APPEND
-        prepend  =  CMD_PREPEND
-        cas      =  CMD_CAS
+        add            =  CMD_ADD
+        replace        =  CMD_REPLACE
+        append         =  CMD_APPEND
+        prepend        =  CMD_PREPEND
+        cas            =  CMD_CAS
+    PROTOTYPE: $@
+    PREINIT:
+        int noreply;
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
+        const char *key;
+        STRLEN key_len;
+        cas_type cas = 0;
+        const void *buf;
+        STRLEN buf_len;
+        flags_type flags = 0;
+        exptime_type exptime = 0;
+        int arg = 1;
+        SV *sv, **val;
+    PPCODE:
+        object.arg = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) object.arg);
+        noreply = (GIMME_V == G_VOID);
+        client_reset(memd->c);
+        key = SvPV(ST(arg), key_len);
+        ++arg;
+        if (ix == CMD_CAS)
+          {
+            cas = SvUV(ST(arg));
+            ++arg;
+          }
+        sv = ST(arg);
+        ++arg;
+        sv = serialize(memd, sv, &flags);
+        sv = compress(memd, sv, &flags);
+        buf = (void *) SvPV(sv, buf_len);
+        if (items > arg)
+          {
+            /* exptime doesn't have to be defined.  */
+            sv = ST(arg);
+            if (SvOK(sv))
+              exptime = SvIV(sv);
+          }
+        if (ix != CMD_CAS)
+          {
+            client_prepare_set(memd->c, ix, 0, key, key_len, flags,
+                               exptime, buf, buf_len, &object, noreply);
+          }
+        else
+          {
+            client_prepare_cas(memd->c, 0, key, key_len, cas, flags,
+                               exptime, buf, buf_len, &object, noreply);
+          }
+        client_execute(memd->c);
+        if (! noreply)
+          {
+            val = av_fetch(object.arg, 0, 0);
+            if (val)
+              {
+                PUSHs(*val);
+                XSRETURN(1);
+              }
+          }
+
+void
+set_multi(memd, ...)
+        Cache_Memcached_Fast *  memd
+    ALIAS:
+        add_multi      =  CMD_ADD
+        replace_multi  =  CMD_REPLACE
+        append_multi   =  CMD_APPEND
+        prepend_multi  =  CMD_PREPEND
+        cas_multi      =  CMD_CAS
     PROTOTYPE: $@
     PREINIT:
         int i, noreply;
         struct result_object object =
             { NULL, result_store, NULL, NULL };
-    CODE:
-        RETVAL = newAV();
+    PPCODE:
+        object.arg = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
-        sv_2mortal((SV *) RETVAL);
-        object.arg = RETVAL;
+        sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
         for (i = 1; i < items; ++i)
@@ -657,8 +725,41 @@ set(memd, ...)
               }
           }
         client_execute(memd->c);
-    OUTPUT:
-        RETVAL
+        if (! noreply)
+          {
+            if (GIMME_V == G_SCALAR)
+              {
+                HV *hv = newHV();
+                for (i = 0; i <= av_len(object.arg); ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val && SvOK(*val))
+                      {
+                        SV *key = *av_fetch((AV *) SvRV(ST(i + 1)), 0, 0);
+                        HE *he = hv_store_ent(hv, key,
+                                              SvREFCNT_inc(*val), 0);
+                        if (! he)
+                          SvREFCNT_dec(*val);
+                      }
+                  }
+                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                XSRETURN(1);
+              }
+            else
+              {
+                I32 max_index = av_len(object.arg);
+                EXTEND(SP, max_index + 1);
+                for (i = 0; i <= max_index; ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val)
+                      PUSHs(*val);
+                    else
+                      PUSHs(&PL_sv_undef);
+                  }
+                XSRETURN(max_index + 1);
+              }
+          }
 
 
 void
@@ -698,8 +799,6 @@ get(memd, ...)
                 PUSHs(*val);
                 XSRETURN(1);
               }
-            else
-              XSRETURN_EMPTY;
           }
         else
           {
