@@ -648,7 +648,6 @@ set(memd, ...)
         SV *sv;
     PPCODE:
         object.arg = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
@@ -709,7 +708,6 @@ set_multi(memd, ...)
             { NULL, result_store, NULL, NULL };
     PPCODE:
         object.arg = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
@@ -894,7 +892,6 @@ incr(memd, ...)
         arith_type arg = 1;
     PPCODE:
         object.arg = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
@@ -932,7 +929,6 @@ incr_multi(memd, ...)
         int i, noreply;
     PPCODE:
         object.arg = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
@@ -1028,7 +1024,6 @@ delete(memd, ...)
         delay_type delay = 0;
     PPCODE:
         object.arg = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
@@ -1064,7 +1059,6 @@ delete_multi(memd, ...)
         int i, noreply;
     PPCODE:
         object.arg = newAV();
-        /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
