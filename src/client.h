@@ -42,7 +42,7 @@ enum server_status {
 enum set_cmd_e { CMD_SET, CMD_ADD, CMD_REPLACE, CMD_APPEND, CMD_PREPEND,
                  CMD_CAS };
 
-enum get_cmd_e { CMD_GET, CMD_GET_MULTI, CMD_GETS, CMD_GETS_MULTI };
+enum get_cmd_e { CMD_GET, CMD_GETS };
 
 enum arith_cmd_e { CMD_INCR, CMD_DECR };
 

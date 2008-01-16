@@ -464,13 +464,46 @@ free_value(void *opaque)
 struct xs_value_result
 {
   Cache_Memcached_Fast *memd;  
-  AV *vals;
+  SV *vals;
 };
 
 
 static
 void
-value_store(void *arg, void *opaque, int key_index, void *meta)
+svalue_store(void *arg, void *opaque, int key_index, void *meta)
+{
+  SV *value_sv = (SV *) opaque;
+  struct xs_value_result *value_res = (struct xs_value_result *) arg;
+  struct meta_object *m = (struct meta_object *) meta;
+
+  /* Suppress warning about unused key_index.  */
+  if (key_index) {}
+
+  if (! uncompress(value_res->memd, value_sv, m->flags)
+      || ! deserialize(value_res->memd, value_sv, m->flags))
+    {
+      free_value(value_sv);
+      return;
+    }
+
+  if (! m->use_cas)
+    {
+      value_res->vals = value_sv;
+    }
+  else
+    {
+      AV *cas_val = newAV();
+      av_extend(cas_val, 1);
+      av_push(cas_val, newSVuv(m->cas));
+      av_push(cas_val, value_sv);
+      value_res->vals = newRV_noinc((SV *) cas_val);
+    }
+}
+
+
+static
+void
+mvalue_store(void *arg, void *opaque, int key_index, void *meta)
 {
   SV *value_sv = (SV *) opaque;
   struct xs_value_result *value_res = (struct xs_value_result *) arg;
@@ -485,7 +518,7 @@ value_store(void *arg, void *opaque, int key_index, void *meta)
 
   if (! m->use_cas)
     {
-      av_store(value_res->vals, key_index, value_sv);
+      av_store((AV *) value_res->vals, key_index, value_sv);
     }
   else
     {
@@ -493,7 +526,7 @@ value_store(void *arg, void *opaque, int key_index, void *meta)
       av_extend(cas_val, 1);
       av_push(cas_val, newSVuv(m->cas));
       av_push(cas_val, value_sv);
-      av_store(value_res->vals, key_index, newRV_noinc((SV *) cas_val));
+      av_store((AV *) value_res->vals, key_index, newRV_noinc((SV *) cas_val));
     }
 }
 
@@ -505,7 +538,7 @@ result_store(void *arg, void *opaque, int key_index, void *meta)
   AV *av = (AV *) arg;
   int res = (int) opaque;
 
-  /* Suppress warning about unused opaque and meta.  */
+  /* Suppress warning about unused meta.  */
   if (meta) {}
 
   if (res)
@@ -768,20 +801,45 @@ get(memd, ...)
         Cache_Memcached_Fast *  memd
     ALIAS:
         gets        =  CMD_GETS
-        get_multi   =  CMD_GET_MULTI
-        gets_multi  =  CMD_GETS_MULTI
     PROTOTYPE: $@
     PREINIT:
         struct xs_value_result value_res;
         struct result_object object =
-            { alloc_value, value_store, free_value, &value_res };
+            { alloc_value, svalue_store, free_value, &value_res };
+        const char *key;
+        STRLEN key_len;
+    PPCODE:
+        value_res.memd = memd;
+        value_res.vals = NULL;
+        client_reset(memd->c);
+        key = SvPV(ST(1), key_len);
+        client_prepare_get(memd->c, ix, 0, key, key_len, &object);
+        client_execute(memd->c);
+        if (value_res.vals)
+          {
+            PUSHs(sv_2mortal(value_res.vals));
+            XSRETURN(1);
+          }
+
+
+void
+get_multi(memd, ...)
+        Cache_Memcached_Fast *  memd
+    ALIAS:
+        gets_multi  =  CMD_GETS
+    PROTOTYPE: $@
+    PREINIT:
+        struct xs_value_result value_res;
+        struct result_object object =
+            { alloc_value, mvalue_store, free_value, &value_res };
         int i, key_count;
+        HV *hv;
     PPCODE:
         key_count = items - 1;
         value_res.memd = memd;
-        value_res.vals = newAV();
-        sv_2mortal((SV *) value_res.vals);
-        av_extend(value_res.vals, key_count - 1);
+        value_res.vals = (SV *) newAV();
+        sv_2mortal(value_res.vals);
+        av_extend((AV *) value_res.vals, key_count - 1);
         client_reset(memd->c);
         for (i = 0; i < key_count; ++i)
           {
@@ -792,33 +850,21 @@ get(memd, ...)
             client_prepare_get(memd->c, ix, i, key, key_len, &object);
           }
         client_execute(memd->c);
-        if (ix == CMD_GET || ix == CMD_GETS)
+        hv = newHV();
+        for (i = 0; i <= av_len((AV *) value_res.vals); ++i)
           {
-            SV **val = av_fetch(value_res.vals, 0, 0);
-            if (val)
+            SV **val = av_fetch((AV *) value_res.vals, i, 0);
+            if (val && SvOK(*val))
               {
-                PUSHs(*val);
-                XSRETURN(1);
+                SV *key = ST(i + 1);
+                HE *he = hv_store_ent(hv, key,
+                                      SvREFCNT_inc(*val), 0);
+                if (! he)
+                  SvREFCNT_dec(*val);
               }
           }
-        else
-          {
-            HV *hv = newHV();
-            for (i = 0; i <= av_len(value_res.vals); ++i)
-              {
-                SV **val = av_fetch(value_res.vals, i, 0);
-                if (val && SvOK(*val))
-                  {
-                    SV *key = ST(i + 1);
-                    HE *he = hv_store_ent(hv, key,
-                                          SvREFCNT_inc(*val), 0);
-                    if (! he)
-                      SvREFCNT_dec(*val);
-                  }
-              }
-            PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
-            XSRETURN(1);
-          }
+        PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+        XSRETURN(1);
 
 
 void
