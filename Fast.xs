@@ -582,11 +582,11 @@ void
 set(memd, ...)
         Cache_Memcached_Fast *  memd
     ALIAS:
-        add            =  CMD_ADD
-        replace        =  CMD_REPLACE
-        append         =  CMD_APPEND
-        prepend        =  CMD_PREPEND
-        cas            =  CMD_CAS
+        add      =  CMD_ADD
+        replace  =  CMD_REPLACE
+        append   =  CMD_APPEND
+        prepend  =  CMD_PREPEND
+        cas      =  CMD_CAS
     PROTOTYPE: $@
     PREINIT:
         int noreply;
@@ -600,7 +600,7 @@ set(memd, ...)
         flags_type flags = 0;
         exptime_type exptime = 0;
         int arg = 1;
-        SV *sv, **val;
+        SV *sv;
     PPCODE:
         object.arg = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
@@ -639,7 +639,7 @@ set(memd, ...)
         client_execute(memd->c);
         if (! noreply)
           {
-            val = av_fetch(object.arg, 0, 0);
+            SV **val = av_fetch(object.arg, 0, 0);
             if (val)
               {
                 PUSHs(*val);
@@ -820,7 +820,7 @@ get(memd, ...)
           }
 
 
-AV*
+void
 incr(memd, ...)
         Cache_Memcached_Fast *  memd
     ALIAS:
@@ -829,12 +829,52 @@ incr(memd, ...)
     PREINIT:
         struct result_object object =
             { alloc_value, embedded_store, NULL, NULL };
-        int i, noreply;
-    CODE:
-        RETVAL = newAV();
+        int noreply;
+        const char *key;
+        STRLEN key_len;
+        arith_type arg = 1;
+    PPCODE:
+        object.arg = newAV();
         /* Why sv_2mortal() is needed is explained in perlxs.  */
-        sv_2mortal((SV *) RETVAL);
-        object.arg = RETVAL;
+        sv_2mortal((SV *) object.arg);
+        noreply = (GIMME_V == G_VOID);
+        client_reset(memd->c);
+        key = SvPV(ST(1), key_len);
+        if (items > 2)
+          {
+            /* increment doesn't have to be defined.  */
+            SV *sv = ST(2);
+            if (SvOK(sv))
+              arg = SvUV(sv);
+          }
+        client_prepare_incr(memd->c, ix, 0, key, key_len, arg,
+                            &object, noreply);
+        client_execute(memd->c);
+        if (! noreply)
+          {
+            SV **val = av_fetch(object.arg, 0, 0);
+            if (val)
+              {
+                PUSHs(*val);
+                XSRETURN(1);
+              }
+          }
+
+
+void
+incr_multi(memd, ...)
+        Cache_Memcached_Fast *  memd
+    ALIAS:
+        decr_multi  =  CMD_DECR
+    PROTOTYPE: $@
+    PREINIT:
+        struct result_object object =
+            { alloc_value, embedded_store, NULL, NULL };
+        int i, noreply;
+    PPCODE:
+        object.arg = newAV();
+        /* Why sv_2mortal() is needed is explained in perlxs.  */
+        sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c);
         for (i = 1; i < items; ++i)
@@ -863,7 +903,7 @@ incr(memd, ...)
                 key = SvPV(*av_fetch(av, 0, 0), key_len);
                 if (av_len(av) >= 1)
                   {
-                    /* exptime doesn't have to be defined.  */
+                    /* increment doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
                     if (ps && SvOK(*ps))
                       arg = SvUV(*ps);
@@ -874,8 +914,41 @@ incr(memd, ...)
                                 &object, noreply);
           }
         client_execute(memd->c);
-    OUTPUT:
-        RETVAL
+        if (! noreply)
+          {
+            if (GIMME_V == G_SCALAR)
+              {
+                HV *hv = newHV();
+                for (i = 0; i <= av_len(object.arg); ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val && SvOK(*val))
+                      {
+                        SV *key = *av_fetch((AV *) SvRV(ST(i + 1)), 0, 0);
+                        HE *he = hv_store_ent(hv, key,
+                                              SvREFCNT_inc(*val), 0);
+                        if (! he)
+                          SvREFCNT_dec(*val);
+                      }
+                  }
+                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                XSRETURN(1);
+              }
+            else
+              {
+                I32 max_index = av_len(object.arg);
+                EXTEND(SP, max_index + 1);
+                for (i = 0; i <= max_index; ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val)
+                      PUSHs(*val);
+                    else
+                      PUSHs(&PL_sv_undef);
+                  }
+                XSRETURN(max_index + 1);
+              }
+          }
 
 
 AV*

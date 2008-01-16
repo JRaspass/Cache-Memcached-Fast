@@ -882,11 +882,7 @@ negative server reply, or I<undef> in case of some error.
 
 sub incr {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->incr(\@_)->[0];
-    } else {
-        $self->{_xs}->incr(\@_);
-    }
+    $self->{_xs}->incr(@_);
 }
 
 
@@ -916,17 +912,7 @@ learn what the result value is.
 
 sub incr_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->incr(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->incr(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->incr(@_);
-    }
+    $self->{_xs}->incr_multi(@_);
 }
 
 
@@ -949,11 +935,7 @@ negative server reply, or I<undef> in case of some error.
 
 sub decr {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        return $self->{_xs}->decr(\@_)->[0];
-    } else {
-        $self->{_xs}->decr(\@_);
-    }
+    $self->{_xs}->decr(@_);
 }
 
 
@@ -983,17 +965,7 @@ learn what the result value is.
 
 sub decr_multi {
     my Cache::Memcached::Fast $self = shift;
-    if (defined wantarray) {
-        if (wantarray) {
-            return @{$self->{_xs}->decr(@_)};
-        } else {
-            my @keys = map { $_->[0] } @_;
-            my $results = $self->{_xs}->decr(@_);
-            return Cache::Memcached::Fast::_xs::_rvav2rvhv(\@keys, $results);
-        }
-    } else {
-        $self->{_xs}->decr(@_);
-    }
+    $self->{_xs}->decr_multi(@_);
 }
 
 
