@@ -30,9 +30,6 @@
 
 For 0.07:
 
-- Document how to inherit from C::M::F for Custom Serialization for
-  instance.
-
 - Clean warnings for gcc 4.2.2.
 
 - Replace av_push() with av_store(), test result.
@@ -48,4 +45,6 @@ For 0.07:
 
 - Memd.pm should not assume equal server versions.
 
-- Beat Cache::Memcached::LibMemcached on performance.
+- Callbacks for serialization.
+
+- Test "use encoding 'koi8-r';".

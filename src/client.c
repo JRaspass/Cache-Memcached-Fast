@@ -100,6 +100,7 @@ struct command_state
   struct client *client;
   int fd;
   int noreply;
+  int last_cmd_noreply;
 
   struct array iov_buf;
   int str_step;
@@ -144,6 +145,7 @@ command_state_init(struct command_state *state,
   state->client = c;
   state->fd = -1;
   state->noreply = noreply;
+  state->last_cmd_noreply = 0;
 
   array_init(&state->iov_buf);
 
@@ -353,12 +355,18 @@ client_init()
 }
 
 
+static
+int
+client_noreply_push(struct client *c);
+
+
 void
 client_destroy(struct client *c)
 {
   struct server *s;
 
   client_nowait_push(c);
+  client_noreply_push(c);
 
   for (array_each(c->servers, struct server, s))
     server_destroy(s);
@@ -1015,6 +1023,7 @@ parse_nowait_reply(struct command_state *state)
 
     case MATCH_0: case MATCH_1: case MATCH_2: case MATCH_3: case MATCH_4:
     case MATCH_5: case MATCH_6: case MATCH_7: case MATCH_8: case MATCH_9:
+    case MATCH_VERSION: /* see client_noreply_push().  */
       return swallow_eol(state, 1, 1);
 
     case MATCH_ERROR:
@@ -1029,7 +1038,6 @@ parse_nowait_reply(struct command_state *state)
     case NO_MATCH:
     case MATCH_VALUE:
     case MATCH_END:
-    case MATCH_VERSION:
     case MATCH_STAT:
       return MEMCACHED_UNKNOWN;
     }
@@ -1571,6 +1579,11 @@ init_state(struct command_state *state, int index, size_t request_size,
       if (state->client->nowait || state->noreply)
         parse_reply = NULL;
       *noreply = state->noreply;
+      state->last_cmd_noreply = state->noreply;
+    }
+  else
+    {
+      state->last_cmd_noreply = 0;
     }
 
   if (! is_active(state))
@@ -1981,6 +1994,48 @@ client_server_versions(struct client *c, struct result_object *o)
 
       state = init_state(&s->cmd_state, i, request_size, 0,
                          parse_version_reply, o, NULL);
+      if (! state)
+        continue;
+
+      iov_push(state, STR_WITH_LEN("version\r\n"));
+    }
+
+  return client_execute(c);
+}
+
+
+/*
+  When noreply mode is enabled the client may send the last noreply
+  request and close the connection.  The server will see that the
+  connection is closed, and will discard all previously read data
+  without processing it.  To avoid this, we send "version" command and
+  wait for the reply (discarding it).
+*/
+static
+int
+client_noreply_push(struct client *c)
+{
+  static const size_t request_size = 1;
+
+  struct server *s;
+  int i;
+
+  client_reset(c);
+
+  for (i = 0, array_each(c->servers, struct server, s), ++i)
+    {
+      struct command_state *state = &s->cmd_state;
+      int fd;
+
+      if (! state->last_cmd_noreply)
+        continue;
+
+      fd = get_server_fd(c, s);
+      if (fd == -1)
+        continue;
+
+      state = init_state(state, i, request_size, 0,
+                         parse_nowait_reply, NULL, NULL);
       if (! state)
         continue;
 
