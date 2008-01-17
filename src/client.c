@@ -1527,10 +1527,10 @@ get_server_fd(struct client *c, struct server *s)
 
 static inline
 void
-iov_push(struct command_state *state, void *buf, size_t buf_size)
+iov_push(struct command_state *state, const void *buf, size_t buf_size)
 {
   struct iovec *iov = array_end(state->iov_buf, struct iovec);
-  iov->iov_base = buf;
+  iov->iov_base = (void *) buf;
   iov->iov_len = buf_size;
   array_push(state->iov_buf);
 }
@@ -1705,7 +1705,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
       return MEMCACHED_FAILURE;
     }
   iov_push(state, c->prefix, c->prefix_len);
-  iov_push(state, (void *) key, key_len);
+  iov_push(state, key, key_len);
 
   {
     char *buf = array_end(c->str_buf, char);
@@ -1716,7 +1716,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
     array_append(c->str_buf, str_size);
   }
 
-  iov_push(state, (void *) value, value_size);
+  iov_push(state, value, value_size);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
   return MEMCACHED_SUCCESS;
@@ -1746,7 +1746,7 @@ client_prepare_cas(struct client *c, int key_index,
 
   iov_push(state, STR_WITH_LEN("cas"));
   iov_push(state, c->prefix, c->prefix_len);
-  iov_push(state, (void *) key, key_len);
+  iov_push(state, key, key_len);
 
   {
     char *buf = array_end(c->str_buf, char);
@@ -1758,7 +1758,7 @@ client_prepare_cas(struct client *c, int key_index,
     array_append(c->str_buf, str_size);
   }
 
-  iov_push(state, (void *) value, value_size);
+  iov_push(state, value, value_size);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
   return MEMCACHED_SUCCESS;
@@ -1805,7 +1805,7 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
     }
 
   iov_push(state, c->prefix, c->prefix_len);
-  iov_push(state, (void *) key, key_len);
+  iov_push(state, key, key_len);
   iov_push(state, STR_WITH_LEN("\r\n"));
 
   return MEMCACHED_SUCCESS;
@@ -1840,7 +1840,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
       break;
     }
   iov_push(state, c->prefix, c->prefix_len);
-  iov_push(state, (void *) key, key_len);
+  iov_push(state, key, key_len);
 
   {
     char *buf = array_end(c->str_buf, char);
@@ -1873,7 +1873,7 @@ client_prepare_delete(struct client *c, int key_index,
 
   iov_push(state, STR_WITH_LEN("delete"));
   iov_push(state, c->prefix, c->prefix_len);
-  iov_push(state, (void *) key, key_len);
+  iov_push(state, key, key_len);
 
   {
     char *buf = array_end(c->str_buf, char);
