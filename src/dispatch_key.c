@@ -47,12 +47,12 @@ struct continuum_point
 
 static
 struct continuum_point *
-dispatch_find_bin(struct dispatch_state *state, unsigned int point)
+dispatch_find_bucket(struct dispatch_state *state, unsigned int point)
 {
   struct continuum_point *beg, *end, *left, *right;
 
-  beg = left = array_beg(state->bins, struct continuum_point);
-  end = right = array_end(state->bins, struct continuum_point);
+  beg = left = array_beg(state->buckets, struct continuum_point);
+  end = right = array_end(state->buckets, struct continuum_point);
 
   while (left < right)
     {
@@ -85,19 +85,19 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
   double scale;
   struct continuum_point *p;
 
-  if (array_extend(state->bins, struct continuum_point,
+  if (array_extend(state->buckets, struct continuum_point,
                    1, ARRAY_EXTEND_EXACT) == -1)
     return -1;
 
   state->total_weight += weight;
   scale = (1 - weight / state->total_weight);
-  for (array_each(state->bins, struct continuum_point, p))
+  for (array_each(state->buckets, struct continuum_point, p))
     p->point = ((double) p->point * scale + 0.5);
 
   /* Here p points to array_end().  */
   p->point = DISPATCH_MAX_POINT;
   p->index = index;
-  array_push(state->bins);
+  array_push(state->buckets);
 
   return 0;
 }
@@ -126,11 +126,11 @@ compatible_get_server(struct dispatch_state *state,
   point = ((double) point / state->total_weight * DISPATCH_MAX_POINT + 0.5);
   /*
     Shift point one step forward to possibly get from the border point
-    which belongs to the previous bin.
+    which belongs to the previous bucket.
   */
   point += 1;
 
-  p = dispatch_find_bin(state, point);
+  p = dispatch_find_bucket(state, point);
   return p->index;
 }
 
@@ -148,7 +148,7 @@ ketama_crc32_add_server(struct dispatch_state *state,
 
   count = (state->ketama_points * weight + 0.5);
 
-  if (array_extend(state->bins, struct continuum_point,
+  if (array_extend(state->buckets, struct continuum_point,
                    count, ARRAY_EXTEND_EXACT) == -1)
     return -1;
 
@@ -173,15 +173,15 @@ ketama_crc32_add_server(struct dispatch_state *state,
 
       point = compute_crc32_add(crc32, buf, 4);
 
-      if (! array_empty(state->bins))
+      if (! array_empty(state->buckets))
         {
-          p = dispatch_find_bin(state, point);
+          p = dispatch_find_bucket(state, point);
 
           /* Check if we wrapped around but actually have new max point.  */
-          if (p == array_beg(state->bins, struct continuum_point)
+          if (p == array_beg(state->buckets, struct continuum_point)
               && point > p->point)
             {
-              p = array_end(state->bins, struct continuum_point);
+              p = array_end(state->buckets, struct continuum_point);
             }
           else
             {
@@ -199,18 +199,18 @@ ketama_crc32_add_server(struct dispatch_state *state,
 
               /* Move the tail one position forward.  */
               memmove(p + 1, p,
-                      ((array_end(state->bins, struct continuum_point) - p)
+                      ((array_end(state->buckets, struct continuum_point) - p)
                        * sizeof(*p)));
             }
         }
       else
         {
-          p = array_beg(state->bins, struct continuum_point);
+          p = array_beg(state->buckets, struct continuum_point);
         }
 
       p->point = point;
       p->index = index;
-      array_push(state->bins);
+      array_push(state->buckets);
     }
 
   return 0;
@@ -223,7 +223,7 @@ ketama_crc32_get_server(struct dispatch_state *state,
                         const char *key, size_t key_len)
 {
   unsigned int point = compute_crc32(key, key_len);
-  struct continuum_point *p = dispatch_find_bin(state, point);
+  struct continuum_point *p = dispatch_find_bucket(state, point);
   return p->index;
 }
 
@@ -231,7 +231,7 @@ ketama_crc32_get_server(struct dispatch_state *state,
 void
 dispatch_init(struct dispatch_state *state)
 {
-  array_init(&state->bins);
+  array_init(&state->buckets);
   state->total_weight = 0.0;
   state->ketama_points = 0;
 }
@@ -240,7 +240,7 @@ dispatch_init(struct dispatch_state *state)
 void
 dispatch_destroy(struct dispatch_state *state)
 {
-  array_destroy(&state->bins);
+  array_destroy(&state->buckets);
 }
 
 
@@ -268,13 +268,13 @@ dispatch_add_server(struct dispatch_state *state,
 int
 dispatch_key(struct dispatch_state *state, const char *key, size_t key_len)
 {
-  if (array_empty(state->bins))
+  if (array_empty(state->buckets))
     return -1;
 
-  if (array_size(state->bins) == 1)
+  if (array_size(state->buckets) == 1)
     {
       struct continuum_point *p =
-        array_beg(state->bins, struct continuum_point);
+        array_beg(state->buckets, struct continuum_point);
       return p->index;
     }
   else

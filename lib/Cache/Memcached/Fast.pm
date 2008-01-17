@@ -375,9 +375,9 @@ B<Ketama> consistent hashing algorithm
 specifies the number of points the server with weight 1 will be mapped
 to.  Thus each server will be mapped to S<I<ketama_points> *
 I<weight>> points in continuum.  Larger value will result in more
-uniform distribution.  Note that the number of internal bin
+uniform distribution.  Note that the number of internal bucket
 structures, and hence memory consumption, will be proportional to sum
-of such products.  But bin structures themselves are small (two
+of such products.  But bucket structures themselves are small (two
 integers each), so you probably shouldn't worry.
 
 Zero value disables the Ketama algorithm.  See also server weight in
@@ -403,7 +403,7 @@ string; it should not fail.  Deserialization routine takes scalar
 string and returns a reference; if deserialization fails (say, wrong
 data format) it should throw an exception (call I<die>).  The
 exception will be caught by the module and L</get> will then pretend
-the data was not found.
+that the key hasn't been found.
 
 
 =item I<utf8> (B<experimental, Perl 5.8.1 and later only>)

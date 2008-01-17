@@ -30,7 +30,7 @@
 
 struct dispatch_state
 {
-  struct array bins;
+  struct array buckets;
   double total_weight;
   int ketama_points;
 };
