@@ -2,10 +2,39 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
 
 0.07  ???
-        - this release fixes a bug in nowait mode.  Upgrade is
-        recommended if you are using nowait => 1.
+        - this is a major release that features multi update commands
+        and significant speed improvement.  Also it fixes a bug in
+        nowait mode that was introduced in 0.06.  Upgrade is
+        recommended if you are using nowait => 1, or want to employ
+        new features and speed.
 
         Changes since 0.06:
+
+        Every update command now has its multi equivalent: set_multi,
+        add_multi, replace_multi, append_multi, prepend_multi,
+        incr_multi, decr_multi and delete_multi.  By using multi
+        commands you will reduce request latency: several requests
+        would be sent in one packet, and the client would talk to all
+        servers in parallel.
+
+        For performance reasons all Perl code was converted to XS.  If
+        you performed any benchmarks, you may want to repeat them.
+        This have a drawback that now you can't derive from C::M::F
+        easily.
+
+        Improved results of update commands: commands that previously
+        returned boolean value now return true for positive server
+        reply, false for negative server reply, and undef on error.
+        Similar to DBI, decr returns '0E0' for positive zero reply.
+
+        flush_all now returns a hash 'server_name' => 'bool_result'.
+
+        New commands 'server_versions' and 'nowait_push'.
+
+        New 'utf8' and 'serialize_methods' parameters for constructor.
+
+        script/compare.pl was removed.  Instead script/benchmark.pl
+        takes an optional last argument "compare".
 
         t/03-flush_all.t was removed.  We use PID as a part of a
         namespace prefix now, so we don't need clear cache any more.
@@ -15,29 +44,16 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Without flush_all it's possible to execute in parallel more
         than one 'make test'.
 
-        New command nowait_push, called on destroy.
+        Fixed bug in 'nowait' mode that could cause false negative
+        replies to subsequent requests that you are waiting for.
 
-        New command server_version.
+        Workaround the loss of the last 'noreply' request on the
+        server.  'noreply' is still an undocumented feature.
 
-        Fixed bug in nowait mode that could cause negative subsequent
-        results under some circumstances.
-
-        Commands that previously returned boolean value now return
-        true for positive server reply, false for negative server
-        reply, and undef on error.
-
-        flush_all now returns a hash server_name -> bool_result.
-
-        script/compare.pl was removed.  Instead script/benchmark.pl
-        takes an optional last argument "compare".
-
-        New 'utf8' parameter for constructor.
-
-        decr returns "0E0" for positive zero reply.
-
-        Fixed noreply push bug.
-
-        Added constructor parameter serialize_methods.
+        To support multi commands the API of internal client
+        implementation was changed.  If you were using it as a
+        standalone library---sorry :).  After API will freeze C client
+        library will likely be released on its own.
 
 
 0.06  2007-12-20
