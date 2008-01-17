@@ -176,9 +176,12 @@ sub run {
             => sub { my $res = $new->$method_multi(&$params_multi('m%')) },
     );
 
+    # We use the same 'm%' prefix here as for the new module because
+    # old module doesn't have set_multi, and we want to retrieve
+    # something.
     push @test, (
         "old $method_multi"
-            => sub { my $res = $old->$method_multi(&$params_multi('om')) },
+            => sub { my $res = $old->$method_multi(&$params_multi('m%')) },
     ) if defined $old and $method =~ /$old_method_multi/o;
 
     push @test, (
