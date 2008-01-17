@@ -40,6 +40,7 @@ our $VERSION = '0.07';
       failure_timeout => 2,
       ketama_points => 150,
       nowait => 1,
+      serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
       utf8 => ($^V >= 5.008001 ? 1 : 0),
   });
 
@@ -383,6 +384,28 @@ Zero value disables the Ketama algorithm.  See also server weight in
 L</servers> above.
 
 
+=item I<serialize_methods>
+
+  serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
+  (default: [ \&Storable::nfreeze, \&Storable::thaw ])
+
+The value is a reference to an array holding two code references for
+serialization and deserialization routines respectively.
+
+Serialization routine is called when the I<$value> passed to L</set>
+method family is a reference.  The fact that serialization was
+performed is remembered along with the data, and deserialization
+routine is called on data retrieval with L</get> method family.  The
+interface of these routines should be the same as of
+I<Storable::nfreeze> and I<Storable::thaw> (see L<Storable|Storable>).
+I.e. serialization routine takes a reference and returns a scalar
+string; it should not fail.  Deserialization routine takes scalar
+string and returns a reference; if deserialization fails (say, wrong
+data format) it should throw an exception (call I<die>).  The
+exception will be caught by the module and L</get> will then pretend
+the data was not found.
+
+
 =item I<utf8> (B<experimental, Perl 5.8.1 and later only>)
 
   utf8 => 1
@@ -425,6 +448,8 @@ sub new {
         carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
         undef $conf->{utf8};
     }
+
+    $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
 
     return Cache::Memcached::Fast::_new($class, $conf);
 }
@@ -483,7 +508,7 @@ server reply, or I<undef> in case of some error.
   );
 
 Like L</set>, but operates on more than one key.  Takes the list of
-array references each holding I<$key>, I<$value> and optional
+references to arrays each holding I<$key>, I<$value> and optional
 I<$expiration_time>.
 
 Note that multi commands are not all-or-nothing, some operations may
@@ -535,8 +560,8 @@ B<cas> command first appeared in B<memcached> 1.2.4.
   );
 
 Like L</cas>, but operates on more than one key.  Takes the list of
-array references each holding I<$key>, I<$cas>, I<$value> and optional
-I<$expiration_time>.
+references to arrays each holding I<$key>, I<$cas>, I<$value> and
+optional I<$expiration_time>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
@@ -582,7 +607,7 @@ server reply, or I<undef> in case of some error.
   );
 
 Like L</add>, but operates on more than one key.  Takes the list of
-array references each holding I<$key>, I<$value> and optional
+references to arrays each holding I<$key>, I<$value> and optional
 I<$expiration_time>.
 
 Note that multi commands are not all-or-nothing, some operations may
@@ -627,7 +652,7 @@ server reply, or I<undef> in case of some error.
   );
 
 Like L</replace>, but operates on more than one key.  Takes the list
-of array references each holding I<$key>, I<$value> and optional
+of references to arrays each holding I<$key>, I<$value> and optional
 I<$expiration_time>.
 
 Note that multi commands are not all-or-nothing, some operations may
@@ -672,7 +697,7 @@ B<append> command first appeared in B<memcached> 1.2.4.
   );
 
 Like L</append>, but operates on more than one key.  Takes the list of
-array references each holding I<$key>, I<$value>.
+references to arrays each holding I<$key>, I<$value>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
@@ -717,8 +742,8 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
       ...
   );
 
-Like L</prepend>, but operates on more than one key.  Takes the list of
-array references each holding I<$key>, I<$value>.
+Like L</prepend>, but operates on more than one key.  Takes the list
+of references to arrays each holding I<$key>, I<$value>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.
@@ -833,7 +858,7 @@ negative server reply, or I<undef> in case of some error.
   );
 
 Like L</incr>, but operates on more than one key.  Takes the list of
-keys and array references each holding I<$key> and optional
+keys and references to arrays each holding I<$key> and optional
 I<$increment>.
 
 Note that multi commands are not all-or-nothing, some operations may
@@ -880,7 +905,7 @@ negative server reply, or I<undef> in case of some error.
   );
 
 Like L</decr>, but operates on more than one key.  Takes the list of
-keys and array references each holding I<$key> and optional
+keys and references to arrays each holding I<$key> and optional
 I<$decrement>.
 
 Note that multi commands are not all-or-nothing, some operations may
@@ -934,7 +959,8 @@ Alias for L</delete>, for compatibility with B<Cache::Memcached>.
   );
 
 Like L</delete>, but operates on more than one key.  Takes the list of
-keys and array references each holding I<$key> and optional I<$delay>.
+keys and references to arrays each holding I<$key> and optional
+I<$delay>.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.

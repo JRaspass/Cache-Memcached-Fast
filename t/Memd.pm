@@ -5,7 +5,7 @@ use strict;
 
 
 use Cache::Memcached::Fast;
-
+use Storable;
 
 our (@addr, %params, $memd, $version_str, $version_num, $error);
 
@@ -28,6 +28,7 @@ BEGIN {
         failure_timeout => 2,
         ketama_points => 150,
         nowait => 1,
+        serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
         utf8 => ($^V >= 5.008001 ? 1 : 0),
     );
 

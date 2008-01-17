@@ -35,6 +35,10 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         decr returns "0E0" for positive zero reply.
 
+        Fixed noreply push bug.
+
+        Added constructor parameter serialize_methods.
+
 
 0.06  2007-12-20
         - this release fixes a serious bug and features the 'nowait'

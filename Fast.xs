@@ -32,8 +32,8 @@ struct xs_state
   double compress_ratio;
   SV *compress_method;
   SV *decompress_method;
-  SV *nfreeze_method;
-  SV *thaw_method;
+  SV *serialize_method;
+  SV *deserialize_method;
   int utf8;
 };
 
@@ -139,23 +139,37 @@ void
 parse_serialize(Cache_Memcached_Fast *memd, HV *conf)
 {
   SV **ps;
-  CV *cv;
 
   memd->utf8 = 0;
+  memd->serialize_method = NULL;
+  memd->deserialize_method = NULL;
 
   ps = hv_fetch(conf, "utf8", 4, 0);
   if (ps && SvOK(*ps))
     memd->utf8 = SvTRUE(*ps);
 
-  cv = get_cv("Storable::nfreeze", 0);
-  if (! cv)
-    croak("Can't locate Storable::nfreeze method");
-  memd->nfreeze_method = (SV *) cv;
+  ps = hv_fetch(conf, "serialize_methods", 17, 0);
+  if (ps && SvOK(*ps))
+    {
+      AV *av = (AV *) SvRV(*ps);
+      SV *sv;
 
-  cv = get_cv("Storable::thaw", 0);
-  if (! cv)
-    croak("Can't locate Storable::thaw method");
-  memd->thaw_method = (SV *) cv;
+      sv = *av_fetch(av, 0, 0);
+      if (! (sv && SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV))
+        croak("Serialize method is not a code reference");
+      memd->serialize_method = SvRV(sv);
+
+      sv = *av_fetch(av, 1, 0);
+      if (! (sv && SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV))
+        croak("Deserialize method is not a code reference");
+      memd->deserialize_method = SvRV(sv);
+    }
+
+  if (! memd->serialize_method)
+    croak("Serialize method is not specified");
+
+  if (! memd->deserialize_method)
+    croak("Deserialize method is not specified");
 }
 
 
@@ -374,7 +388,7 @@ serialize(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
       XPUSHs(sv);
       PUTBACK;
 
-      count = call_sv(memd->nfreeze_method, G_SCALAR);
+      count = call_sv(memd->serialize_method, G_SCALAR);
 
       SPAGAIN;
 
@@ -415,7 +429,7 @@ deserialize(Cache_Memcached_Fast *memd, SV **sv, flags_type flags)
       PUTBACK;
 
       /* FIXME: do we need G_KEPEERR here?  */
-      count = call_sv(memd->thaw_method, G_SCALAR | G_EVAL);
+      count = call_sv(memd->deserialize_method, G_SCALAR | G_EVAL);
 
       SPAGAIN;
 
