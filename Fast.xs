@@ -393,7 +393,7 @@ serialize(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
       SPAGAIN;
 
       if (count != 1)
-        croak("Serialize::nfreeze returned nothing");
+        croak("Serialize method returned nothing");
 
       sv = POPs;
       *flags |= F_STORABLE;
@@ -434,7 +434,7 @@ deserialize(Cache_Memcached_Fast *memd, SV **sv, flags_type flags)
       SPAGAIN;
 
       if (count != 1)
-        croak("Storable::thaw method returned nothing");
+        croak("Deserialize method returned nothing");
 
       rsv = POPs;
       if (! SvTRUE(ERRSV))
