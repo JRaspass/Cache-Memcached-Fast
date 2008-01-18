@@ -11,6 +11,18 @@ use warnings;
 use strict;
 
 
+# NOTE: at least on Linux (kernel 2.6.18.2) there is a certain
+# artifact that affects wallclock time (but not CPU time) of some
+# benchmarks: when send/receive rate changes dramatically, the system
+# doesn't adopt to it right away.  Instead, for some time a lot of
+# small-range ACK packets are being sent, and this increases the
+# latency.  Because of this '*_multi (%h)', which comes first, has
+# bigger wallclock time than '*_multi (%h)', which comes next.  I
+# tried pre-warming the connection, but this doesn't help in all
+# cases.  Seems like 'noreply' mode is also affected, and maybe
+# 'nowait'.
+
+
 use constant default_iteration_count => 1_000;
 use constant key_count => 100;
 use constant NOWAIT => 1;
