@@ -1178,6 +1178,11 @@ You can also look for information at:
 
 =over 4
 
+=item * Project home
+
+L<http://openhack.ru/Cache-Memcached-Fast>
+
+
 =item * RT: CPAN's request tracker
 
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cache-Memcached-Fast>

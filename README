@@ -20,7 +20,7 @@ API and may be used by itself).
 
 The module should compile and work on any Unix-derived system.
 According to CPAN testers it doesn't compile on Windows, patches are
-welcomed.
+welcome.
 
 Despite the low version number (which mainly reflects release history)
 the module is considered to be beta (see BUGS below on how to report
@@ -30,6 +30,15 @@ to Cache::Memcached.
 
 
 INSTALLATION
+
+Latest release of this module is available from CPAN:
+
+  http://search.cpan.org/dist/Cache-Memcached-Fast/
+
+Latest development tree is available from project home:
+
+  http://openhack.ru/Cache-Memcached-Fast
+
 
 To install this module type the following:
 
