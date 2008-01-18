@@ -11,10 +11,14 @@ our (@addr, %params, $memd, $version_str, $version_num, $error);
 
 
 BEGIN {
-    # Use differently spelled addressed to enable Ketama to hash names
-    # differently.
-    @addr = ( { address => 'localhost:11211', weight => 1.5 },
-              '127.0.0.1:11211' );
+    # Use differently spelled host addresses to enable Ketama to hash
+    # names differently.
+    @addr = (
+        { address => 'localhost:11211', weight => 1.5 },
+        { address => '127.0.0.1:11211' },
+        '127.0.0.2:11211',
+        [ '127.0.0.3:11211', 2 ]
+    );
 
     %params = (
         servers => [ @addr ],
