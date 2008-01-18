@@ -43,13 +43,19 @@ BEGIN {
     # so test only the first version.
     my $version = $memd->server_versions;
     if (keys %$version == @addr) {
-        $version = (values %$version)[0];
-        if ($version =~ /(\d+)\.(\d+)\.(\d+)/) {
-            $version_str = $version;
-            $version_num = $1 * 10000 + $2 * 100 + $3;
-        } else {
-            $error = "Can't parse server version $version";
-            undef $memd;
+        $version_num = 2 ** 31;
+        while (my ($s, $v) = each %$version) {
+            if ($v =~ /(\d+)\.(\d+)\.(\d+)/) {
+                my $n = $1 * 10000 + $2 * 100 + $3;
+                if ($n < $version_num) {
+                    $version_str = $v;
+                    $version_num = $n;
+                }
+            } else {
+                $error = "Can't parse version of $s: $v";
+                undef $memd;
+                last;
+            }
         }
     } else {
         my @servers = map {

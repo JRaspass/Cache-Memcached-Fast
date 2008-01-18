@@ -38,5 +38,3 @@ For 0.07:
 
 
 - Add tests for new multi commands.
-
-- Memd.pm should not assume equal server versions.

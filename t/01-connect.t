@@ -9,7 +9,8 @@ use lib "$FindBin::Bin";
 use Memd;
 
 if ($Memd::memd) {
-    diag("Connected to memcached $Memd::version_str");
+    diag("Connected to " . scalar @Memd::addr
+         . " memcached servers, lowest version $Memd::version_str");
     plan tests => 1;
     pass('connected');
 } else {
