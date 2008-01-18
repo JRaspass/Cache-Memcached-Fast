@@ -9,7 +9,7 @@ use lib "$FindBin::Bin";
 use Memd;
 
 if ($Memd::memd) {
-    plan tests => 63;
+    plan tests => 66;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -132,13 +132,17 @@ SKIP: {
     is(scalar keys %$res, 0);
 }
 
+$res = $Memd::memd->incr_multi([$keys[0], 2], [$keys[1]], @keys[2..$#keys]);
+ok(values %$res == @keys);
+is((grep { $_ != 1 } values %$res), 1);
+is($res->{$keys[0]}, 2);
 
 $res = $Memd::memd->delete_multi($key);
 ok($res->{$key});
-$res = $Memd::memd->delete_multi([$keys[0]]);
-ok($res->{$keys[0]});
+$res = $Memd::memd->delete_multi([$keys[0]], $keys[1]);
+ok($res->{$keys[0]} and $res->{$keys[1]});
 
-ok($Memd::memd->remove($keys[1]));
+ok($Memd::memd->remove($keys[2]));
 @res = $Memd::memd->delete_multi(@keys);
 is(@res, count);
-is((grep { not $_ } @res), 2);
+is((grep { not $_ } @res), 3);
