@@ -1,7 +1,7 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.07  ???
+0.07  2008-01-18
         - this is a major release that features a significant speed
         improvement and introduces multi update commands.  It also
         fixes a bug in nowait mode that was introduced in 0.06.
@@ -20,7 +20,7 @@ Revision history for Perl extension Cache::Memcached::Fast.
         incr_multi, decr_multi and delete_multi.  By using multi
         commands you will reduce request latency: several requests
         would be sent in one packet, and the client would talk to all
-        servers in parallel.
+        servers simultaneously.
 
         Improved results of update commands: commands that previously
         returned boolean value now return true for positive server
