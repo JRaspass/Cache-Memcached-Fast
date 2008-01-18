@@ -1216,10 +1216,10 @@ L<http://www.danga.com/memcached/> - B<memcached> website.
 
 =head1 AUTHORS
 
-Tomash Brechko, C<< <tomash.brechko at gmail.com> >> - design and
+S<Tomash Brechko>, C<< <tomash.brechko at gmail.com> >> - design and
 implementation.
 
-Michael Monashev, C<< <postmaster at softsearch.ru> >> - project
+S<Michael Monashev>, C<< <postmaster at softsearch.ru> >> - project
 management, design suggestions, testing.
 
 
@@ -1227,7 +1227,7 @@ management, design suggestions, testing.
 
 Development of this module is sponsored by S<Monashev Co. Ltd.>
 
-Thanks to Peter J. Holzer for enlightening on UTF-8 support.
+Thanks to S<Peter J. Holzer> for enlightening on UTF-8 support.
 
 
 =head1 WARRANTY
