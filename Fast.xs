@@ -11,9 +11,6 @@
 #include "perl.h"
 #include "XSUB.h"
 
-#include "ppport.h"
-
-
 #include "src/client.h"
 #include <stdlib.h>
 #include <string.h>
@@ -305,7 +302,7 @@ compress(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
       csv = newSV(0);
 
       PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newRV(sv)));
+      XPUSHs(sv_2mortal(newRV_inc(sv)));
       XPUSHs(sv_2mortal(newRV_noinc(csv)));
       PUTBACK;
 
@@ -345,8 +342,8 @@ decompress(Cache_Memcached_Fast *memd, SV **sv, flags_type flags)
       rsv = newSV(0);
 
       PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newRV(*sv)));
-      XPUSHs(sv_2mortal(newRV(rsv)));
+      XPUSHs(sv_2mortal(newRV_inc(*sv)));
+      XPUSHs(sv_2mortal(newRV_inc(rsv)));
       PUTBACK;
 
       count = call_sv(memd->decompress_method, G_SCALAR);
