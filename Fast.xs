@@ -595,7 +595,7 @@ _new(class, conf)
     PREINIT:
         Cache_Memcached_Fast *memd;
     CODE:
-        Newx(memd, 1, Cache_Memcached_Fast);
+        memd = (Cache_Memcached_Fast *) malloc(sizeof(Cache_Memcached_Fast));
         memd->c = client_init();
         if (! memd->c)
           croak("Not enough memory");
