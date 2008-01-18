@@ -11,6 +11,8 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#include "ppport.h"
+
 #include "src/client.h"
 #include <stdlib.h>
 #include <string.h>
