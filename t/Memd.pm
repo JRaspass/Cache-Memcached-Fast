@@ -52,9 +52,18 @@ BEGIN {
             undef $memd;
         }
     } else {
+        my @servers = map {
+            if (ref($_) eq 'HASH') {
+                $_->{address};
+            } elsif (ref($_) eq 'ARRAY') {
+                $_->[0];
+            } else {
+                $_;
+            }
+        } @addr;
+
         $error = "No server is running at "
-            . join(', ', grep { not exists $version->{$_} }
-                              @{$memd->{servers}});
+            . join(', ', grep { not exists $version->{$_} } @servers);
         undef $memd;
     }
 }
