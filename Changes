@@ -2,13 +2,18 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
 
 0.07  ???
-        - this is a major release that features multi update commands
-        and significant speed improvement.  Also it fixes a bug in
-        nowait mode that was introduced in 0.06.  Upgrade is
-        recommended if you are using nowait => 1, or want to employ
-        new features and speed.
+        - this is a major release that features a significant speed
+        improvement and introduces multi update commands.  It also
+        fixes a bug in nowait mode that was introduced in 0.06.
+        Upgrade is recommended if you are using nowait => 1, or want
+        to employ new features and speed.
 
         Changes since 0.06:
+
+        For performance reasons all Perl code was converted to XS.  If
+        you performed any benchmarks, you may want to repeat them ;).
+        This change has a drawback that now you can't derive from
+        C::M::F easily.
 
         Every update command now has its multi equivalent: set_multi,
         add_multi, replace_multi, append_multi, prepend_multi,
@@ -17,15 +22,11 @@ Revision history for Perl extension Cache::Memcached::Fast.
         would be sent in one packet, and the client would talk to all
         servers in parallel.
 
-        For performance reasons all Perl code was converted to XS.  If
-        you performed any benchmarks, you may want to repeat them.
-        This have a drawback that now you can't derive from C::M::F
-        easily.
-
         Improved results of update commands: commands that previously
         returned boolean value now return true for positive server
         reply, false for negative server reply, and undef on error.
-        Similar to DBI, decr returns '0E0' for positive zero reply.
+        Similar to DBI, decr returns "0E0" for positive zero reply,
+        which evaluates to true in a boolean context.
 
         flush_all now returns a hash 'server_name' => 'bool_result'.
 
