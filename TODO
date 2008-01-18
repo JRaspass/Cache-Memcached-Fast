@@ -1,10 +1,5 @@
-- Do we have to free all memory on croak() to avoid a leak?  Can we
-  use scopes for that?
-
 - Improve make files: libclient.a should not be installed (does it
   now?).
-
-- Set $! on errors.
 
 - Mention server patches in docs.
 
@@ -29,9 +24,8 @@
 
 - Add statistics: count item sizes, requests, timeouts/errors.
 
-
-For 0.07:
-
 - Replace av_push() with av_store(), test result.
 
 - Describe how to report a bug (-vv, -g).
+
+- Can we do anything with artifacts in benchmark.pl?
