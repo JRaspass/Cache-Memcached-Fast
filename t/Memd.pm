@@ -6,6 +6,8 @@ use strict;
 
 use Cache::Memcached::Fast;
 use Storable;
+#use IO::Compress::Gzip;
+#use IO::Uncompress::Gunzip;
 
 our (@addr, %params, $memd, $version_str, $version_num, $error);
 
@@ -28,7 +30,8 @@ BEGIN {
         io_timeout => 5,
         close_on_error => 0,
         compress_threshold => 1000,
-#        compress_algo => 'bzip2',
+#        compress_methods => [ \&IO::Compress::Gzip::gzip,
+#                              \&IO::Uncompress::Gunzip::gunzip ],
         max_failures => 3,
         failure_timeout => 2,
         ketama_points => 150,

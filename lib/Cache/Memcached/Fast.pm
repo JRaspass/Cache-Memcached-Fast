@@ -35,7 +35,8 @@ our $VERSION = '0.08';
       close_on_error => 1,
       compress_threshold => 100_000,
       compress_ratio => 0.9,
-      compress_algo => 'deflate',
+      compress_methods => [ \&IO::Compress::Gzip::gzip,
+                            \&IO::Uncompress::Gunzip::gunzip ],
       max_failures => 3,
       failure_timeout => 2,
       ketama_points => 150,
@@ -131,35 +132,6 @@ use Storable;
 
 require XSLoader;
 XSLoader::load('Cache::Memcached::Fast', $VERSION);
-
-
-# BIG FAT WARNING: Perl assignment copies the value, so below we try
-# to avoid any copying by passing references around.  Any code
-# modifications should try to preserve this.
-
-
-my %compress_algo;
-
-
-BEGIN {
-    my @algo = (
-        'Gzip'        =>  'Gunzip',
-        'Zip'         =>  'Unzip',
-        'Bzip2'       =>  'Bunzip2',
-        'Deflate'     =>  'Inflate',
-        'RawDeflate'  =>  'RawInflate',
-        'Lzop'        =>  'UnLzop',
-        'Lzf'         =>  'UnLzf',
-    );
-
-    while (my ($c, $u) = splice(@algo, 0, 2)) {
-        my $key = lc $c;
-        my $val = ["IO::Compress::$c", "IO::Uncompress::$u",
-                   "IO::Compress::${c}::" . lc $c,
-                   "IO::Uncompress::${u}::" . lc $u];
-        $compress_algo{$key} = $val;
-    }
-}
 
 
 =head1 CONSTRUCTOR
@@ -316,7 +288,7 @@ setting.
 
 The value is an integer.  When positive it denotes the threshold size
 in bytes: data with the size equal or larger than this should be
-compressed.  See L</compress_ratio> and L</compress_algo> below.
+compressed.  See L</compress_ratio> and L</compress_methods> below.
 
 Negative value disables compression.
 
@@ -332,16 +304,35 @@ should be less or equal to S<(original-size * I<compress_ratio>)>.
 Otherwise the data will be stored uncompressed.
 
 
-=item I<compress_algo>
+=item I<compress_methods>
 
-  compress_algo => 'bzip2'
-  (default: 'gzip')
+  compress_methods => [ \&IO::Compress::Gzip::gzip,
+                        \&IO::Uncompress::Gunzip::gunzip ]
+  (default: [ sub { ${$_[1]} = Compress::Zlib::memGzip(${$_[0]}) },
+              sub { ${$_[1]} = Compress::Zlib::memGunzip(${$_[0]}) } ]
+   when Compress::Zlib is available)
 
-The value is a scalar with the name of the compression algorithm
-(currently known are 'gzip', 'zip', 'bzip2', 'deflate', 'rawdeflate',
-'lzop', 'lzf').  You have to have corresponding IO::Compress::<Algo>
-installed, otherwise the module will give a warning and compression
-will be disabled.
+The value is a reference to an array holding two code references for
+compression and decompression routines respectively.
+
+Compression routine is called when the size of the I<$value> passed to
+L</set> method family is greater than or equal to
+L</compress_threshold> (also see L</compress_ratio>).  The fact that
+compression was performed is remembered along with the data, and
+decompression routine is called on data retrieval with L</get> method
+family.  The interface of these routines should be the same as for
+B<IO::Compress> family (for instance see
+L<IO::Compress::Gzip::gzip|IO::Compress::Gzip/gzip> and
+L<IO::Uncompress::Gunzip::gunzip|IO::Uncompress::Gunzip/gunzip>).
+I.e. compression routine takes a reference to scalar value and a
+reference to scalar where compressed result will be stored.
+Decompression routine takes a reference to scalar with compressed data
+and a reference to scalar where uncompressed result will be stored.
+Both routines should return true on success, and false on error.
+
+By default we use L<Compress::Zlib|Compress::Zlib> because as of this
+writing it appears to be much faster than
+L<IO::Uncompress::Gunzip|IO::Uncompress::Gunzip>.
 
 
 =item I<max_failures>
@@ -396,17 +387,17 @@ Serialization routine is called when the I<$value> passed to L</set>
 method family is a reference.  The fact that serialization was
 performed is remembered along with the data, and deserialization
 routine is called on data retrieval with L</get> method family.  The
-interface of these routines should be the same as of
-I<Storable::nfreeze> and I<Storable::thaw> (see L<Storable|Storable>).
-I.e. serialization routine takes a reference and returns a scalar
-string; it should not fail.  Deserialization routine takes scalar
-string and returns a reference; if deserialization fails (say, wrong
-data format) it should throw an exception (call I<die>).  The
-exception will be caught by the module and L</get> will then pretend
-that the key hasn't been found.
+interface of these routines should be the same as for
+L<Storable::nfreeze|Storable/nfreeze> and
+L<Storable::thaw|Storable/thaw>.  I.e. serialization routine takes a
+reference and returns a scalar string; it should not fail.
+Deserialization routine takes scalar string and returns a reference;
+if deserialization fails (say, wrong data format) it should throw an
+exception (call I<die>).  The exception will be caught by the module
+and L</get> will then pretend that the key hasn't been found.
 
 
-=item I<utf8> (B<experimental, Perl 5.8.1 and later only>)
+=item I<utf8> (B<experimental, Perl 5.8.1 and later>)
 
   utf8 => 1
   (default: disabled)
@@ -428,20 +419,11 @@ sub new {
     my Cache::Memcached::Fast $class = shift;
     my ($conf) = @_;
 
-    my $compress = $compress_algo{lc($conf->{compress_algo} || 'gzip')};
-    if (defined $compress) {
-        if (eval "require $compress->[0]"
-            and eval "require $compress->[1]") {
-            no strict 'refs';
-            $conf->{compress_methods} = [ map { \&$_ } @{$compress}[2, 3] ];
-        } else {
-            undef $conf->{compress_methods};
-        }
-    } else {
-        carp "Compress algorithm '$conf->{compress_algo}' is not known to"
-            . " Cache::Memcached::Fast, disabling compression";
-        undef $conf->{compress_methods};
-        $conf->{compress_threshold} = -1;
+    if (not $conf->{compress_methods} and eval "require Compress::Zlib") {
+        $conf->{compress_methods} = [
+            sub { ${$_[1]} = Compress::Zlib::memGzip(${$_[0]}) },
+            sub { ${$_[1]} = Compress::Zlib::memGunzip(${$_[0]}) }
+        ];
     }
 
     if ($conf->{utf8} and $^V < 5.008001) {
@@ -467,8 +449,8 @@ Enable compression when boolean I<$enable> is true, disable when
 false.
 
 Note that you can enable compression only when you set
-L</compress_threshold> to some positive value and L</compress_algo>
-holds the name of a known compression algorithm.
+L</compress_threshold> to some positive value and L</compress_methods>
+is set.
 
 I<Return:> none.
 
