@@ -31,3 +31,12 @@
 - Can we do anything with artifacts in benchmark.pl?
 
 - Investigate why we are still not fast enough on short values.
+
+- Fix
+
+    client.c: In function `store_result':
+    client.c:823: warning: cast to pointer from integer of different size
+
+  warnings.  They are safe, but annoying.  Use longs instead of ints.
+
+- Add benchmark for compression.

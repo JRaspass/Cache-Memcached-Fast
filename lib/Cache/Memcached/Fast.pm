@@ -14,7 +14,7 @@ Cache::Memcached::Fast - Perl client for B<memcached>, in C language
 
 =head1 VERSION
 
-Version 0.08
+Version 0.08.
 
 =cut
 
@@ -1189,6 +1189,9 @@ L<http://search.cpan.org/dist/Cache-Memcached-Fast>
 
 
 =head1 SEE ALSO
+
+L<http://openhack.ru/Cache-Memcached-Fast> - project home.  Latest
+development tree can be found there.
 
 L<Cache::Memcached|Cache::Memcached> - original pure Perl B<memcached>
 client.
