@@ -420,6 +420,11 @@ sub new {
     my ($conf) = @_;
 
     if (not $conf->{compress_methods} and eval "require Compress::Zlib") {
+        # Note that the functions below can't return false when
+        # operation succeed.  This is because "" and "0" compress to a
+        # longer values (because of additional format data), and
+        # compress_ratio will force them to be stored uncompressed,
+        # thus decompression will never return them.
         $conf->{compress_methods} = [
             sub { ${$_[1]} = Compress::Zlib::memGzip(${$_[0]}) },
             sub { ${$_[1]} = Compress::Zlib::memGunzip(${$_[0]}) }
