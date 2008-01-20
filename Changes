@@ -4,11 +4,15 @@ Revision history for Perl extension Cache::Memcached::Fast.
 0.08  ????
         - ????
 
+        Changes since 0.07:
+
         compress_alog was replaced with compress_methods.  It turned
         out that IO::Uncompress::Gunzip is much (~4x) slower than
         Compress::Zlib, so the latter is used as the default for
         compress_methods.  Besides, previous mechanism didn't scale
         well.
+
+        New 'check_args' parameter for constructor.
 
 
 0.07  2008-01-18

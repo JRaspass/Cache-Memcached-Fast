@@ -409,15 +409,92 @@ retrieved data is marked as being UTF-8 octet sequence).  See
 L<perlunicode|perlunicode>.
 
 
+=item I<check_args>
+
+  check_args => 'skip'
+  (default: not 'skip')
+
+The value is a string.  Currently the only recognized string is
+I<'skip'>.
+
+By default all constructor parameter names are checked to be
+recognized, and a warning is given for unknown parameter.  This will
+catch spelling errors that otherwise might go unnoticed.
+
+When set to I<'skip'>, the check will be bypassed.  This may be
+desired when you share the same argument hash among different client
+versions, or among different clients.
+
+
 =back
 
 =back
 
 =cut
 
+our %known_params = (
+    servers => { address => 1, weight => 1, noreply => 1 },
+    namespace => 1,
+    nowait => 1,
+    connect_timeout => 1,
+    io_timeout => 1,
+    select_timeout => 1,
+    close_on_error => 1,
+    compress_threshold => 1,
+    compress_ratio => 1,
+    compress_methods => 1,
+    compress_algo => sub {
+        carp "compress_algo has been removed in 0.08,"
+          . " use compress_methods instead"
+    },
+    max_failures => 1,
+    failure_timeout => 1,
+    ketama_points => 1,
+    serialize_methods => 1,
+    utf8 => 1,
+    check_args => 1,
+);
+
+
+sub _check_args {
+    my ($checker, $args, $level) = @_;
+
+    $level = 0 unless defined $level;
+
+    return unless ref($args) eq 'HASH';
+
+    if (exists $args->{check_args}
+        and lc($args->{check_args}) eq 'skip') {
+        return;
+    }
+
+    my @unknown;
+
+    while (my ($k, $v) = each %$args) {
+        if (exists $checker->{$k}) {
+            if (ref($checker->{$k}) eq 'CODE') {
+                $checker->{$k}->($args, $k, $v);
+            } elsif (ref($checker->{$k}) eq 'HASH') {
+                push @unknown, _check_args($checker->{$k}, $v, $level + 1);
+            }
+        } else {
+            push @unknown, $k;
+        }
+    }
+
+    if ($level > 0) {
+        return @unknown;
+    } else {
+        carp "Unknown parameter: @unknown" if @unknown;
+    }
+}
+
+
 sub new {
     my Cache::Memcached::Fast $class = shift;
     my ($conf) = @_;
+
+    _check_args(\%known_params, $conf);
 
     if (not $conf->{compress_methods} and eval "require Compress::Zlib") {
         # Note that the functions below can't return false when
@@ -1038,11 +1115,12 @@ L<Cache::Memcached|Cache::Memcached>.  Where constructor parameters
 are the same as in Cache::Memcached, the default values are also the
 same, and new parameters are disabled by default (the exception is
 L</close_on_error>, which is absent in Cache::Memcached and enabled by
-default in this module).  Internally Cache::Memcached::Fast uses the
-same hash function as Cache::Memcached, and thus should distribute the
-keys across several servers the same way.  So both modules may be used
-interchangeably.  Most users of the original module should be able to
-use this module after replacing I<"Cache::Memcached"> with
+default in this module, and L</check_args>, which see).  Internally
+Cache::Memcached::Fast uses the same hash function as
+Cache::Memcached, and thus should distribute the keys across several
+servers the same way.  So both modules may be used interchangeably.
+Most users of the original module should be able to use this module
+after replacing I<"Cache::Memcached"> with
 I<"Cache::Memcached::Fast">, without further code modifications.
 However, as of this release, the following features of
 Cache::Memcached are not supported by Cache::Memcached::Fast (and some
