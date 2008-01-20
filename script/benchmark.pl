@@ -115,6 +115,23 @@ sub merge_hash {
 }
 
 
+sub bench_finalize {
+    my ($title, $code, $finalize) = @_;
+
+    print "Benchmark: timing $count iterations of $title...\n";
+    my $b1 = timeit($count, $code);
+
+    # We call nowait_push here.  Otherwise the time of gathering
+    # the results would be added to the following commands.
+    my $b2 = timeit(1, $finalize);
+
+    my $res = timesum($b1, $b2);
+    print "$title: ", timestr($res, 'auto'), "\n";
+
+    return { $title => $res };
+}
+
+
 sub run {
     my ($method, $value, $cas) = @_;
 
@@ -167,19 +184,13 @@ sub run {
     my $bench = timethese($count, {@test});
 
     if (defined $value and NOWAIT) {
-        my $title = "$method nowait";
-        print "Benchmark: timing $count iterations of $title...\n";
-        my $b1 = timeit($count, sub { $new->$method(&$params('pw'))
-                                        foreach (1..key_count) });
-
         # We call nowait_push here.  Otherwise the time of gathering
         # the results would be added to the following commands.
-        my $b2 = timeit(1, sub { $new->nowait_push });
-
-        my $res = timesum($b1, $b2);
-        print "$title: ", timestr($res, 'auto'), "\n";
-
-        merge_hash($bench, { $title => $res });
+        my $res = bench_finalize("$method nowait",
+                                 sub { $new->$method(&$params('pw'))
+                                         foreach (1..key_count) },
+                                 sub { $new->nowait_push });
+        merge_hash($bench, $res);
     }
 
     my $method_multi = "${method}_multi";
@@ -211,19 +222,15 @@ sub run {
     merge_hash($bench, timethese($count, {@test}));
 
     if (defined $value and NOWAIT) {
-        my $title = "$method_multi nowait";
-        print "Benchmark: timing $count iterations of $title...\n";
-        my $b1 = timeit($count,
-                        sub { $new->$method_multi(&$params_multi('mw')) });
-
         # We call nowait_push here.  Otherwise the time of gathering
         # the results would be added to the following commands.
-        my $b2 = timeit(1, sub { $new->nowait_push });
+        my $res = bench_finalize("$method_multi nowait",
+                                 sub {
+                                     $new->$method_multi(&$params_multi('mw'))
+                                 },
+                                 sub { $new->nowait_push });
 
-        my $res = timesum($b1, $b2);
-        print "$title: ", timestr($res, 'auto'), "\n";
-
-        merge_hash($bench, { $title => $res });
+        merge_hash($bench, $res);
     }
 
     cmpthese($bench);
