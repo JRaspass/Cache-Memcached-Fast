@@ -663,7 +663,7 @@ set(memd, ...)
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd->c);
+        client_reset(memd->c, noreply);
         key = SvPV(ST(arg), key_len);
         ++arg;
         if (ix == CMD_CAS)
@@ -686,12 +686,12 @@ set(memd, ...)
         if (ix != CMD_CAS)
           {
             client_prepare_set(memd->c, ix, 0, key, key_len, flags,
-                               exptime, buf, buf_len, &object, noreply);
+                               exptime, buf, buf_len, &object);
           }
         else
           {
             client_prepare_cas(memd->c, 0, key, key_len, cas, flags,
-                               exptime, buf, buf_len, &object, noreply);
+                               exptime, buf, buf_len, &object);
           }
         client_execute(memd->c);
         if (! noreply)
@@ -723,7 +723,7 @@ set_multi(memd, ...)
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd->c);
+        client_reset(memd->c, noreply);
         for (i = 1; i < items; ++i)
           {
             SV *sv;
@@ -773,12 +773,12 @@ set_multi(memd, ...)
             if (ix != CMD_CAS)
               {
                 client_prepare_set(memd->c, ix, i - 1, key, key_len, flags,
-                                   exptime, buf, buf_len, &object, noreply);
+                                   exptime, buf, buf_len, &object);
               }
             else
               {
                 client_prepare_cas(memd->c, i - 1, key, key_len, cas, flags,
-                                   exptime, buf, buf_len, &object, noreply);
+                                   exptime, buf, buf_len, &object);
               }
           }
         client_execute(memd->c);
@@ -834,7 +834,7 @@ get(memd, ...)
     PPCODE:
         value_res.memd = memd;
         value_res.vals = NULL;
-        client_reset(memd->c);
+        client_reset(memd->c, 0);
         key = SvPV(ST(1), key_len);
         client_prepare_get(memd->c, ix, 0, key, key_len, &object);
         client_execute(memd->c);
@@ -863,7 +863,7 @@ get_multi(memd, ...)
         value_res.vals = (SV *) newAV();
         sv_2mortal(value_res.vals);
         av_extend((AV *) value_res.vals, key_count - 1);
-        client_reset(memd->c);
+        client_reset(memd->c, 0);
         for (i = 0; i < key_count; ++i)
           {
             const char *key;
@@ -907,7 +907,7 @@ incr(memd, ...)
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd->c);
+        client_reset(memd->c, noreply);
         key = SvPV(ST(1), key_len);
         if (items > 2)
           {
@@ -916,8 +916,7 @@ incr(memd, ...)
             if (SvOK(sv))
               arg = SvUV(sv);
           }
-        client_prepare_incr(memd->c, ix, 0, key, key_len, arg,
-                            &object, noreply);
+        client_prepare_incr(memd->c, ix, 0, key, key_len, arg, &object);
         client_execute(memd->c);
         if (! noreply)
           {
@@ -944,7 +943,7 @@ incr_multi(memd, ...)
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd->c);
+        client_reset(memd->c, noreply);
         for (i = 1; i < items; ++i)
           {
             SV *sv;
@@ -978,8 +977,8 @@ incr_multi(memd, ...)
                   }
               }
  
-            client_prepare_incr(memd->c, ix, i - 1, key, key_len, arg,
-                                &object, noreply);
+            client_prepare_incr(memd->c, ix, i - 1, key, key_len,
+                                arg, &object);
           }
         client_execute(memd->c);
         if (! noreply)
@@ -1039,7 +1038,7 @@ delete(memd, ...)
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd->c);
+        client_reset(memd->c, noreply);
         key = SvPV(ST(1), key_len);
         if (items > 2)
           {
@@ -1048,8 +1047,7 @@ delete(memd, ...)
             if (SvOK(sv))
               delay = SvUV(sv);
           }
-        client_prepare_delete(memd->c, 0, key, key_len, delay,
-                              &object, noreply);
+        client_prepare_delete(memd->c, 0, key, key_len, delay, &object);
         client_execute(memd->c);
         if (! noreply)
           {
@@ -1074,7 +1072,7 @@ delete_multi(memd, ...)
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
-        client_reset(memd->c);
+        client_reset(memd->c, noreply);
         for (i = 1; i < items; ++i)
           {
             SV *sv;
@@ -1108,8 +1106,8 @@ delete_multi(memd, ...)
                   }
               }
  
-            client_prepare_delete(memd->c, i - 1, key, key_len, delay,
-                                  &object, noreply);
+            client_prepare_delete(memd->c, i - 1, key, key_len,
+                                  delay, &object);
           }
         client_execute(memd->c);
         if (! noreply)

@@ -260,6 +260,7 @@ struct client
   struct array str_buf;
 
   generation_type generation;
+  int noreply;
 };
 
 
@@ -350,6 +351,7 @@ client_init()
   c->nowait = 0;
 
   c->generation = 1;            /* Different from initial command state.  */
+  c->noreply = 0;
 
   return c;
 }
@@ -1570,24 +1572,26 @@ static
 struct command_state *
 init_state(struct command_state *state, int index, size_t request_size,
            size_t str_size, parse_reply_func parse_reply,
-           struct result_object *o, int *noreply)
+           struct result_object *o)
 {
-  state->object = o;
-
-  if (noreply && *noreply)
-    {
-      if (state->client->nowait || state->noreply)
-        parse_reply = NULL;
-      *noreply = state->noreply;
-      state->last_cmd_noreply = state->noreply;
-    }
-  else
-    {
-      state->last_cmd_noreply = 0;
-    }
-
   if (! is_active(state))
-    command_state_reset(state, (str_size > 0 ? request_size : 0), parse_reply);
+    {
+      if (state->client->noreply)
+        {
+          if (state->client->nowait || state->noreply)
+            parse_reply = NULL;
+
+          state->last_cmd_noreply = state->noreply;
+        }
+      else
+        {
+          state->last_cmd_noreply = 0;
+        }
+
+      state->object = o;
+      command_state_reset(state, (str_size > 0 ? request_size : 0),
+                          parse_reply);
+    }
 
   if (array_extend(state->iov_buf, struct iovec,
                    request_size, ARRAY_EXTEND_EXACT) == -1)
@@ -1610,9 +1614,9 @@ init_state(struct command_state *state, int index, size_t request_size,
       return NULL;
     }
 
-  if (parse_reply)
+  if (state->parse_reply)
     ++state->reply_count;
-  else if (! *noreply)
+  else if (! state->last_cmd_noreply)
     ++state->nowait_count;
 
   return state;
@@ -1623,7 +1627,7 @@ static
 struct command_state *
 get_state(struct client *c, int index, const char *key, size_t key_len,
           size_t request_size, size_t str_size,
-          parse_reply_func parse_reply, struct result_object *o, int *noreply)
+          parse_reply_func parse_reply, struct result_object *o)
 {
   struct server *s;
   int server_index, fd;
@@ -1639,18 +1643,30 @@ get_state(struct client *c, int index, const char *key, size_t key_len,
     return NULL;
 
   return init_state(&s->cmd_state, index, request_size, str_size,
-                    parse_reply, o, noreply);
+                    parse_reply, o);
+}
+
+
+static inline
+const char *
+get_noreply(struct command_state *state)
+{
+  if (state->noreply && state->client->noreply)
+    return " " NOREPLY;
+  else
+    return "";
 }
 
 
 inline
 void
-client_reset(struct client *c)
+client_reset(struct client *c, int noreply)
 {
   array_clear(c->index_list);
   array_clear(c->str_buf);
 
   ++c->generation;
+  c->noreply = noreply;
 }
 
 
@@ -1662,7 +1678,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
                    const char *key, size_t key_len,
                    flags_type flags, exptime_type exptime,
                    const void *value, value_size_type value_size,
-                   struct result_object *o, int noreply)
+                   struct result_object *o)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1672,7 +1688,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_set_reply, o, &noreply);
+                    parse_set_reply, o);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1711,7 +1727,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE "%s\r\n",
-              flags, exptime, value_size, (noreply ? " " NOREPLY : ""));
+              flags, exptime, value_size, get_noreply(state));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1728,7 +1744,7 @@ client_prepare_cas(struct client *c, int key_index,
                    const char *key, size_t key_len,
                    cas_type cas, flags_type flags, exptime_type exptime,
                    const void *value, value_size_type value_size,
-                   struct result_object *o, int noreply)
+                   struct result_object *o)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1738,7 +1754,7 @@ client_prepare_cas(struct client *c, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_set_reply, o, &noreply);
+                    parse_set_reply, o);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1753,7 +1769,7 @@ client_prepare_cas(struct client *c, int key_index,
     size_t str_size =
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE
               " " FMT_CAS "%s\r\n", flags, exptime, value_size, cas,
-              (noreply ? " " NOREPLY : ""));
+              get_noreply(state));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1774,7 +1790,7 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, 0,
-                    parse_get_reply, o, NULL);
+                    parse_get_reply, o);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1815,7 +1831,7 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
 int
 client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
                     const char *key, size_t key_len,
-                    arith_type arg, struct result_object *o, int noreply)
+                    arith_type arg, struct result_object *o)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
@@ -1823,7 +1839,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_arith_reply, o, &noreply);
+                    parse_arith_reply, o);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1845,7 +1861,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
   {
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
-      sprintf(buf, " " FMT_ARITH "%s\r\n", arg, (noreply ? " " NOREPLY : ""));
+      sprintf(buf, " " FMT_ARITH "%s\r\n", arg, get_noreply(state));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1857,7 +1873,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
 int
 client_prepare_delete(struct client *c, int key_index,
                       const char *key, size_t key_len,
-                      delay_type delay, struct result_object *o, int noreply)
+                      delay_type delay, struct result_object *o)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
@@ -1865,7 +1881,7 @@ client_prepare_delete(struct client *c, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_delete_reply, o, &noreply);
+                    parse_delete_reply, o);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1878,8 +1894,7 @@ client_prepare_delete(struct client *c, int key_index,
   {
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
-      sprintf(buf, " " FMT_DELAY "%s\r\n", delay,
-              (noreply ? " " NOREPLY : ""));
+      sprintf(buf, " " FMT_DELAY "%s\r\n", delay, get_noreply(state));
     iov_push(state, (void *) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
@@ -1900,7 +1915,7 @@ client_flush_all(struct client *c, delay_type delay,
   double ddelay = delay, delay_step = 0.0;
   int i;
 
-  client_reset(c);
+  client_reset(c, noreply);
 
   if (array_size(c->servers) > 1)
     delay_step = ddelay / (array_size(c->servers) - 1);
@@ -1918,7 +1933,7 @@ client_flush_all(struct client *c, delay_type delay,
         continue;
 
       state = init_state(&s->cmd_state, i, request_size, str_size,
-                         parse_ok_reply, o, &noreply);
+                         parse_ok_reply, o);
       if (! state)
         continue;
 
@@ -1926,7 +1941,7 @@ client_flush_all(struct client *c, delay_type delay,
         char *buf = array_end(c->str_buf, char);
         size_t str_size =
           sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
-                  (delay_type) (ddelay + 0.5), (noreply ? " " NOREPLY : ""));
+                  (delay_type) (ddelay + 0.5), get_noreply(state));
         iov_push(state, (void *) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
@@ -1944,7 +1959,7 @@ client_nowait_push(struct client *c)
   if (! c->nowait)
     return MEMCACHED_SUCCESS;
 
-  client_reset(c);
+  client_reset(c, 0);
 
   for (array_each(c->servers, struct server, s))
     {
@@ -1981,7 +1996,7 @@ client_server_versions(struct client *c, struct result_object *o)
   struct server *s;
   int i;
 
-  client_reset(c);
+  client_reset(c, 0);
 
   for (i = 0, array_each(c->servers, struct server, s), ++i)
     {
@@ -1993,7 +2008,7 @@ client_server_versions(struct client *c, struct result_object *o)
         continue;
 
       state = init_state(&s->cmd_state, i, request_size, 0,
-                         parse_version_reply, o, NULL);
+                         parse_version_reply, o);
       if (! state)
         continue;
 
@@ -2020,7 +2035,7 @@ client_noreply_push(struct client *c)
   struct server *s;
   int i;
 
-  client_reset(c);
+  client_reset(c, 0);
 
   for (i = 0, array_each(c->servers, struct server, s), ++i)
     {
@@ -2034,8 +2049,7 @@ client_noreply_push(struct client *c)
       if (fd == -1)
         continue;
 
-      state = init_state(state, i, request_size, 0,
-                         parse_nowait_reply, NULL, NULL);
+      state = init_state(state, i, request_size, 0, parse_nowait_reply, NULL);
       if (! state)
         continue;
 
