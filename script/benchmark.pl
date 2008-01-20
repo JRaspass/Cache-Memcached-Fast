@@ -169,19 +169,28 @@ sub run {
                                  foreach (1..key_count) },
     ) if defined $old and $method =~ /$old_method/o;
 
-    if (defined $value and NOREPLY) {
-        push @test, (
-            "$method noreply" => sub { $new_noreply->$method(&$params('pr'))
-                                         foreach (1..key_count) },
-        );
-
-        push @test, (
-            "old $method noreply" => sub { $old->$method(&$params('or'))
-                                             foreach (1..key_count) },
-        ) if defined $old and $method =~ /$old_method/o;
-    }
-
     my $bench = timethese($count, {@test});
+
+    if (defined $value and NOREPLY) {
+        # We call get('no-such-key') here.  Otherwise the time of
+        # sending the requests might be added to the following
+        # commands.
+        my $res = bench_finalize("$method noreply",
+                                 sub { $new_noreply->$method(&$params('pr'))
+                                         foreach (1..key_count) },
+                                 sub { $new_noreply->get('no-such-key') });
+
+        merge_hash($bench, $res);
+
+        if (defined $old and $method =~ /$old_method/o) {
+            $res = bench_finalize("old $method noreply",
+                                  sub { $old->$method(&$params('or'))
+                                          foreach (1..key_count) },
+                                  sub { $old->get('no-such-key') });
+
+            merge_hash($bench, $res);
+        }
+    }
 
     if (defined $value and NOWAIT) {
         # We call nowait_push here.  Otherwise the time of gathering
@@ -212,14 +221,19 @@ sub run {
              => sub { my @res = $new->$method_multi(&$params_multi('m@')) },
     ) if defined $value;
 
-    if (defined $value and NOREPLY) {
-        push @test, (
-            "$method_multi noreply"
-                => sub { $new_noreply->$method_multi(&$params_multi('mr')) },
-        );
-    }
-
     merge_hash($bench, timethese($count, {@test}));
+
+    if (defined $value and NOREPLY) {
+        # We call get('no-such-key') here.  Otherwise the time of
+        # sending the requests might be added to the following
+        # commands.
+        my $res = bench_finalize("$method_multi noreply",
+                                 sub { $new_noreply->
+                                         $method_multi(&$params_multi('mr')) },
+                                 sub { $new_noreply->get('no-such-key') });
+
+        merge_hash($bench, $res);
+    }
 
     if (defined $value and NOWAIT) {
         # We call nowait_push here.  Otherwise the time of gathering
