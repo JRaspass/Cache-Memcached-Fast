@@ -82,9 +82,18 @@ my $new = new Cache::Memcached::Fast {
 
 my $version = $new->server_versions;
 if (keys %$version != @addrs) {
+    my @servers = map {
+        if (ref($_) eq 'HASH') {
+            $_->{address};
+        } elsif (ref($_) eq 'ARRAY') {
+            $_->[0];
+        } else {
+            $_;
+        }
+    } @addrs;
     warn "No server is running at "
         . join(', ', grep { not exists $version->{$_} }
-               @{$new->{servers}})
+               @servers)
         . "\n";
     exit 1;
 }
