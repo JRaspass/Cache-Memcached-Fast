@@ -549,7 +549,8 @@ I<Return:> none.
 Store the I<$value> on the server under the I<$key>.  I<$key> should
 be a scalar.  I<$value> should be defined and may be of any Perl data
 type.  When it is a reference, the referenced Perl data structure will
-be transparently serialized with L<Storable|Storable> module.
+be transparently serialized by routines specified with
+L</serialize_methods>, which see.
 
 Optional I<$expiration_time> is a positive integer number of seconds
 after which the value will expire and wouldn't be accessible any
