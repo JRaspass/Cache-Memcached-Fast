@@ -621,7 +621,7 @@ DESTROY(memd)
             SvREFCNT_dec(memd->decompress_method);
           }
         SvREFCNT_dec(memd->servers);
-        Safefree(memd);
+        free(memd);
 
 
 void
