@@ -114,7 +114,7 @@ compatible_get_server(struct dispatch_state *state,
     that module put 'weight' copies of each the server into buckets
     array, our '(unsigned int) (state->total_weight + 0.5)' is equal
     to the number of such buckets (0.5 is there for proper rounding).
-    The we scale 'point' to the continuum, and since each server
+    Then we scale 'point' to the continuum, and since each server
     occupies the space proportional to its weight, we get the same
     server index.
   */
