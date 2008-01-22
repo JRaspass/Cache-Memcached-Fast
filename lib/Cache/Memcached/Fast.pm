@@ -433,7 +433,7 @@ versions, or among different clients.
 =cut
 
 our %known_params = (
-    servers => { address => 1, weight => 1, noreply => 1 },
+    servers => [ { address => 1, weight => 1, noreply => 1 } ],
     namespace => 1,
     nowait => 1,
     connect_timeout => 1,
@@ -461,20 +461,27 @@ sub _check_args {
 
     $level = 0 unless defined $level;
 
-    return unless ref($args) eq 'HASH';
+    my @unknown;
+
+    if (ref($args) ne 'HASH') {
+        if (ref($args) eq 'ARRAY' and ref($checker) eq 'ARRAY') {
+            foreach my $v (@$args) {
+                push @unknown, _check_args($checker->[0], $v, $level + 1);
+            }
+        }
+        return @unknown;
+    }
 
     if (exists $args->{check_args}
         and lc($args->{check_args}) eq 'skip') {
         return;
     }
 
-    my @unknown;
-
     while (my ($k, $v) = each %$args) {
         if (exists $checker->{$k}) {
             if (ref($checker->{$k}) eq 'CODE') {
                 $checker->{$k}->($args, $k, $v);
-            } elsif (ref($checker->{$k}) eq 'HASH') {
+            } elsif (ref($checker->{$k})) {
                 push @unknown, _check_args($checker->{$k}, $v, $level + 1);
             }
         } else {
