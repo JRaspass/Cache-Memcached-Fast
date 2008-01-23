@@ -42,7 +42,7 @@ our $VERSION = '0.08';
       ketama_points => 150,
       nowait => 1,
       serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
-      utf8 => ($^V >= 5.008001 ? 1 : 0),
+      utf8 => ($^V ge v5.8.1 ? 1 : 0),
   });
 
   # Get server versions.
@@ -515,7 +515,7 @@ sub new {
         ];
     }
 
-    if ($conf->{utf8} and $^V < 5.008001) {
+    if ($conf->{utf8} and $^V lt v5.8.1) {
         carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
         undef $conf->{utf8};
     }
@@ -957,7 +957,7 @@ number, zero is assumed.  An optional I<$decrement> should be a
 positive integer, when not given 1 is assumed.  Note that the server
 I<does> check for underflow, attempt to decrement the value below zero
 would set the value to zero.  Similar to L<DBI|DBI>, zero is returned
-as "0E0", and evaluates to true in a boolean context.
+as I<"0E0">, and evaluates to true in a boolean context.
 
 I<Return:> unsigned integer, new value for the I<$key>, or false for
 negative server reply, or I<undef> in case of some error.

@@ -37,7 +37,7 @@ BEGIN {
         ketama_points => 150,
         nowait => 1,
         serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
-        utf8 => ($^V >= 5.008001 ? 1 : 0),
+        utf8 => ($^V ge v5.8.1 ? 1 : 0),
     );
 
     $memd = Cache::Memcached::Fast->new(\%params);
