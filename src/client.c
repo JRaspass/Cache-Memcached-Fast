@@ -260,6 +260,8 @@ struct client
   struct array str_buf;
 
   generation_type generation;
+
+  struct result_object *object;
   int noreply;
 };
 
@@ -351,6 +353,8 @@ client_init()
   c->nowait = 0;
 
   c->generation = 1;            /* Different from initial command state.  */
+
+  c->object = NULL;
   c->noreply = 0;
 
   return c;
@@ -1571,8 +1575,7 @@ push_index(struct command_state *state, int index)
 static
 struct command_state *
 init_state(struct command_state *state, int index, size_t request_size,
-           size_t str_size, parse_reply_func parse_reply,
-           struct result_object *o)
+           size_t str_size, parse_reply_func parse_reply)
 {
   if (! is_active(state))
     {
@@ -1588,7 +1591,7 @@ init_state(struct command_state *state, int index, size_t request_size,
           state->last_cmd_noreply = 0;
         }
 
-      state->object = o;
+      state->object = state->client->object;
       command_state_reset(state, (str_size > 0 ? request_size : 0),
                           parse_reply);
     }
@@ -1627,7 +1630,7 @@ static
 struct command_state *
 get_state(struct client *c, int index, const char *key, size_t key_len,
           size_t request_size, size_t str_size,
-          parse_reply_func parse_reply, struct result_object *o)
+          parse_reply_func parse_reply)
 {
   struct server *s;
   int server_index, fd;
@@ -1643,7 +1646,7 @@ get_state(struct client *c, int index, const char *key, size_t key_len,
     return NULL;
 
   return init_state(&s->cmd_state, index, request_size, str_size,
-                    parse_reply, o);
+                    parse_reply);
 }
 
 
@@ -1660,12 +1663,13 @@ get_noreply(struct command_state *state)
 
 inline
 void
-client_reset(struct client *c, int noreply)
+client_reset(struct client *c, struct result_object *o, int noreply)
 {
   array_clear(c->index_list);
   array_clear(c->str_buf);
 
   ++c->generation;
+  c->object = o;
   c->noreply = noreply;
 }
 
@@ -1677,8 +1681,7 @@ int
 client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
                    const char *key, size_t key_len,
                    flags_type flags, exptime_type exptime,
-                   const void *value, value_size_type value_size,
-                   struct result_object *o)
+                   const void *value, value_size_type value_size)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1688,7 +1691,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_set_reply, o);
+                    parse_set_reply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1743,8 +1746,7 @@ int
 client_prepare_cas(struct client *c, int key_index,
                    const char *key, size_t key_len,
                    cas_type cas, flags_type flags, exptime_type exptime,
-                   const void *value, value_size_type value_size,
-                   struct result_object *o)
+                   const void *value, value_size_type value_size)
 {
   static const size_t request_size = 6;
   static const size_t str_size =
@@ -1754,7 +1756,7 @@ client_prepare_cas(struct client *c, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_set_reply, o);
+                    parse_set_reply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1783,14 +1785,14 @@ client_prepare_cas(struct client *c, int key_index,
 
 int
 client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
-                   const char *key, size_t key_len, struct result_object *o)
+                   const char *key, size_t key_len)
 {
   static const size_t request_size = 4;
 
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, 0,
-                    parse_get_reply, o);
+                    parse_get_reply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1830,8 +1832,7 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
 
 int
 client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
-                    const char *key, size_t key_len,
-                    arith_type arg, struct result_object *o)
+                    const char *key, size_t key_len, arith_type arg)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " ARITH_STUB " " NOREPLY "\r\n");
@@ -1839,7 +1840,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_arith_reply, o);
+                    parse_arith_reply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1872,8 +1873,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
 
 int
 client_prepare_delete(struct client *c, int key_index,
-                      const char *key, size_t key_len,
-                      delay_type delay, struct result_object *o)
+                      const char *key, size_t key_len, delay_type delay)
 {
   static const size_t request_size = 4;
   static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
@@ -1881,7 +1881,7 @@ client_prepare_delete(struct client *c, int key_index,
   struct command_state *state;
 
   state = get_state(c, key_index, key, key_len, request_size, str_size,
-                    parse_delete_reply, o);
+                    parse_delete_reply);
   if (! state)
     return MEMCACHED_FAILURE;
 
@@ -1915,7 +1915,7 @@ client_flush_all(struct client *c, delay_type delay,
   double ddelay = delay, delay_step = 0.0;
   int i;
 
-  client_reset(c, noreply);
+  client_reset(c, o, noreply);
 
   if (array_size(c->servers) > 1)
     delay_step = ddelay / (array_size(c->servers) - 1);
@@ -1933,7 +1933,7 @@ client_flush_all(struct client *c, delay_type delay,
         continue;
 
       state = init_state(&s->cmd_state, i, request_size, str_size,
-                         parse_ok_reply, o);
+                         parse_ok_reply);
       if (! state)
         continue;
 
@@ -1959,7 +1959,7 @@ client_nowait_push(struct client *c)
   if (! c->nowait)
     return MEMCACHED_SUCCESS;
 
-  client_reset(c, 0);
+  client_reset(c, NULL, 0);
 
   for (array_each(c->servers, struct server, s))
     {
@@ -1996,7 +1996,7 @@ client_server_versions(struct client *c, struct result_object *o)
   struct server *s;
   int i;
 
-  client_reset(c, 0);
+  client_reset(c, o, 0);
 
   for (i = 0, array_each(c->servers, struct server, s), ++i)
     {
@@ -2008,7 +2008,7 @@ client_server_versions(struct client *c, struct result_object *o)
         continue;
 
       state = init_state(&s->cmd_state, i, request_size, 0,
-                         parse_version_reply, o);
+                         parse_version_reply);
       if (! state)
         continue;
 
@@ -2035,7 +2035,7 @@ client_noreply_push(struct client *c)
   struct server *s;
   int i;
 
-  client_reset(c, 0);
+  client_reset(c, NULL, 0);
 
   for (i = 0, array_each(c->servers, struct server, s), ++i)
     {
@@ -2049,7 +2049,7 @@ client_noreply_push(struct client *c)
       if (fd == -1)
         continue;
 
-      state = init_state(state, i, request_size, 0, parse_nowait_reply, NULL);
+      state = init_state(state, i, request_size, 0, parse_nowait_reply);
       if (! state)
         continue;
 
