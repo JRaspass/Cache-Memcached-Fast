@@ -1,18 +1,30 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.08  ????
-        - ????
+0.08  2008-01-24
+        - this is mostly a cleanup release, that also improves
+        decompression speed.
 
         Changes since 0.07:
 
-        compress_alog was replaced with compress_methods.  It turned
-        out that IO::Uncompress::Gunzip is much (~4x) slower than
-        Compress::Zlib, so the latter is used as the default for
+        compress_alog was replaced with more generic compress_methods.
+        It turned out that IO::Uncompress::Gunzip is much (~4x) slower
+        than Compress::Zlib, so the latter is used as the default for
         compress_methods.  Besides, previous mechanism didn't scale
         well.
 
-        New 'check_args' parameter for constructor.
+        Implemented the check of constructor arguments to catch
+        various typos (enabled by default), and new 'check_args'
+        parameter to disable it.
+
+        Workaround "cast from integer to pointer of different size"
+        warning on 64-bit platforms.
+
+        Removed 127.0.0.x from test cases since not all hosts resolve
+        such addresses when x is not 1.
+
+        Use plain malloc()/free() instead of Newx()/Safefree() in XS.
+        This should fix the build with Perl versions 5.6.0--5.8.6.
 
 
 0.07  2008-01-18
