@@ -826,7 +826,7 @@ store_result(struct command_state *state, int res)
 {
   int index = get_index(state);
   next_index(state);
-  state->object->store(state->object->arg, (void *) res, index, NULL);
+  state->object->store(state->object->arg, (void *) (long) res, index, NULL);
 }
 
 
@@ -1328,7 +1328,7 @@ state_prepare(struct command_state *state)
 
       while (count > 0)
         {
-          iov->iov_base = (void *) (buf + (int) (iov->iov_base));
+          iov->iov_base = (void *) (buf + (long) (iov->iov_base));
           iov += step;
           count -= step;
         }
@@ -1731,7 +1731,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
     size_t str_size =
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE "%s\r\n",
               flags, exptime, value_size, get_noreply(state));
-    iov_push(state, (void *) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -1772,7 +1772,7 @@ client_prepare_cas(struct client *c, int key_index,
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE
               " " FMT_CAS "%s\r\n", flags, exptime, value_size, cas,
               get_noreply(state));
-    iov_push(state, (void *) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -1863,7 +1863,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
       sprintf(buf, " " FMT_ARITH "%s\r\n", arg, get_noreply(state));
-    iov_push(state, (void *) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -1895,7 +1895,7 @@ client_prepare_delete(struct client *c, int key_index,
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
       sprintf(buf, " " FMT_DELAY "%s\r\n", delay, get_noreply(state));
-    iov_push(state, (void *) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -1942,7 +1942,7 @@ client_flush_all(struct client *c, delay_type delay,
         size_t str_size =
           sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
                   (delay_type) (ddelay + 0.5), get_noreply(state));
-        iov_push(state, (void *) array_size(c->str_buf), str_size);
+        iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
     }
