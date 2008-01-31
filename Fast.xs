@@ -560,7 +560,7 @@ void
 result_store(void *arg, void *opaque, int key_index, void *meta)
 {
   AV *av = (AV *) arg;
-  int res = (int) opaque;
+  int res = (long) opaque;
 
   /* Suppress warning about unused meta.  */
   if (meta) {}
