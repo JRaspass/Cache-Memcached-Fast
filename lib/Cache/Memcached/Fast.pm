@@ -157,15 +157,24 @@ client parameters.  Currently recognized keys are:
 The value is a reference to an array of server addresses.  Each
 address is either a scalar, a hash reference, or an array reference
 (for compatibility with Cache::Memcached, deprecated).  If hash
-reference, the keys are I<address> (scalar) and I<weight> (positive
-rational number).  The server address is in the form I<host:port> for
-network TCP connections, or F</path/to/unix.sock> for local Unix
-socket connections.  When weight is not given, 1 is assumed.  Client
-will distribute keys across servers proportionally to server weights.
+reference, the keys are I<address> (scalar), I<weight> (positive
+rational number), and I<noreply> (boolean flag).  The server address
+is in the form I<host:port> for network TCP connections, or
+F</path/to/unix.sock> for local Unix socket connections.  When weight
+is not given, 1 is assumed.  Client will distribute keys across
+servers proportionally to server weights.
 
 If you want to get key distribution compatible with Cache::Memcached,
 all server weights should be integer, and their sum should be less
 than 32768.
+
+I<noreply> can be used B<only> together with patched B<memcached>
+server, which is available from
+L<http://openhack.ru/memcached-patched> (branch I<noreply>).  When
+enabled, commands executed in a void context will instruct the server
+to not send the reply.  Compare with L</nowait> below.  If you enable
+I<noreply> for unmodified server, things will go wrongly, and the
+client will eventually block.  Use with care.
 
 
 =item I<namespace>
