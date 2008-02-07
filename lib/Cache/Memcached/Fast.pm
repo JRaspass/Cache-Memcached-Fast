@@ -71,7 +71,7 @@ our $VERSION = '0.09';
   $memd->prepend('skey', 'This is a ');
   $memd->prepend_multi(['skey2', 'This is a '], ['skey3', 'prefix ']);
   $memd->append('skey', 'ue.');
-  $memd->prepend_multi(['skey2', 'ue.'], ['skey3', ' suffix']);
+  $memd->append_multi(['skey2', 'ue.'], ['skey3', ' suffix']);
 
   # Do arithmetic.
   $memd->incr('nkey', 10);
