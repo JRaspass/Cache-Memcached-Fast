@@ -138,7 +138,7 @@ XSLoader::load('Cache::Memcached::Fast', $VERSION);
 
 =over
 
-=item I<new>
+=item C<new>
 
   my $memd = new Cache::Memcached::Fast($params);
 
