@@ -620,6 +620,11 @@ DESTROY(memd)
             SvREFCNT_dec(memd->compress_method);
             SvREFCNT_dec(memd->decompress_method);
           }
+        if (memd->serialize_method)
+          {
+            SvREFCNT_dec(memd->serialize_method);
+            SvREFCNT_dec(memd->deserialize_method);
+          }
         SvREFCNT_dec(memd->servers);
         free(memd);
 
