@@ -1229,3 +1229,23 @@ server_versions(memd)
           }
     OUTPUT:
         RETVAL
+
+
+SV *
+namespace(memd, ...)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $;$
+    PREINIT:
+        const char *ns;
+        size_t len;
+    CODE:
+        ns = client_get_prefix(memd->c, &len);
+        RETVAL = newSVpv(ns, len);
+        if (items > 1)
+          {
+            ns = SvPV(ST(1), len);
+            if (client_set_prefix(memd->c, ns, len) != MEMCACHED_SUCCESS)
+              croak("Not enough memory");
+          }
+    OUTPUT:
+        RETVAL

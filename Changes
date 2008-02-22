@@ -1,6 +1,14 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.09  ???
+        - ???
+
+        Add method 'namespace' to get and/or set the namespace prefix.
+        This is handy when you "lease" C::M::F object for different
+        parts of your application that do unrelated things.
+
+
 0.08  2008-01-24
         - this is mostly a cleanup release, that also improves
         decompression speed.

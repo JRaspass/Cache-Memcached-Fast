@@ -114,6 +114,10 @@ int
 client_set_prefix(struct client *c, const char *ns, size_t ns_len);
 
 extern
+const char *
+client_get_prefix(struct client *c, size_t *ns_len);
+
+extern
 void
 client_set_connect_timeout(struct client *c, int to);
 

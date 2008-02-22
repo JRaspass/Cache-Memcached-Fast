@@ -506,6 +506,15 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
 }
 
 
+const char *
+client_get_prefix(struct client *c, size_t *ns_len)
+{
+  *ns_len = c->prefix_len - 1;
+
+  return (c->prefix + 1);
+}
+
+
 static inline
 ssize_t
 read_restart(int fd, void *buf, size_t size)

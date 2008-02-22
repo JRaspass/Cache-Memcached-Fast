@@ -557,6 +557,21 @@ I<Return:> none.
 # See Fast.xs.
 
 
+=item C<namespace>
+
+  $memd->namespace();
+  $memd->namespace($string);
+
+Get and/or set the namespace prefix.
+
+I<Return:> scalar, the namespace prefix that was in effect before the
+call.
+
+=cut
+
+# See Fast.xs.
+
+
 =item C<set>
 
   $memd->set($key, $value);
