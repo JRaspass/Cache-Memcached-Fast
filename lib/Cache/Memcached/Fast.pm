@@ -562,7 +562,9 @@ I<Return:> none.
   $memd->namespace();
   $memd->namespace($string);
 
-Get and/or set the namespace prefix.
+Without the argument return the current namespace prefix.  With the
+argument set the namespace prefix to I<$string>, and return the old
+prefix.
 
 I<Return:> scalar, the namespace prefix that was in effect before the
 call.
