@@ -1,13 +1,7 @@
 - Improve make files: libclient.a should not be installed (does it
   now?).
 
-- Mention server patches in docs.
-
-- Binary protocol!
-
 - stats() command.
-
-- UDP (?).
 
 - Investigate why there are read() errors in no_eagain branch.
 
@@ -32,11 +26,6 @@
 
 - Investigate why we are still not fast enough on short values.
 
-- Fix
-
-    client.c: In function `store_result':
-    client.c:823: warning: cast to pointer from integer of different size
-
-  warnings.  They are safe, but annoying.  Use longs instead of ints.
-
 - Add benchmark for compression.
+
+- More tests for TCP_NODELAY + TCP_CORK/TCP_NOPUSH.
