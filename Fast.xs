@@ -151,17 +151,8 @@ parse_serialize(Cache_Memcached_Fast *memd, HV *conf)
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
-      SV *sv;
-
-      sv = *av_fetch(av, 0, 0);
-      if (! (sv && SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV))
-        croak("Serialize method is not a code reference");
-      memd->serialize_method = SvRV(sv);
-
-      sv = *av_fetch(av, 1, 0);
-      if (! (sv && SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVCV))
-        croak("Deserialize method is not a code reference");
-      memd->deserialize_method = SvRV(sv);
+      memd->serialize_method = newSVsv(*av_fetch(av, 0, 0));
+      memd->deserialize_method = newSVsv(*av_fetch(av, 1, 0));
     }
 
   if (! memd->serialize_method)
