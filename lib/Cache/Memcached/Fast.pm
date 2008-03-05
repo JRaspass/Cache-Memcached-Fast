@@ -28,7 +28,7 @@ our $VERSION = '0.09';
   my $memd = new Cache::Memcached::Fast({
       servers => [ { address => 'localhost:11211', weight => 2.5 },
                    '192.168.254.2:11211',
-                   { address => '/path/to/unix.sock' } ],
+                   { address => '/path/to/unix.sock', noreply => 1 } ],
       namespace => 'my:',
       connect_timeout => 0.2,
       io_timeout => 0.5,
