@@ -17,7 +17,7 @@ use strict;
 # doesn't adopt to it right away.  Instead, for some time a lot of
 # small-range ACK packets are being sent, and this increases the
 # latency.  Because of this '*_multi (%h)', which comes first, has
-# bigger wallclock time than '*_multi (%h)', which comes next.  I
+# bigger wallclock time than '*_multi (@h)', which comes next.  I
 # tried pre-warming the connection, but this doesn't help in all
 # cases.  Seems like 'noreply' mode is also affected, and maybe
 # 'nowait'.
@@ -295,4 +295,16 @@ srand(1);
 foreach my $args (@methods) {
     my $sub = splice(@$args, 1, 1);
     &$sub(@$args);
+}
+
+
+# Benchmark latency issues.
+if ($noreply) {
+    cmpthese(timethese($count, {
+        "set noreply followed by get"
+            => sub {
+                $new_noreply->set('snfbg', $value);
+                my $res = $new_noreply->get('snfbg');
+            }
+    }));
 }
