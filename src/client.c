@@ -38,6 +38,8 @@
 #include <sys/socket.h>
 #include <signal.h>
 #include <time.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 
 
 #ifndef MAX_IOVEC
@@ -93,6 +95,9 @@ enum command_phase
 };
 
 
+enum socket_mode_e { NOT_TCP = -1, TCP_LATENCY, TCP_THROUGHPUT };
+
+
 struct client;
 
 
@@ -100,6 +105,7 @@ struct command_state
 {
   struct client *client;
   int fd;
+  enum socket_mode_e socket_mode;
   int noreply;
   int last_cmd_noreply;
 
@@ -1518,6 +1524,44 @@ client_execute(struct client *c)
 }
 
 
+/* Is the following required for any platform?  */
+#if (! defined(IPPROTO_TCP) && defined(SOL_TCP))
+#define IPPROTO_TCP  SOL_TCP
+#endif
+
+
+static inline
+void
+tcp_optimize_latency(struct command_state *state)
+{
+#ifdef TCP_NODELAY
+  if (state->socket_mode == TCP_THROUGHPUT)
+    {
+      static const int enable = 1;
+      setsockopt(state->fd, IPPROTO_TCP, TCP_NODELAY,
+                 &enable, sizeof(enable));
+      state->socket_mode = TCP_LATENCY;
+    }
+#endif /* TCP_NODELAY */
+}
+
+
+static inline
+void
+tcp_optimize_throughput(struct command_state *state)
+{
+#ifdef TCP_NODELAY
+  if (state->socket_mode == TCP_LATENCY)
+    {
+      static const int disable = 0;
+      setsockopt(state->fd, IPPROTO_TCP, TCP_NODELAY,
+                 &disable, sizeof(disable));
+      state->socket_mode = TCP_THROUGHPUT;
+    }
+#endif /* TCP_NODELAY */
+}
+
+
 static
 int
 get_server_fd(struct client *c, struct server *s)
@@ -1543,10 +1587,14 @@ get_server_fd(struct client *c, struct server *s)
         {
           state->fd = client_connect_inet(s->host, s->port,
                                           1, c->connect_timeout);
+          /* This is to trigger actual reset.  */
+          state->socket_mode = TCP_THROUGHPUT;
+          tcp_optimize_latency(state);
         }
       else
         {
           state->fd = client_connect_unix(s->host, s->host_len);
+          state->socket_mode = NOT_TCP;
         }
     }
 
@@ -1608,13 +1656,17 @@ init_state(struct command_state *state, int index, size_t request_size,
       if (state->client->noreply)
         {
           if (state->client->nowait || state->noreply)
-            parse_reply = NULL;
+            {
+              parse_reply = NULL;
+              tcp_optimize_throughput(state);
+            }
 
           state->last_cmd_noreply = state->noreply;
         }
       else
         {
           state->last_cmd_noreply = 0;
+          tcp_optimize_latency(state);
         }
 
       state->object = state->client->object;
@@ -2007,6 +2059,7 @@ client_nowait_push(struct client *c)
       */
       --state->nowait_count;
       command_state_reset(state, 0, parse_nowait_reply);
+      tcp_optimize_latency(state);
       ++state->reply_count;
     }
 
