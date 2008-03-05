@@ -282,6 +282,10 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
   if (ps && SvOK(*ps))
     client_set_nowait(c, SvTRUE(*ps));
 
+  ps = hv_fetch(conf, "hash_namespace", 14, 0);
+  if (ps && SvOK(*ps))
+    client_set_hash_namespace(c, SvTRUE(*ps));
+
   parse_compress(memd, conf);
   parse_serialize(memd, conf);
 }

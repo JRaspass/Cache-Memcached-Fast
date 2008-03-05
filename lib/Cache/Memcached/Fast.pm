@@ -41,6 +41,7 @@ our $VERSION = '0.09';
       failure_timeout => 2,
       ketama_points => 150,
       nowait => 1,
+      hash_namespace => 1,
       serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
       utf8 => ($^V ge v5.8.1 ? 1 : 0),
   });
@@ -185,6 +186,36 @@ client will eventually block.  Use with care.
 The value is a scalar that will be prepended to all key names passed
 to the B<memcached> server.  By using different namespaces clients
 avoid interference with each other.
+
+
+=item I<hash_namespace>
+
+  hash_namespace => 1
+  (default: disabled)
+
+The value is a boolean which enables (true) or disables (false) the
+hashing of the namespace key prefix.  By default for compatibility
+with B<Cache::Memcached> namespace prefix is not hashed along with the
+key.  Thus
+
+  namespace => 'prefix/',
+  ...
+  $memd->set('key', $val);
+
+may use different B<memcached> server than
+
+  namespace => '',
+  ...
+  $memd->set('prefix/key', $val);
+
+because hash values of I<'key'> and I<'prefix/key'> may be different.
+
+However sometimes is it necessary to hash the namespace prefix, for
+instance for interoperability with other clients that do not have the
+notion of the namespace.  When I<hash_namespace> is enabled, both
+examples above will use the same server, the one that I<'prefix/key'>
+is mapped to.  Note that there's no performance penalty then, as
+namespace prefix is hashed only once.  See L</namespace>.
 
 
 =item I<nowait>
@@ -445,6 +476,7 @@ our %known_params = (
     servers => [ { address => 1, weight => 1, noreply => 1 } ],
     namespace => 1,
     nowait => 1,
+    hash_namespace => 1,
     connect_timeout => 1,
     io_timeout => 1,
     select_timeout => 1,

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -33,6 +33,7 @@ struct dispatch_state
   struct array buckets;
   double total_weight;
   int ketama_points;
+  unsigned int prefix_crc32;
 };
 
 
@@ -47,6 +48,10 @@ dispatch_destroy(struct dispatch_state *state);
 extern
 void
 dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points);
+
+extern
+void
+dispatch_set_prefix_crc32(struct dispatch_state *state, unsigned int crc32);
 
 extern
 int

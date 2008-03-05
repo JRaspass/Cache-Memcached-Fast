@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -119,7 +119,7 @@ compatible_get_server(struct dispatch_state *state,
     server index.
   */
   struct continuum_point *p;
-  unsigned int crc32 = compute_crc32(key, key_len);
+  unsigned int crc32 = compute_crc32_add(state->prefix_crc32, key, key_len);
   unsigned int hash = ((crc32 >> 16) & 0x00007fff);
   unsigned int point = hash % (unsigned int) (state->total_weight + 0.5);
 
@@ -222,7 +222,7 @@ int
 ketama_crc32_get_server(struct dispatch_state *state,
                         const char *key, size_t key_len)
 {
-  unsigned int point = compute_crc32(key, key_len);
+  unsigned int point = compute_crc32_add(state->prefix_crc32, key, key_len);
   struct continuum_point *p = dispatch_find_bucket(state, point);
   return p->index;
 }
@@ -234,6 +234,7 @@ dispatch_init(struct dispatch_state *state)
   array_init(&state->buckets);
   state->total_weight = 0.0;
   state->ketama_points = 0;
+  state->prefix_crc32 = 0x0U;
 }
 
 
@@ -248,6 +249,13 @@ void
 dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points)
 {
   state->ketama_points = ketama_points;
+}
+
+
+void
+dispatch_set_prefix_crc32(struct dispatch_state *state, unsigned int crc32)
+{
+  state->prefix_crc32 = crc32;
 }
 
 

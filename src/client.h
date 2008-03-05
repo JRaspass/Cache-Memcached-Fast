@@ -143,6 +143,10 @@ client_set_nowait(struct client *c, int enable);
 
 extern
 void
+client_set_hash_namespace(struct client *c, int enable);
+
+extern
+void
 client_reset(struct client *c, struct result_object *o, int noreply);
 
 extern

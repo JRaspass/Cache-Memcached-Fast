@@ -26,6 +26,7 @@
 #include "connect.h"
 #include "parse_keyword.h"
 #include "dispatch_key.h"
+#include "compute_crc32.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/uio.h>
@@ -255,6 +256,7 @@ struct client
   int failure_timeout;          /* 1 sec.  */
   int close_on_error;
   int nowait;
+  int hash_namespace;
 
   struct array index_list;
   struct array str_buf;
@@ -351,6 +353,7 @@ client_init()
   c->failure_timeout = 10;
   c->close_on_error = 1;
   c->nowait = 0;
+  c->hash_namespace = 0;
 
   c->generation = 1;            /* Different from initial command state.  */
 
@@ -444,6 +447,13 @@ client_set_nowait(struct client *c, int enable)
 }
 
 
+void
+client_set_hash_namespace(struct client *c, int enable)
+{
+  c->hash_namespace = enable;
+}
+
+
 int
 client_add_server(struct client *c, const char *host, size_t host_len,
                   const char *port, size_t port_len, double weight,
@@ -486,6 +496,10 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
           c->prefix = " ";
           c->prefix_len = 1;
         }
+
+      if (c->hash_namespace)
+        dispatch_set_prefix_crc32(&c->dispatch, 0x0U);
+
       return MEMCACHED_SUCCESS;
     }
 
@@ -501,6 +515,9 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
 
   c->prefix = s;
   c->prefix_len = 1 + ns_len;
+
+  if (c->hash_namespace)
+    dispatch_set_prefix_crc32(&c->dispatch, compute_crc32(ns, ns_len));
 
   return MEMCACHED_SUCCESS;
 }
