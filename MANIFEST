@@ -12,7 +12,6 @@ t/01-connect.t
 t/02-isa.t
 t/big_value.t
 t/commands.t
-t/encoding.t
 t/key_ref.t
 t/namespace.t
 t/nowait.t
