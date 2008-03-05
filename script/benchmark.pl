@@ -26,7 +26,6 @@ use strict;
 use constant default_iteration_count => 1_000;
 use constant key_count => 100;
 use constant NOWAIT => 1;
-use constant NOREPLY => 0;
 
 my $value = 'x' x 40;
 
@@ -98,8 +97,20 @@ if (keys %$version != @addrs) {
     exit 1;
 }
 
+my $min_version = 2 ** 31;
+while (my ($s, $v) = each %$version) {
+    if ($v =~ /(\d+)\.(\d+)\.(\d+)/) {
+        my $n = $1 * 10000 + $2 * 100 + $3;
+        $min_version = $n if $n < $min_version;
+    } else {
+        warn "Can't parse version of $s: $v";
+        exit 1;
+    }
+}
 
-@addrs = map { +{ address => $_, noreply => NOREPLY } } @addrs;
+my $noreply = scalar($min_version >= 10205);
+
+@addrs = map { +{ address => $_, noreply => $noreply } } @addrs;
 
 my $new_noreply = new Cache::Memcached::Fast {
     servers   => [@addrs],
@@ -180,7 +191,7 @@ sub run {
 
     my $bench = timethese($count, {@test});
 
-    if (defined $value and NOREPLY) {
+    if (defined $value and $noreply) {
         # We call get('no-such-key') here.  Otherwise the time of
         # sending the requests might be added to the following
         # commands.
@@ -232,7 +243,7 @@ sub run {
 
     merge_hash($bench, timethese($count, {@test}));
 
-    if (defined $value and NOREPLY) {
+    if (defined $value and $noreply) {
         # We call get('no-such-key') here.  Otherwise the time of
         # sending the requests might be added to the following
         # commands.
