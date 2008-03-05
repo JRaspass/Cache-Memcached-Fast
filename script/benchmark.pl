@@ -26,6 +26,7 @@ use strict;
 use constant default_iteration_count => 1_000;
 use constant key_count => 100;
 use constant NOWAIT => 1;
+use constant NOREPLY => 1;
 
 my $value = 'x' x 40;
 
@@ -108,7 +109,7 @@ while (my ($s, $v) = each %$version) {
     }
 }
 
-my $noreply = scalar($min_version >= 10205);
+my $noreply = NOREPLY && $min_version >= 10205;
 
 @addrs = map { +{ address => $_, noreply => $noreply } } @addrs;
 
