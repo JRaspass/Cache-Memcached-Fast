@@ -7,8 +7,6 @@
 
 - In find_bucket() replace binary search with interpolation search.
 
-- Add test for noreply, do not list it in MANIFEST.
-
 - tainted_in, tainted_out parameters.
 
 - 'more' flag for better streaming latency.
