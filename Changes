@@ -1,6 +1,14 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.10  ???
+        - ???
+
+        Changes since 0.09:
+
+        ???
+
+
 0.09  2008-03-06
         - this release makes 'noreply' mode official, and improves
         latency for some command patterns by managing TCP_NODELAY flag.
