@@ -1,8 +1,26 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.09  ???
-        - ???
+0.09  2008-03-06
+        - this release makes 'noreply' mode official, and improves
+        latency for some command patterns by managing TCP_NODELAY flag.
+
+        Changes since 0.08:
+
+        Enable TCP_NODELAY to reduce latency of commands that wait for
+        the reply, and disable it for throughput of commands that don't
+        need any reply.
+
+        t/encoding.t was removed from distribution.  It doesn't work
+        with Perl 5.6, which has no 'encoding' pragma, and I don't
+        know how to fix it (beautifully, there's a number of ugly
+        ways).
+
+        'noreply' mode is documented as the official feature of
+        memcached 1.2.5.  script/benchmark.pl uses it automatically
+        when available.
+
+        Add parameter 'hash_namespace' (see docs).
 
         Add method 'namespace' to get and/or set the namespace prefix.
         This is handy when you "lease" C::M::F object for different

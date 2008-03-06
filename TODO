@@ -26,4 +26,4 @@
 
 - Add benchmark for compression.
 
-- More tests for TCP_NODELAY + TCP_CORK/TCP_NOPUSH.
+- More tests for TCP_CORK/TCP_NOPUSH.
