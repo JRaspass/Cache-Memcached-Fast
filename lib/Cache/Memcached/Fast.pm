@@ -152,7 +152,7 @@ client parameters.  Currently recognized keys are:
 
   servers => [ { address => 'localhost:11211', weight => 2.5 },
                '192.168.254.2:11211',
-               { address => '/path/to/unix.sock' } ],
+               { address => '/path/to/unix.sock', noreply => 1 } ],
   (default: none)
 
 The value is a reference to an array of server addresses.  Each
@@ -590,7 +590,7 @@ I<Return:> none.
 
 =item C<namespace>
 
-  $memd->namespace();
+  $memd->namespace;
   $memd->namespace($string);
 
 Without the argument return the current namespace prefix.  With the
