@@ -24,7 +24,6 @@
 #include "dispatch_key.h"
 #include "compute_crc32.h"
 #include <string.h>
-#include <stdlib.h>
 
 
 /*
