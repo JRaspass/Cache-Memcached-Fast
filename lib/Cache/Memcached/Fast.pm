@@ -1358,7 +1358,7 @@ management, design suggestions, testing.
 
 =head1 ACKNOWLEDGEMENTS
 
-Development of this module is sponsored by S<Monashev Co. Ltd.>
+Development of this module was sponsored by S<Monashev Co. Ltd.>
 
 Thanks to S<Peter J. Holzer> for enlightening on UTF-8 support.
 
