@@ -58,11 +58,21 @@ dispatch_find_bucket(struct dispatch_state *state, unsigned int point)
     {
       struct continuum_point *middle = left + (right - left) / 2;
       if (middle->point < point)
-        left = middle + 1;
+        {
+          left = middle + 1;
+        }
       else if (middle->point > point)
-        right = middle;
+        {
+          right = middle;
+        }
       else
-        return middle;
+        {
+          /* Find the first point for this value.  */
+          while (middle != beg && (middle - 1)->point == point)
+            --middle;
+
+          return middle;
+        }
     }
 
   /* Wrap around.  */
