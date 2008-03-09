@@ -121,7 +121,7 @@ compatible_get_server(struct dispatch_state *state,
   /*
     For compatibility with Cache::Memcached we do the following: first
     we compute 'hash' the same way the original module does.  Since
-    that module put 'weight' copies of each the server into buckets
+    that module puts 'weight' copies of each server into buckets
     array, our '(unsigned int) (state->total_weight + 0.5)' is equal
     to the number of such buckets (0.5 is there for proper rounding).
     Then we scale 'point' to the continuum, and since each server
