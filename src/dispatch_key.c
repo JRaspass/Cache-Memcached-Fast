@@ -185,32 +185,31 @@ ketama_crc32_add_server(struct dispatch_state *state,
 
       if (! array_empty(state->buckets))
         {
+          struct continuum_point *end =
+            array_end(state->buckets, struct continuum_point);
+
           p = dispatch_find_bucket(state, point);
 
           /* Check if we wrapped around but actually have new max point.  */
           if (p == array_beg(state->buckets, struct continuum_point)
               && point > p->point)
             {
-              p = array_end(state->buckets, struct continuum_point);
+              p = end;
             }
           else
             {
-              if (point == p->point)
-                {
-                  /*
-                    Even if there's a server for the same point
-                    already, we have to add ours, because the first
-                    one may be removed later.  But we add ours after
-                    the first server for not to change key
-                    distribution.
-                  */
-                  ++p;
-                }
+              /*
+                Even if there's a server for the same point already,
+                we have to add ours, because the first one may be
+                removed later.  But we add ours after the old servers
+                for not to change key distribution.
+              */
+              while (p != end && p->point == point)
+                ++p;
 
               /* Move the tail one position forward.  */
-              memmove(p + 1, p,
-                      ((array_end(state->buckets, struct continuum_point) - p)
-                       * sizeof(*p)));
+              if (p != end)
+                memmove(p + 1, p, (end - p) * sizeof(*p));
             }
         }
       else
