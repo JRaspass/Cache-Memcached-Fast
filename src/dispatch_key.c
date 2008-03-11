@@ -99,9 +99,9 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
     return -1;
 
   state->total_weight += weight;
-  scale = (1 - weight / state->total_weight);
+  scale = 1 - weight / state->total_weight;
   for (array_each(state->buckets, struct continuum_point, p))
-    p->point = ((double) p->point * scale + 0.5);
+    p->point = (double) p->point * scale + 0.5;
 
   /* Here p points to array_end().  */
   p->point = DISPATCH_MAX_POINT;
@@ -129,10 +129,10 @@ compatible_get_server(struct dispatch_state *state,
   */
   struct continuum_point *p;
   unsigned int crc32 = compute_crc32_add(state->prefix_crc32, key, key_len);
-  unsigned int hash = ((crc32 >> 16) & 0x00007fff);
+  unsigned int hash = (crc32 >> 16) & 0x00007fff;
   unsigned int point = hash % (unsigned int) (state->total_weight + 0.5);
 
-  point = ((double) point / state->total_weight * DISPATCH_MAX_POINT + 0.5);
+  point = (double) point / state->total_weight * DISPATCH_MAX_POINT + 0.5;
   /*
     Shift point one step forward to possibly get from the border point
     which belongs to the previous bucket.
@@ -155,7 +155,7 @@ ketama_crc32_add_server(struct dispatch_state *state,
   unsigned int crc32;
   int count, i;
 
-  count = (state->ketama_points * weight + 0.5);
+  count = state->ketama_points * weight + 0.5;
 
   if (array_extend(state->buckets, struct continuum_point,
                    count, ARRAY_EXTEND_EXACT) == -1)
