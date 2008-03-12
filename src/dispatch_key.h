@@ -34,6 +34,7 @@ struct dispatch_state
   double total_weight;
   int ketama_points;
   unsigned int prefix_hash;
+  int server_count;
 };
 
 

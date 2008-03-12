@@ -108,6 +108,8 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
   p->index = index;
   array_push(state->buckets);
 
+  ++state->server_count;
+
   return 0;
 }
 
@@ -221,6 +223,8 @@ ketama_crc32_add_server(struct dispatch_state *state,
       array_push(state->buckets);
     }
 
+  ++state->server_count;
+
   return 0;
 }
 
@@ -243,6 +247,7 @@ dispatch_init(struct dispatch_state *state)
   state->total_weight = 0.0;
   state->ketama_points = 0;
   state->prefix_hash = 0x0U;
+  state->server_count = 0;
 }
 
 
@@ -285,10 +290,10 @@ dispatch_add_server(struct dispatch_state *state,
 int
 dispatch_key(struct dispatch_state *state, const char *key, size_t key_len)
 {
-  if (array_empty(state->buckets))
+  if (state->server_count == 0)
     return -1;
 
-  if (array_size(state->buckets) == 1)
+  if (state->server_count == 1)
     {
       struct continuum_point *p =
         array_beg(state->buckets, struct continuum_point);
