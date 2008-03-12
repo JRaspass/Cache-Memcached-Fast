@@ -261,9 +261,10 @@ dispatch_set_ketama_points(struct dispatch_state *state, int ketama_points)
 
 
 void
-dispatch_set_prefix_crc32(struct dispatch_state *state, unsigned int crc32)
+dispatch_set_prefix(struct dispatch_state *state,
+                    const char *prefix, size_t prefix_len)
 {
-  state->prefix_crc32 = crc32;
+  state->prefix_crc32 = compute_crc32(prefix, prefix_len);
 }
 
 

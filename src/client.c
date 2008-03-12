@@ -26,7 +26,6 @@
 #include "connect.h"
 #include "parse_keyword.h"
 #include "dispatch_key.h"
-#include "compute_crc32.h"
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/uio.h>
@@ -504,7 +503,7 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
         }
 
       if (c->hash_namespace)
-        dispatch_set_prefix_crc32(&c->dispatch, 0x0U);
+        dispatch_set_prefix(&c->dispatch, "", 0);
 
       return MEMCACHED_SUCCESS;
     }
@@ -523,7 +522,7 @@ client_set_prefix(struct client *c, const char *ns, size_t ns_len)
   c->prefix_len = 1 + ns_len;
 
   if (c->hash_namespace)
-    dispatch_set_prefix_crc32(&c->dispatch, compute_crc32(ns, ns_len));
+    dispatch_set_prefix(&c->dispatch, ns, ns_len);
 
   return MEMCACHED_SUCCESS;
 }
