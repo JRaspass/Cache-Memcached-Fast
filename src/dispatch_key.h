@@ -33,7 +33,7 @@ struct dispatch_state
   struct array buckets;
   double total_weight;
   int ketama_points;
-  unsigned int prefix_crc32;
+  unsigned int prefix_hash;
 };
 
 

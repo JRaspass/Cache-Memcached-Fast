@@ -128,7 +128,7 @@ compatible_get_server(struct dispatch_state *state,
     server index.
   */
   struct continuum_point *p;
-  unsigned int crc32 = compute_crc32_add(state->prefix_crc32, key, key_len);
+  unsigned int crc32 = compute_crc32_add(state->prefix_hash, key, key_len);
   unsigned int hash = (crc32 >> 16) & 0x00007fff;
   unsigned int point = hash % (unsigned int) (state->total_weight + 0.5);
 
@@ -230,7 +230,7 @@ int
 ketama_crc32_get_server(struct dispatch_state *state,
                         const char *key, size_t key_len)
 {
-  unsigned int point = compute_crc32_add(state->prefix_crc32, key, key_len);
+  unsigned int point = compute_crc32_add(state->prefix_hash, key, key_len);
   struct continuum_point *p = dispatch_find_bucket(state, point);
   return p->index;
 }
@@ -242,7 +242,7 @@ dispatch_init(struct dispatch_state *state)
   array_init(&state->buckets);
   state->total_weight = 0.0;
   state->ketama_points = 0;
-  state->prefix_crc32 = 0x0U;
+  state->prefix_hash = 0x0U;
 }
 
 
@@ -264,7 +264,7 @@ void
 dispatch_set_prefix(struct dispatch_state *state,
                     const char *prefix, size_t prefix_len)
 {
-  state->prefix_crc32 = compute_crc32(prefix, prefix_len);
+  state->prefix_hash = compute_crc32(prefix, prefix_len);
 }
 
 
