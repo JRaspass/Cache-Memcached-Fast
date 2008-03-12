@@ -1,6 +1,6 @@
 #! /usr/bin/perl
 #
-# Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+# Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the same terms as Perl itself, either Perl version 5.8.8
@@ -69,27 +69,9 @@ $gen_comment
 #include "$file_h"
 
 
-static const unsigned int crc32lookup[256] = {
+const unsigned int crc32lookup[256] = {
   $table
 };
-
-
-unsigned int
-compute_crc32_add(unsigned int crc32, const char *s, size_t len)
-{
-  const char *end = s + len;
-
-  crc32 = ~crc32;
-
-  while (s < end)
-    {
-      unsigned int index = (crc32 ^ (unsigned char) *s) & 0x000000ffU;
-      crc32 = (crc32 >> 8) ^ crc32lookup[index];
-      ++s;
-    }
-
-  return (~crc32);
-}
 EOF
 
 close($fc)
@@ -111,16 +93,28 @@ $gen_comment
 #include <stddef.h>
 
 
-extern
-unsigned int
-compute_crc32_add(unsigned int crc32, const char *s, size_t len);
+extern const unsigned int crc32lookup[];
 
+
+#define compute_crc32(s, l)                                      \\
+  compute_crc32_add(@{[ sprintf("0x%08xU", $init) ]}, (s), (l))
 
 static inline
 unsigned int
-compute_crc32(const char *s, size_t len)
+compute_crc32_add(unsigned int crc32, const char *s, size_t len)
 {
-  return compute_crc32_add(@{[ sprintf("0x%08xU", $init) ]}, s, len);
+  const char *end = s + len;
+
+  crc32 = ~crc32;
+
+  while (s < end)
+    {
+      unsigned int index = (crc32 ^ (unsigned char) *s) & 0x000000ffU;
+      crc32 = (crc32 >> 8) ^ crc32lookup[index];
+      ++s;
+    }
+
+  return (~crc32);
 }
 
 
