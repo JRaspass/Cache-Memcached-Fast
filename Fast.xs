@@ -214,6 +214,10 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
         croak("client_set_ketama() failed");
     }
 
+  ps = hv_fetch(conf, "hash_namespace", 14, 0);
+  if (ps && SvOK(*ps))
+    client_set_hash_namespace(c, SvTRUE(*ps));
+
   ps = hv_fetch(conf, "servers", 7, 0);
   if (ps && SvOK(*ps))
     {
@@ -272,10 +276,6 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
   ps = hv_fetch(conf, "nowait", 6, 0);
   if (ps && SvOK(*ps))
     client_set_nowait(c, SvTRUE(*ps));
-
-  ps = hv_fetch(conf, "hash_namespace", 14, 0);
-  if (ps && SvOK(*ps))
-    client_set_hash_namespace(c, SvTRUE(*ps));
 
   parse_compress(memd, conf);
   parse_serialize(memd, conf);

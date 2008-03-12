@@ -103,6 +103,14 @@ extern
 int
 client_set_ketama_points(struct client *c, int ketama_points);
 
+/*
+  client_set_hash_namespace() should be called before setting the
+  namespace.
+*/
+extern
+void
+client_set_hash_namespace(struct client *c, int enable);
+
 extern
 int
 client_add_server(struct client *c, const char *host, size_t host_len,
@@ -140,10 +148,6 @@ client_set_close_on_error(struct client *c, int enable);
 extern
 void
 client_set_nowait(struct client *c, int enable);
-
-extern
-void
-client_set_hash_namespace(struct client *c, int enable);
 
 extern
 void
