@@ -14,7 +14,6 @@ WriteMakefile(
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
     OBJECT            => 'parse_keyword$(OBJ_EXT) compute_crc32$(OBJ_EXT)
                           $(O_FILES)',
-    OPTIMIZE          => '-g -O3',
 );
 
 sub MY::top_targets {

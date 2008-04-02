@@ -14,7 +14,6 @@ WriteMakefile(
     ABSTRACT_FROM     => 'lib/Cache/Memcached/Fast.pm',
     AUTHOR            => 'Tomash Brechko <tomash.brechko@gmail.com>',
     MYEXTLIB          => 'src/libclient$(LIB_EXT)',
-    OPTIMIZE          => '-g -O3',
 );
 
 sub MY::postamble {
