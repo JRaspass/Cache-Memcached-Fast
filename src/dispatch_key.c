@@ -131,7 +131,7 @@ compatible_get_server(struct dispatch_state *state,
   */
   struct continuum_point *p;
   unsigned int crc32 = compute_crc32_add(state->prefix_hash, key, key_len);
-  unsigned int hash = (crc32 >> 16) & 0x00007fff;
+  unsigned int hash = (crc32 >> 16) & 0x00007fffU;
   unsigned int point = hash % (unsigned int) (state->total_weight + 0.5);
 
   point = (double) point / state->total_weight * DISPATCH_MAX_POINT + 0.5;
