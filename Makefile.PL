@@ -19,6 +19,6 @@ WriteMakefile(
 sub MY::postamble {
 '
 $(MYEXTLIB): src/Makefile
-	cd src && $(MAKE) $(PASSTHRU)
+	cd src && $(MAKE) $(PASTHRU)
 '
 }
