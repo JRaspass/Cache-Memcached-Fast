@@ -99,7 +99,7 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
     return -1;
 
   state->total_weight += weight;
-  scale = 1 - weight / state->total_weight;
+  scale = weight / state->total_weight;
   /*
     Note that during iterative scaling below the rounding error
     accumulates.  However the offset to the smaller values is alright
@@ -108,7 +108,7 @@ compatible_add_server(struct dispatch_state *state, double weight, int index)
     ratios.
   */
   for (array_each(state->buckets, struct continuum_point, p))
-    p->point = (double) p->point * scale;
+    p->point -= (double) p->point * scale;
 
   /* Here p points to array_end().  */
   p->point = DISPATCH_MAX_POINT;
