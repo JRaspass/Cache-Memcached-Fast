@@ -1,13 +1,26 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.10  ???
-        - ???
+0.10  2008-05-01
+        - this is a bugfix release fixing key distribution in
+        compatible mode (reported by Anton Yuzhaninov---thanks!), and
+        minor fixes in Ketama mode for collision case (very rare).
 
         Changes since 0.09:
 
-        ???
+        Fix key distribution bug in compatible mode.  Because of
+        accumulated rounding error some keys were mapped to the
+        different server than with Cache::Memcached.
 
+        Remove explicit OPTIMIZE setting from the makefiles.  It ought
+        to be set explicitly by the user.  You can run 'perl -V:optimize'  
+        to learn the default.  It is safe to increase optimization
+        level to -O3.
+
+        Fix hash_namespace parameter: it didn't work for the namespace
+        specified in the constructor.
+
+        Minor fixes in Ketama mode for rare collision case.
 
 0.09  2008-03-06
         - this release makes 'noreply' mode official, and improves
