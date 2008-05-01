@@ -1,5 +1,12 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
+0.11  ???
+        - ???
+
+        Changes since 0.10:
+
+        ???
+
 
 0.10  2008-05-01
         - this is a bugfix release fixing key distribution in
@@ -21,6 +28,7 @@ Revision history for Perl extension Cache::Memcached::Fast.
         specified in the constructor.
 
         Minor fixes in Ketama mode for rare collision case.
+
 
 0.09  2008-03-06
         - this release makes 'noreply' mode official, and improves
