@@ -44,6 +44,7 @@ our $VERSION = '0.11';
       hash_namespace => 1,
       serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
       utf8 => ($^V ge v5.8.1 ? 1 : 0),
+      max_size => 512 * 1024,
   });
 
   # Get server versions.
@@ -448,6 +449,23 @@ retrieved data is marked as being UTF-8 octet sequence).  See
 L<perlunicode|perlunicode>.
 
 
+=item I<max_size>
+
+  max_size => 512 * 1024
+  (default: 1024 * 1024)
+
+The value is a maximum size of an item to be stored in memcached.
+When trying to set a key to a value longer than I<max_size> bytes
+(after serialization and compression) nothing is sent to the server,
+and I<set> methods return I<undef>.
+
+Note that the real maximum on the server is less than 1MB, and depends
+on key length among other things.  So some values in the range
+S<I<[1MB - N bytes, 1MB]>>, where N is several hundreds, will still be
+sent to the server, and rejected there.  You may set I<max_size> to a
+smaller value to avoid this.
+
+
 =item I<check_args>
 
   check_args => 'skip'
@@ -492,6 +510,7 @@ our %known_params = (
     ketama_points => 1,
     serialize_methods => 1,
     utf8 => 1,
+    max_size => 1,
     check_args => 1,
 );
 

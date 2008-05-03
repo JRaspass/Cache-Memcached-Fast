@@ -5,7 +5,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.10:
 
-        ???
+        Add new parameter max_size (suggested by Alex Kapranoff, see
+        http://rt.cpan.org/Ticket/Display.html?id=35588).
 
 
 0.10  2008-05-01
