@@ -14,8 +14,8 @@ WriteMakefile(
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
     OBJECT            => 'parse_keyword$(OBJ_EXT) compute_crc32$(OBJ_EXT)
                           $(O_FILES)',
-    clean             => { FILES => 'compute_crc32.c compute_crc32.h
-                                     parse_keyword.c parse_keyword.h' },
+    clean             => { FILES => 'compute_crc32.c compute_crc32.h'
+                               . ' parse_keyword.c parse_keyword.h' },
 );
 
 sub MY::top_targets {
