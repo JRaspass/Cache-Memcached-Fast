@@ -56,8 +56,8 @@ typedef int exptime_type;
 typedef unsigned int delay_type;
 #define FMT_DELAY "%u"
 
-typedef size_t value_size_type;
-#define FMT_VALUE_SIZE "%zu"
+typedef unsigned long value_size_type;
+#define FMT_VALUE_SIZE "%lu"
 
 typedef unsigned long long cas_type;
 #define FMT_CAS "%llu"
