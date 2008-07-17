@@ -1,12 +1,20 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
-0.11  ???
-        - ???
+0.11  2008-07-17
+        - this release fixes %zu problem on Solaris.
 
         Changes since 0.10:
 
+        Replace size_t/%zu with unsigned long/%lu for benefit of
+        systems that do not recognize the former format (Solaris 9).
+        Thanks to Michael Vychizhanin!
+
         Add new parameter max_size (suggested by Alex Kapranoff, see
-        http://rt.cpan.org/Ticket/Display.html?id=35588).
+        RT#35588, http://rt.cpan.org/Ticket/Display.html?id=35588).
+
+        Fix RT#36074 (http://rt.cpan.org/Ticket/Display.html?id=36074):
+        ExtUtils::MakeMaker version 6.17 and below generated invalid
+        Makefile.
 
 
 0.10  2008-05-01
