@@ -1,5 +1,13 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
+0.12  ???
+        - ???
+
+        Changes since 0.11:
+
+        ???
+
+
 0.11  2008-07-17
         - this release fixes %zu problem on Solaris.
 
