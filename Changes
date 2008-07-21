@@ -1,11 +1,25 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
-0.12  ???
-        - ???
+0.12  2008-07-21
+        - this release fixes compilation on Solaris broken in 0.11.
+        If you were able to compile 0.11, then you weren't affected.
 
         Changes since 0.11:
 
-        ???
+        Fix compilation on Solaris.  Ironically, 0.11 was supposed to
+        fix unrecognized format problem on Solaris, but instead broke
+        the compilation.  Back in May the line
+
+          return XSRETURN_EMPTY;
+
+        has been introduced to the code, whereas it should be
+
+          XSRETURN_EMPTY;
+
+        It went unnoticed because expansion produces the code
+        permitted by compilers like GCC that allow blocks to return a
+        value.  But Perl on Solaris has a different definition of this
+        macro that is not an expression.  Hence the problem.
 
 
 0.11  2008-07-17
