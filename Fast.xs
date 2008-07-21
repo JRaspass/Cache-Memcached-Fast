@@ -684,7 +684,7 @@ set(memd, ...)
         sv = compress(memd, sv, &flags);
         buf = (void *) SvPV(sv, buf_len);
         if (buf_len > memd->max_size)
-          return XSRETURN_EMPTY;
+          XSRETURN_EMPTY;
         if (items > arg)
           {
             /* exptime doesn't have to be defined.  */
