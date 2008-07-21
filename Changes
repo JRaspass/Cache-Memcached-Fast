@@ -1,5 +1,13 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
+0.13  ???
+        - ???
+
+        Changes since 0.12:
+
+        ???
+
+
 0.12  2008-07-21
         - this release fixes compilation on Solaris broken in 0.11.
         If you were able to compile 0.11, then you weren't affected.
