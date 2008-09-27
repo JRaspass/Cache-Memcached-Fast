@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -22,22 +22,9 @@
 */
 
 #include "connect.h"
-#include <netdb.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-
-
-/*
-  http://www.opengroup.org/onlinepubs/009695399/basedefs/sys/un.h.html
-  says 92 is a rather safe value.
-*/
-#define SAFE_UNIX_PATH_MAX  92
+#include <netdb.h>
+#include "socket_posix.h"
 
 
 int
@@ -70,7 +57,6 @@ client_connect_inet(const char *host, const char *port, int stream,
 
   for (a = addr; a != NULL; a = a->ai_next)
     {
-      int flags;
       fd_set write_set;
       int socket_error;
       socklen_t socket_error_len;
@@ -79,8 +65,7 @@ client_connect_inet(const char *host, const char *port, int stream,
       if (fd == -1)
         break;
 
-      flags = fcntl(fd, F_GETFL);
-      res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+      res = set_nonblock(fd);
       if (res != 0)
         {
           close(fd);
@@ -136,28 +121,5 @@ client_connect_inet(const char *host, const char *port, int stream,
 int
 client_connect_unix(const char *path, size_t path_len)
 {
-  int fd, res, flags;
-  struct sockaddr_un s_unix;
-
-  if (path_len >= SAFE_UNIX_PATH_MAX)
-    return -1;
-
-  fd = socket(PF_UNIX, SOCK_STREAM, 0);
-  if (fd == -1)
-    return -1;
-
-  s_unix.sun_family = AF_UNIX;
-  memcpy(s_unix.sun_path, path, path_len);
-  s_unix.sun_path[path_len] = '\0';
-
-  res = connect(fd, (const struct sockaddr *) &s_unix, sizeof(s_unix));
-  if (res != 0)
-    return -1;
-
-  flags = fcntl(fd, F_GETFL);
-  res = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-  if (res != 0)
-    return -1;
-
-  return fd;
+  return connect_unix(path, path_len);
 }

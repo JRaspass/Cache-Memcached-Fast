@@ -33,3 +33,5 @@ src/connect.h
 src/connect.c
 src/dispatch_key.c
 src/dispatch_key.h
+src/socket_posix.c
+src/socket_posix.h
