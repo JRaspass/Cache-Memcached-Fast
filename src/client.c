@@ -29,12 +29,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#ifndef WIN32
 #include <sys/uio.h>
 #include <signal.h>
 #include <time.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include "socket_posix.h"
+#else  /* WIN32 */
+#include "socket_win32.h"
+#endif  /* WIN32 */
 
 
 #ifndef MAX_IOVEC
@@ -336,6 +340,11 @@ next_index(struct command_state *state)
 struct client *
 client_init()
 {
+#ifdef WIN32
+  if (win32_socket_library_acquire() != 0)
+    return NULL;
+#endif  /* WIN32 */
+
   struct client *c = malloc(sizeof(struct client));
   if (! c)
     return NULL;
@@ -390,6 +399,10 @@ client_destroy(struct client *c)
   if (c->prefix_len > 1)
     free(c->prefix);
   free(c);
+
+#ifdef WIN32
+  win32_socket_library_release();
+#endif  /* WIN32 */
 }
 
 
@@ -1370,7 +1383,7 @@ client_execute(struct client *c)
   fd_set write_set, read_set;
   int first_iter = 1;
 
-#ifndef MSG_NOSIGNAL
+#if ! defined(MSG_NOSIGNAL) && ! defined(WIN32)
   struct sigaction orig, ignore;
   int res;
 
@@ -1380,7 +1393,7 @@ client_execute(struct client *c)
   res = sigaction(SIGPIPE, &ignore, &orig);
   if (res == -1)
     return MEMCACHED_FAILURE;
-#endif /* ! MSG_NOSIGNAL */
+#endif /* ! defined(MSG_NOSIGNAL) && ! defined(WIN32) */
 
   while (1)
     {
@@ -1507,13 +1520,13 @@ client_execute(struct client *c)
       first_iter = 0;
     }
 
-#ifndef MSG_NOSIGNAL
+#if ! defined(MSG_NOSIGNAL) && ! defined(WIN32)
   /*
     Ignore return value of sigaction(), there's nothing we can do in
     the case of error.
   */
   sigaction(SIGPIPE, &orig, NULL);
-#endif /* ! MSG_NOSIGNAL */
+#endif /* ! defined(MSG_NOSIGNAL) && ! defined(WIN32) */
 
   return MEMCACHED_SUCCESS;
 }

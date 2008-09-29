@@ -1381,6 +1381,8 @@ Development of this module was sponsored by S<Monashev Co. Ltd.>
 
 Thanks to S<Peter J. Holzer> for enlightening on UTF-8 support.
 
+Thanks to S<Yasuhiro Matsumoto> for initial Win32 patch.
+
 
 =head1 WARRANTY
 

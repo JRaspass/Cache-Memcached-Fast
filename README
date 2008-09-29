@@ -18,9 +18,9 @@ memcached client implementation in C designed for efficient
 interaction with Perl (actually client code has well defined generic
 API and may be used by itself).
 
-The module should compile and work on any Unix-derived system.
-According to CPAN testers it doesn't compile on Windows, patches are
-welcome.
+The module should compile and work on any Unix-derived system.  Win32
+support is based on the patch by Yasuhiro Matsumoto---thanks!, and is
+(expected to be) supported by community.
 
 Despite the low version number (which mainly reflects release history)
 the module is considered to be beta (see BUGS below on how to report

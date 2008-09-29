@@ -3,6 +3,19 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
+
+my @c = ('parse_keyword.c', 'compute_crc32.c', <*.c>);
+my $exclude;
+if ($^O eq 'MSWin32') {
+    $exclude = 'socket_posix.c';
+} else {
+    $exclude = 'socket_win32.c';
+}
+
+my @object = grep { $_ ne $exclude } @c;
+map { s/\.c$/\$(OBJ_EXT)/ } @object;
+
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
@@ -12,8 +25,7 @@ WriteMakefile(
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
-    OBJECT            => 'parse_keyword$(OBJ_EXT) compute_crc32$(OBJ_EXT)
-                          $(O_FILES)',
+    OBJECT            => "@object",
     clean             => { FILES => 'compute_crc32.c compute_crc32.h'
                                . ' parse_keyword.c parse_keyword.h' },
 );
