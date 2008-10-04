@@ -32,8 +32,7 @@
 
 
 int
-client_connect_inet(const char *host, const char *port, int stream,
-                    int timeout)
+client_connect_inet(const char *host, const char *port, int timeout)
 {
   struct addrinfo hint, *addr, *a;
   int fd = -1, res;
@@ -42,7 +41,7 @@ client_connect_inet(const char *host, const char *port, int stream,
 #ifdef AI_ADDRCONFIG  /* NetBSD 3.1 doesn't have this.  */
   hint.ai_flags = AI_ADDRCONFIG;
 #endif /* AI_ADDRCONFIG */
-  hint.ai_socktype = stream ? SOCK_STREAM : SOCK_DGRAM;
+  hint.ai_socktype = SOCK_STREAM;
   res = getaddrinfo(host, port, &hint, &addr);
   if (res != 0)
     {

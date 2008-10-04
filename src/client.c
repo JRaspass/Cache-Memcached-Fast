@@ -1577,7 +1577,7 @@ get_server_fd(struct client *c, struct server *s)
       if (s->port)
         {
           state->fd = client_connect_inet(s->host, s->port,
-                                          1, c->connect_timeout);
+                                          c->connect_timeout);
           /* This is to trigger actual reset.  */
           state->socket_mode = TCP_THROUGHPUT;
           tcp_optimize_latency(state);
