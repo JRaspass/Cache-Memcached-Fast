@@ -57,6 +57,13 @@ connect_unix(const char *path, size_t path_len)
   if (fd == -1)
     return -1;
 
+  if (! can_poll_fd(fd))
+    {
+      close(fd);
+
+      return -1;
+    }
+
   s_unix.sun_family = AF_UNIX;
   memcpy(s_unix.sun_path, path, path_len);
   s_unix.sun_path[path_len] = '\0';

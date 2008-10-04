@@ -2,13 +2,24 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
 0.13  ???
         - introduce Win32 support (based on the patch by Yasuhiro
-          Matsumoto---arigatou!).
+          Matsumoto---arigatou!), and use poll() instead of select()
+          (suggested by Vladimir Timofeev).
 
         Changes since 0.12:
 
         Add support for Win32.  I personally don't have the system nor
         compiler, so I can't even test the build.  Win32 port is
         expected to be supported by community.
+
+        Use poll() system call instead of select().  The latter has
+        the limit on the file descriptor value.  I.e. even when the
+        number of memcached servers is low, if your application opens
+        lots of other files, then after some point socket() returns
+        fd value larger that select() can handle.  poll() doesn't have
+        this limitation.  On a side note, we don't have to use
+        advanced calls like epoll()/kqueue(), because number of
+        memcached servers is normally not very large (and single
+        request touches even a smaller subset).
 
 
 0.12  2008-07-21

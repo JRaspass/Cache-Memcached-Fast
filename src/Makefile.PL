@@ -4,15 +4,25 @@ use warnings;
 use ExtUtils::MakeMaker;
 
 
+my $includes = '/usr/include';
+my @define;
 my @c = ('parse_keyword.c', 'compute_crc32.c', <*.c>);
-my $exclude;
+my %exclude;
 if ($^O eq 'MSWin32') {
-    $exclude = 'socket_posix.c';
+    ++$exclude{'socket_posix.c'};
 } else {
-    $exclude = 'socket_win32.c';
+    ++$exclude{'socket_win32.c'};
+
+    if (-f "$includes/poll.h") {
+        push @define, '-DHAVE_POLL_H';
+        ++$exclude{'poll_select.c'};
+    } elsif (-f "$includes/sys/poll.h") {
+        push @define, '-DHAVE_SYS_POLL_H';
+        ++$exclude{'poll_select.c'};
+    }
 }
 
-my @object = grep { $_ ne $exclude } @c;
+my @object = grep { not exists $exclude{$_} } @c;
 map { s/\.c$/\$(OBJ_EXT)/ } @object;
 
 
@@ -23,7 +33,7 @@ WriteMakefile(
     VERSION_FROM      => '../lib/Cache/Memcached/Fast.pm',
     AUTHOR            => 'Tomash Brechko <tomash.brechko@gmail.com>',
     LIBS              => [''], # e.g., '-lm'
-    DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
+    DEFINE            => "@define", # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
     OBJECT            => "@object",
     clean             => { FILES => 'compute_crc32.c compute_crc32.h'

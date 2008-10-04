@@ -31,6 +31,20 @@
 #include <ws2tcpip.h>
 #include <sys/types.h>
 
+#if _WIN32_WINNT >= 0x0600
+
+#define poll(fds, nfds, timeout)  WSAPoll(fds, nfds, timeout)
+
+#define can_poll_fd(fd)  1
+
+#else  /* ! (_WIN32_WINNT >= 0x0600) */
+
+#include "poll_select.h"
+
+#define poll(fds, nfds, timeout)  poll_select(fds, nfds, timeout)
+
+#endif  /* ! (_WIN32_WINNT >= 0x0600) */
+
 
 #undef  errno
 #define errno  WSAGetLastError()

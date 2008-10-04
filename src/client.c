@@ -104,6 +104,7 @@ struct command_state
 {
   struct client *client;
   int fd;
+  struct pollfd *pollfd;
   enum socket_mode_e socket_mode;
   int noreply;
   int last_cmd_noreply;
@@ -248,6 +249,7 @@ struct index_node
 
 struct client
 {
+  struct array pollfds;
   struct array servers;
 
   struct dispatch_state dispatch;
@@ -349,6 +351,7 @@ client_init()
   if (! c)
     return NULL;
 
+  array_init(&c->pollfds);
   array_init(&c->servers);
   array_init(&c->index_list);
   array_init(&c->str_buf);
@@ -393,6 +396,7 @@ client_destroy(struct client *c)
   dispatch_destroy(&c->dispatch);
 
   array_destroy(&c->servers);
+  array_destroy(&c->pollfds);
   array_destroy(&c->index_list);
   array_destroy(&c->str_buf);
 
@@ -422,14 +426,14 @@ client_set_ketama_points(struct client *c, int ketama_points)
 void
 client_set_connect_timeout(struct client *c, int to)
 {
-  c->connect_timeout = to;
+  c->connect_timeout = (to > 0 ? to : -1);
 }
 
 
 void
 client_set_io_timeout(struct client *c, int to)
 {
-  c->io_timeout = to;
+  c->io_timeout = (to > 0 ? to : -1);
 }
 
 
@@ -478,6 +482,9 @@ client_add_server(struct client *c, const char *host, size_t host_len,
   if (weight <= 0.0)
     return MEMCACHED_FAILURE;
 
+  if (array_extend(c->pollfds, struct pollfd, 1, ARRAY_EXTEND_EXACT) == -1)
+    return MEMCACHED_FAILURE;
+
   if (array_extend(c->servers, struct server, 1, ARRAY_EXTEND_EXACT) == -1)
     return MEMCACHED_FAILURE;
 
@@ -491,6 +498,7 @@ client_add_server(struct client *c, const char *host, size_t host_len,
   if (res == -1)
     return MEMCACHED_FAILURE;
 
+  array_push(c->pollfds);
   array_push(c->servers);
 
   return MEMCACHED_SUCCESS;
@@ -1379,8 +1387,6 @@ state_prepare(struct command_state *state)
 int
 client_execute(struct client *c)
 {
-  struct timeval to, *pto = c->io_timeout > 0 ? &to : NULL;
-  fd_set write_set, read_set;
   int first_iter = 1;
 
 #if ! defined(MSG_NOSIGNAL) && ! defined(WIN32)
@@ -1398,9 +1404,10 @@ client_execute(struct client *c)
   while (1)
     {
       struct server *s;
-      int max_fd, res;
+      struct pollfd *pollfd_beg, *pollfd;
+      int nfds, res;
 
-      max_fd = -1;
+      nfds = 0;
       for (array_each(c->servers, struct server, s))
         {
           int may_write, may_read;
@@ -1419,8 +1426,10 @@ client_execute(struct client *c)
             }
           else
             {
-              may_write = FD_ISSET(state->fd, &write_set);
-              may_read = FD_ISSET(state->fd, &read_set);
+              const short revents = state->pollfd->revents;
+
+              may_write = revents & (POLLOUT | POLLERR | POLLHUP);
+              may_read = revents & (POLLIN | POLLERR | POLLHUP);
             }
 
           if (may_read || may_write)
@@ -1445,50 +1454,44 @@ client_execute(struct client *c)
                 res = process_reply(state, s);
 
               if (is_active(state))
-                {
-                  if (max_fd < state->fd)
-                    max_fd = state->fd;
-                }
+                ++nfds;
             }
           else
             {
-              if (max_fd < state->fd)
-                max_fd = state->fd;
+              ++nfds;
             }
         }
 
-      if (max_fd == -1)
+      if (nfds == 0)
         break;
 
-      FD_ZERO(&write_set);
-      FD_ZERO(&read_set);
+      pollfd_beg = array_beg(c->pollfds, struct pollfd);
+      pollfd = pollfd_beg;
+
       for (array_each(c->servers, struct server, s))
         {
           struct command_state *state = &s->cmd_state;
 
           if (is_active(state))
             {
+              pollfd->events = 0;
+
               if (state->iov_count > 0)
-                FD_SET(state->fd, &write_set);
+                pollfd->events |= POLLOUT;
               if (state->reply_count > 0 || state->nowait_count > 0)
-                FD_SET(state->fd, &read_set);
+                pollfd->events |= POLLIN;
+
+              if (pollfd->events != 0)
+                {
+                  pollfd->fd = state->fd;
+                  state->pollfd = pollfd;
+                  ++pollfd;
+                }
             }
         }
 
       do
-        {
-          /*
-            For maximum portability across systems that may or may not
-            modify the timeout argument we treat it as undefined after
-            the call, and reinitialize on every iteration.
-          */
-          if (pto)
-            {
-              pto->tv_sec = c->io_timeout / 1000;
-              pto->tv_usec = (c->io_timeout % 1000) * 1000;
-            }
-          res = select(max_fd + 1, &read_set, &write_set, NULL, pto);
-        }
+        res = poll(pollfd_beg, pollfd - pollfd_beg, c->io_timeout);
       while (res == -1 && errno == EINTR);
 
       /*

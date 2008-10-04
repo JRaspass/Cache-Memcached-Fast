@@ -35,11 +35,8 @@ int
 client_connect_inet(const char *host, const char *port, int stream,
                     int timeout)
 {
-  struct timeval to, *pto;
   struct addrinfo hint, *addr, *a;
   int fd = -1, res;
-
-  pto = timeout > 0 ? &to : NULL;
 
   memset(&hint, 0, sizeof(hint));
 #ifdef AI_ADDRCONFIG  /* NetBSD 3.1 doesn't have this.  */
@@ -61,13 +58,20 @@ client_connect_inet(const char *host, const char *port, int stream,
 
   for (a = addr; a != NULL; a = a->ai_next)
     {
-      fd_set write_set;
+      struct pollfd pollfd;
       int socket_error;
       socklen_t socket_error_len;
 
       fd = socket(a->ai_family, a->ai_socktype, a->ai_protocol);
       if (fd == -1)
         break;
+
+      if (! can_poll_fd(fd))
+        {
+          close(fd);
+          fd = -1;
+          break;
+        }
 
       res = set_nonblock(fd);
       if (res != 0)
@@ -87,17 +91,10 @@ client_connect_inet(const char *host, const char *port, int stream,
           continue;
         }
 
-      FD_ZERO(&write_set);
-      FD_SET(fd, &write_set);
+      pollfd.fd = fd;
+      pollfd.events = POLLOUT;
       do
-        {
-          if (pto)
-            {
-              pto->tv_sec = timeout / 1000;
-              pto->tv_usec = (timeout % 1000) * 1000;
-            }
-          res = select(fd + 1, NULL, &write_set, NULL, pto);
-        }
+        res = poll(&pollfd, 1, timeout);
       while (res == -1 && errno == EINTR);
       if (res <= 0)
         {

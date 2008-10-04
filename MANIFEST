@@ -37,3 +37,5 @@ src/socket_posix.c
 src/socket_posix.h
 src/socket_win32.c
 src/socket_win32.h
+src/poll_select.c
+src/poll_select.h

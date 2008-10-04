@@ -21,43 +21,36 @@
   Lesser General Public License for more details.
 */
 
-#ifndef SOCKET_POSIX_H
-#define SOCKET_POSIX_H 1
+#ifndef POLL_SELECT_H
+#define POLL_SELECT_H 1
 
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <errno.h>
 
-#if defined(HAVE_POLL_H)
-
-#include <poll.h>
-
-#define can_poll_fd(fd)  1
-
-#elif defined(HAVE_SYS_POLL_H)
-
-#include <sys/poll.h>
-
-#define can_poll_fd(fd)  1
-
-#else  /* ! defined(HAVE_POLL_H) && ! defined(HAVE_SYS_POLL_H) */
-
-#include "poll_select.h"
-
-#define poll(fds, nfds, timeout)  poll_select(fds, nfds, timeout)
-
-#endif  /* ! defined(HAVE_POLL_H) && ! defined(HAVE_SYS_POLL_H) */
+#undef  POLLIN
+#define POLLIN   0x1
+#undef  POLLOUT
+#define POLLOUT  0x2
+#undef  POLLERR
+#define POLLERR  0x4
+#undef  POLLHUP
+#define POLLHUP  0x4
 
 
 extern
 int
-set_nonblock(int fd);
+can_poll_fd(int fd);
+
+
+struct pollfd
+{
+  int fd;                       /* File descriptor.  */
+  short events;                 /* Requested events.  */
+  short revents;                /* Returned events.  */
+};
+
 
 extern
 int
-connect_unix(const char *path, size_t path_len);
+poll_select(struct pollfd *fds, int nfds, int timeout);
 
 
-#endif  /* ! SOCKET_POSIX_H */
+#endif  /* ! POLL_SELECT_H */
