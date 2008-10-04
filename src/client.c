@@ -1405,9 +1405,11 @@ client_execute(struct client *c)
     {
       struct server *s;
       struct pollfd *pollfd_beg, *pollfd;
-      int nfds, res;
+      int res;
 
-      nfds = 0;
+      pollfd_beg = array_beg(c->pollfds, struct pollfd);
+      pollfd = pollfd_beg;
+
       for (array_each(c->servers, struct server, s))
         {
           int may_write, may_read;
@@ -1434,61 +1436,39 @@ client_execute(struct client *c)
 
           if (may_read || may_write)
             {
-#if 1
-              /*
-                At least gcc 3.4.2--4.2.2 report that res may be used
-                uninitialized here.  Though this doesn't look so, we
-                initialize it to suppress the warning.
-              */
-              int res = 0;
-#endif
-
               if (may_write)
                 {
+                  int res;
+
                   res = send_request(state, s);
                   if (res == MEMCACHED_CLOSED)
                     may_read = 0;
                 }
 
               if (may_read)
-                res = process_reply(state, s);
+                process_reply(state, s);
 
-              if (is_active(state))
-                ++nfds;
+              if (! is_active(state))
+                continue;
             }
-          else
+
+          pollfd->events = 0;
+
+          if (state->iov_count > 0)
+            pollfd->events |= POLLOUT;
+          if (state->reply_count > 0 || state->nowait_count > 0)
+            pollfd->events |= POLLIN;
+
+          if (pollfd->events != 0)
             {
-              ++nfds;
+              pollfd->fd = state->fd;
+              state->pollfd = pollfd;
+              ++pollfd;
             }
         }
 
-      if (nfds == 0)
+      if (pollfd == pollfd_beg)
         break;
-
-      pollfd_beg = array_beg(c->pollfds, struct pollfd);
-      pollfd = pollfd_beg;
-
-      for (array_each(c->servers, struct server, s))
-        {
-          struct command_state *state = &s->cmd_state;
-
-          if (is_active(state))
-            {
-              pollfd->events = 0;
-
-              if (state->iov_count > 0)
-                pollfd->events |= POLLOUT;
-              if (state->reply_count > 0 || state->nowait_count > 0)
-                pollfd->events |= POLLIN;
-
-              if (pollfd->events != 0)
-                {
-                  pollfd->fd = state->fd;
-                  state->pollfd = pollfd;
-                  ++pollfd;
-                }
-            }
-        }
 
       do
         res = poll(pollfd_beg, pollfd - pollfd_beg, c->io_timeout);
