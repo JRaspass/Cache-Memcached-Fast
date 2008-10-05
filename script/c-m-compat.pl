@@ -10,9 +10,8 @@
 use warnings;
 use strict;
 
-# NOTE: this test will fail if you spawn too many memcached instances
-# and run out of memory.  Works fine for 500 servers on 32-bit machine
-# with 2GB of memory.
+# NOTE: this test uses INSTANCE_COUNT x 2 file descriptors.  This
+# means that normally spawning more than ~500 instances won't work.
 
 use FindBin;
 
