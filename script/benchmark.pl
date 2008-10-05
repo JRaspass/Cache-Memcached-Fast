@@ -304,8 +304,10 @@ if ($noreply) {
     cmpthese(timethese($count, {
         "set noreply followed by get"
             => sub {
-                $new_noreply->set('snfbg', $value);
-                my $res = $new_noreply->get('snfbg');
+                foreach (1..key_count) {
+                    $new_noreply->set('snfbg', $value);
+                    my $res = $new_noreply->get('snfbg');
+                }
             }
     }));
 }

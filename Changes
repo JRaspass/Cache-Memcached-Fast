@@ -21,6 +21,10 @@ Revision history for Perl extension Cache::Memcached::Fast.
         memcached servers is normally not very large (and single
         request touches even a smaller subset).
 
+        Add bench make target ('make bench').  You may very initial
+        parameters at the top of script/benchmark.pl to benchmark
+        different types of loads.
+
 
 0.12  2008-07-21
         - this release fixes compilation on Solaris broken in 0.11.
