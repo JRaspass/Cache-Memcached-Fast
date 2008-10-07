@@ -30,12 +30,12 @@
 #include <string.h>
 #include <stdio.h>
 #ifndef WIN32
+#include "socket_posix.h"
 #include <sys/uio.h>
 #include <signal.h>
 #include <time.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include "socket_posix.h"
 #else  /* WIN32 */
 #include "socket_win32.h"
 #endif  /* WIN32 */

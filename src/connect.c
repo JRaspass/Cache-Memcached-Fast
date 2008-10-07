@@ -24,8 +24,8 @@
 #include "connect.h"
 #include <string.h>
 #ifndef WIN32
-#include <netdb.h>
 #include "socket_posix.h"
+#include <netdb.h>
 #else  /* WIN32 */
 #include "socket_win32.h"
 #endif  /* WIN32 */
