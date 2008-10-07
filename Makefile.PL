@@ -22,7 +22,7 @@ $(MYEXTLIB): src/Makefile
 	cd src && $(MAKE) $(PASTHRU)
 
 bench: all
-	PERL5LIB="./blib/lib:./blib/arch" script/benchmark.pl \
+	$(PERL) -I./blib/lib -I./blib/arch script/benchmark.pl \
 	  localhost:11211 127.0.0.1:11211
 '
 }
