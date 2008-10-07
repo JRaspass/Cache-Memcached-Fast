@@ -1530,7 +1530,7 @@ tcp_optimize_latency(struct command_state *state)
     {
       static const int enable = 1;
       setsockopt(state->fd, IPPROTO_TCP, TCP_NODELAY,
-                 &enable, sizeof(enable));
+                 (void *) &enable, sizeof(enable));
       state->socket_mode = TCP_LATENCY;
     }
 #endif /* TCP_NODELAY */
@@ -1546,7 +1546,7 @@ tcp_optimize_throughput(struct command_state *state)
     {
       static const int disable = 0;
       setsockopt(state->fd, IPPROTO_TCP, TCP_NODELAY,
-                 &disable, sizeof(disable));
+                 (void *) &disable, sizeof(disable));
       state->socket_mode = TCP_THROUGHPUT;
     }
 #endif /* TCP_NODELAY */

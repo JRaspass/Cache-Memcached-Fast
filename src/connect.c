@@ -104,7 +104,7 @@ client_connect_inet(const char *host, const char *port, int timeout)
 
       socket_error_len = sizeof(socket_error);
       res = getsockopt(fd, SOL_SOCKET, SO_ERROR,
-                       &socket_error, &socket_error_len);
+                       (void *) &socket_error, &socket_error_len);
       if (res == 0 && socket_error == 0)
         break;
 
