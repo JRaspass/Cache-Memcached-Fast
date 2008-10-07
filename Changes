@@ -9,7 +9,11 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Add support for Win32.  I personally don't have the system nor
         compiler, so I can't even test the build.  Win32 port is
-        expected to be supported by community.
+        expected to be supported by community.  Note: on Win32 below
+        Windows Vista max number of memcached servers is 64.  See
+        comment on FD_SETSIZE in src/socket_win32.h to learn how to
+        increase this value if you need to connect to more than 64
+        servers.
 
         Use poll() system call instead of select().  The latter has
         the limit on the file descriptor value.  I.e. even when the

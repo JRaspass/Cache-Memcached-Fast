@@ -30,13 +30,6 @@
 
 
 int
-can_poll_fd(int fd)
-{
-  return (fd < FD_SETSIZE);
-}
-
-
-int
 poll_select(struct pollfd *fds, int nfds, int timeout)
 {
   fd_set read_set, write_set, exception_set;

@@ -35,11 +35,6 @@
 #define POLLHUP  0x4
 
 
-extern
-int
-can_poll_fd(int fd);
-
-
 struct pollfd
 {
   int fd;                       /* File descriptor.  */

@@ -35,8 +35,6 @@
 
 #define poll(fds, nfds, timeout)  WSAPoll(fds, nfds, timeout)
 
-#define can_poll_fd(fd)  1
-
 #else  /* ! (_WIN32_WINNT >= 0x0600) */
 
 #include "poll_select.h"
@@ -44,6 +42,17 @@
 #define poll(fds, nfds, timeout)  poll_select(fds, nfds, timeout)
 
 #endif  /* ! (_WIN32_WINNT >= 0x0600) */
+
+
+/*
+  On Win32 FD_SETSIZE is not the limit on the max fd value, but
+  instead the limit on the total number of fds that select() can
+  handle.  So can_poll_fd() should return 1 in any case, any fd is
+  select()'able or WSAPoll()'able.  By default FD_SETSIZE is 64.  If
+  you plan to use more memcached servers, you may redefine it to a
+  larger value before including <winsock2.h>.
+*/
+#define can_poll_fd(fd)  1
 
 
 #undef  errno

@@ -48,6 +48,8 @@
 
 #define poll(fds, nfds, timeout)  poll_select(fds, nfds, timeout)
 
+#define can_poll_fd(fd)  ((fd) < FD_SETSIZE)
+
 #endif  /* ! defined(HAVE_POLL_H) && ! defined(HAVE_SYS_POLL_H) */
 
 
