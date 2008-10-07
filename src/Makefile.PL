@@ -36,6 +36,8 @@ WriteMakefile(
     DEFINE            => "@define", # e.g., '-DHAVE_SOMETHING'
     INC               => '-I.', # e.g., '-I. -I/usr/include/other'
     OBJECT            => "@object",
+    # The following line prevents installation of libclient.a.
+    SKIP              => [qw(all static static_lib dynamic dynamic_lib)],
     clean             => { FILES => 'compute_crc32.c compute_crc32.h'
                                . ' parse_keyword.c parse_keyword.h' },
 );
