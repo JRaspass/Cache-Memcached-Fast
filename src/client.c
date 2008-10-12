@@ -342,12 +342,14 @@ next_index(struct command_state *state)
 struct client *
 client_init()
 {
+  struct client *c;
+
 #ifdef WIN32
   if (win32_socket_library_acquire() != 0)
     return NULL;
 #endif  /* WIN32 */
 
-  struct client *c = malloc(sizeof(struct client));
+  c = malloc(sizeof(struct client));
   if (! c)
     return NULL;
 
