@@ -1,5 +1,14 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
+
+0.14  ???
+        - ???
+
+        Changes since 0.13:
+
+        ???
+
+
 0.13  2008-10-13
         - introduce Win32 support (based on the patch by Yasuhiro
         Matsumoto---arigatou!), and use poll() instead of select()
