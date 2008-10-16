@@ -1129,11 +1129,13 @@ learn what the result value is.
   $memd->flush_all;
   $memd->flush_all($delay);
 
-Flush all caches the client knows about.  I<$delay> is an optional
-non-negative integer number of seconds to delay the operation.  The
-delay will be distributed across the servers.  For instance, when you
-have three servers, and call C<flush_all(30)>, the servers would get
-30, 15, 0 seconds delays respectively.  When omitted, zero is assumed,
+Flush all caches the client knows about.  This command invalidates all
+items in the caches, none of them will be returned on subsequent
+retrieval command.  I<$delay> is an optional non-negative integer
+number of seconds to delay the operation.  The delay will be
+distributed across the servers.  For instance, when you have three
+servers, and call C<flush_all(30)>, the servers would get 30, 15, 0
+seconds delays respectively.  When omitted, zero is assumed,
 i.e. flush immediately.
 
 I<Return:> reference to hash, where I<$href-E<gt>{$server}> holds
