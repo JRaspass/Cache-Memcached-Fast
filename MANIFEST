@@ -6,6 +6,8 @@ Fast.xs
 ppport.h
 README
 script/benchmark.pl
+script/c-m-compat.pl
+script/ketama-distr.pl
 t/Memd.pm
 t/00-load.t
 t/01-connect.t
