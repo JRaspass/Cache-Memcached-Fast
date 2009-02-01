@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -161,7 +161,7 @@ ketama_crc32_add_server(struct dispatch_state *state,
                         double weight, int index)
 {
   static const char delim = '\0';
-  unsigned int crc32;
+  unsigned int crc32, point;
   int count, i;
 
   count = state->ketama_points * weight + 0.5;
@@ -173,21 +173,21 @@ ketama_crc32_add_server(struct dispatch_state *state,
   crc32 = compute_crc32(host, host_len);
   crc32 = compute_crc32_add(crc32, &delim, 1);
   crc32 = compute_crc32_add(crc32, port, port_len);
+  point = 0;
 
   for (i = 0; i < count; ++i)
     {
       char buf[4];
-      unsigned int point;
       struct continuum_point *p;
 
       /*
         We want the same result on all platforms, so we hardcode size
         of int as 4 8-bit bytes.
       */
-      buf[0] = i & 0xff;
-      buf[1] = (i >> 8) & 0xff;
-      buf[2] = (i >> 16) & 0xff;
-      buf[3] = (i >> 24) & 0xff;
+      buf[0] = point & 0xff;
+      buf[1] = (point >> 8) & 0xff;
+      buf[2] = (point >> 16) & 0xff;
+      buf[3] = (point >> 24) & 0xff;
 
       point = compute_crc32_add(crc32, buf, 4);
 
