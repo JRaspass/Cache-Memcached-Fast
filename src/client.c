@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -181,6 +181,25 @@ command_state_destroy(struct command_state *state)
 }
 
 
+static inline
+void
+command_state_reinit(struct command_state *state)
+{
+  if (state->fd != -1)
+    close(state->fd);
+
+  state->fd = -1;
+  state->last_cmd_noreply = 0;
+
+  array_clear(state->iov_buf);
+
+  state->generation = 0;
+  state->nowait_count = 0;
+
+  state->pos = state->end = state->eol = state->buf;
+}
+
+
 struct server
 {
   char *host;
@@ -237,6 +256,17 @@ server_destroy(struct server *s)
 {
   free(s->host); /* This also frees port string.  */
   command_state_destroy(&s->cmd_state);
+}
+
+
+static inline
+void
+server_reinit(struct server *s)
+{
+  s->failure_count = 0;
+  s->failure_expires = 0;
+
+  command_state_reinit(&s->cmd_state);
 }
 
 
@@ -409,6 +439,22 @@ client_destroy(struct client *c)
 #ifdef WIN32
   win32_socket_library_release();
 #endif  /* WIN32 */
+}
+
+
+void
+client_reinit(struct client *c)
+{
+  struct server *s;
+
+  for (array_each(c->servers, struct server, s))
+    server_reinit(s);
+
+  array_clear(c->str_buf);
+  array_clear(c->index_list);
+
+  c->generation = 1;            /* Different from initial command state.  */
+  c->object = NULL;
 }
 
 

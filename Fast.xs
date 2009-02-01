@@ -1255,3 +1255,11 @@ namespace(memd, ...)
           }
     OUTPUT:
         RETVAL
+
+
+void
+disconnect_all(memd)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $
+    CODE:
+        client_reinit(memd->c);

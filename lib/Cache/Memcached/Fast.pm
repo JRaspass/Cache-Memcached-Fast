@@ -1187,6 +1187,22 @@ F</path/to/unix.sock>, as described in L</servers>.
 # See Fast.xs.
 
 
+=item C<disconnect_all>
+
+  $memd->disconnect_all;
+
+Closes all open sockets to memcached servers.  Must be called after
+L<perlfunc/fork> if the parent process has open sockets to memcacheds (as the
+child process inherits the socket and thus two processes end up using the same
+socket which leads to protocol errors.)
+
+I<Return:> nothing.
+
+=cut
+
+# See Fast.xs.
+
+
 1;
 
 __END__
@@ -1286,17 +1302,6 @@ I<compress_threshold> during client object construction.
 
 Not supported.  Perhaps will appear in the future releases.
 
-
-=item C<disconnect_all>
-
-Not supported.  Easy to add.  Meanwhile to disconnect from all servers
-you may do
-
-  undef $memd;
-
-or 
-
-  $memd = undef;
 
 =back
 
