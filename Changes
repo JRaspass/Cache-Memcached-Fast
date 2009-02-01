@@ -1,12 +1,54 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.14  ???
-        - ???
+0.14  2009-02-07
+        - improve Ketama distribution.  The change is incompatible
+        with Ketama implementation in previous versions.
 
         Changes since 0.13:
 
-        ???
+        Change calculation of Ketama points for a given server to get
+        mapping ratios closer to server weight ratios.  New Ketama
+        mode is compatible with nginx's module memcached_hash
+        (http://openhack.ru/nginx-patched/wiki/MemcachedHash) version
+        0.4, which has the same change, and is incompatible with
+        earlier versions of both named and this module.
+
+        Add script/ketama-distr.pl to compute server's share of
+        continuum.  Real-world example:
+
+          script/ketama-distr.pl --ketama_points=150 \
+                                 --server=10.0.143.4:11211 \
+                                 --server=10.0.143.6:11211 \
+                                 --server=10.0.143.7:11211 \
+                                 --server=10.0.143.8:11211
+
+        outputs:
+
+          Old:
+          server 1: 10.0.143.4:11211  total =  671585356 (15.64%)
+          server 2: 10.0.143.6:11211  total =  601117590 (14.00%)
+          server 3: 10.0.143.7:11211  total = 1771239512 (41.24%)
+          server 4: 10.0.143.8:11211  total = 1251024837 (29.13%)
+
+          New:
+          server 1: 10.0.143.4:11211  total = 1057134262 (24.61%)
+          server 2: 10.0.143.6:11211  total = 1111432463 (25.88%)
+          server 3: 10.0.143.7:11211  total = 1017280856 (23.69%)
+          server 4: 10.0.143.8:11211  total = 1109119714 (25.82%)
+
+          Continuum array size = 4800 bytes
+
+        I.e. "Old" is what we were getting before the change, and
+        "New" is what we are getting now.  "Continuum array size" is
+        how much memory is used to store the continuum array.  Try
+        this script on your servers to see your distribution, and
+        possibly to tweak ketama_points and/or server weights to get a
+        better one.
+
+        Fix RT#41077 (http://rt.cpan.org/Ticket/Display.html?id=41077):
+        implement disconnect_all().  Patch is by norbi.nix.hu, with
+        minor corrections---thanks!.
 
 
 0.13  2008-10-13
