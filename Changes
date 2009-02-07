@@ -1,6 +1,14 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.15  ???
+        - ???
+
+        Changes since 0.14:
+
+        ???
+
+
 0.14  2009-02-07
         - improve Ketama distribution.  The change is incompatible
         with Ketama implementation in previous versions.
