@@ -12,6 +12,7 @@ if ($^O eq 'MSWin32') {
     ++$exclude{'socket_posix.c'};
 } else {
     ++$exclude{'socket_win32.c'};
+    ++$exclude{'addrinfo_hostent.c'};
 
     if (-f "$includes/poll.h") {
         push @define, '-DHAVE_POLL_H';

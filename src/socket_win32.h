@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2008 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2008-2009 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -24,12 +24,21 @@
 #ifndef SOCKET_WIN32_H
 #define SOCKET_WIN32_H 1
 
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501
-#endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <sys/types.h>
+
+
+#if _WIN32_WINNT >= 0x0501
+
+#include <wspiapi.h>
+
+#else  /* ! (_WIN32_WINNT >= 0x0501) */
+
+#include "addrinfo_hostent.h"
+
+#endif  /* ! (_WIN32_WINNT >= 0x0501) */
+
 
 #if _WIN32_WINNT >= 0x0600
 
