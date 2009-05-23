@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -38,10 +38,11 @@ client_connect_inet(const char *host, const char *port, int timeout)
   int fd = -1, res;
 
   memset(&hint, 0, sizeof(hint));
+  hint.ai_family = AF_UNSPEC;
+  hint.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG  /* NetBSD 3.1 doesn't have this.  */
   hint.ai_flags = AI_ADDRCONFIG;
 #endif /* AI_ADDRCONFIG */
-  hint.ai_socktype = SOCK_STREAM;
   res = getaddrinfo(host, port, &hint, &addr);
   if (res != 0)
     {
