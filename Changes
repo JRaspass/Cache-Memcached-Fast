@@ -6,6 +6,32 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.14:
 
+        Previous release (0.14) featured the change in the Ketama
+        algorithm.  While that was a necessary move to improve key
+        distribution across servers, it introduced incompatibility
+        with earlier versions, and provided no means for smooth
+        transition for existing users of Ketama algorithm (i.e.,
+        without complete loss of cached data).  The following
+        workaround was suggested by Masahiro Nagano---thanks!:
+
+          - apply the patch at http://limilic.com/entry/ljlt0sksbiqi16p3
+
+          - create two instances of C::M::F, one with enabled
+            old_ketama_algo => 1.
+
+          - for some time populate caches via both client instances,
+            while serving gets through old_ketama_algo.  For this you
+            may use Cache::Migrate (http://gist.github.com/110981).
+
+          - after some time (depends on cache refresh rate) you may
+            drop old_ketama_algo, as new data is now distributed
+            according to the new Ketama implementation as well (this
+            doubles memory use though).
+
+        I do not include the named patch in the distribution, because
+        it's use is limited for one-time transition for existing
+        Ketama users only.
+
         On systems lacking getaddrinfo() implement it with
         gethostbyname(). In particular this should fix the build on
         Win32 (Cygwin, Mingw32).  Problem report (for Windows 2000 and
