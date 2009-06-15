@@ -37,6 +37,10 @@ Revision history for Perl extension Cache::Memcached::Fast.
         Win32 (Cygwin, Mingw32).  Problem report (for Windows 2000 and
         below) and initial patch are by Yasuhiro Matsumoto.
 
+        Fix t/commands.t: starting with memcached 1.3.3 incr/decr
+        commands expect numeric value in the cache.  Patch by Jason
+        M. Mills (RT#46883).
+
 
 0.14  2009-02-07
         - improve Ketama distribution.  The change is incompatible
