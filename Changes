@@ -6,7 +6,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.15:
 
-        ???
+        Add src/addrinfo_hostent.c and src/addrinfo_hostent.h to
+        MANIFEST.  Oops :(.
 
 
 0.15  2009-06-15

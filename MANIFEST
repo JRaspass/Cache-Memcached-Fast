@@ -41,3 +41,5 @@ src/socket_win32.c
 src/socket_win32.h
 src/poll_select.c
 src/poll_select.h
+src/addrinfo_hostent.c
+src/addrinfo_hostent.h
