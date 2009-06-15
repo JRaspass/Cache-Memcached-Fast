@@ -1,8 +1,12 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.15  ???
-        - ???
+0.15  2009-06-15
+        - no need to upgrade for existing users.  This release fixes
+        issues that new users may encounter (lack of getaddrinfo() on
+        some Windows systems; failing test case due to behaviour
+        change in memcached 1.3.3 that would break automatic
+        installation from CPAN).
 
         Changes since 0.14:
 
