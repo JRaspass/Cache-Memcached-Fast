@@ -1,4 +1,4 @@
-Cache-Memcached-Fast version 0.15
+Cache-Memcached-Fast version 0.16
 =================================
 
 Cache::Memcahced::Fast is a Perl client for memcached, a memory cache
