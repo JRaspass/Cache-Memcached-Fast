@@ -1,6 +1,14 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.17  ???
+        - ???
+
+        Changes since 0.16:
+
+        ???
+
+
 0.16  2009-06-15
         - add missing files.  This is a fix for the previous release.
 
