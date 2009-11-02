@@ -1,8 +1,9 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.17  ???
-        - ???
+0.17  2009-11-02
+        - remove delete expiration aka delay parameter.  Upgrade is
+        required for use with memcached >= 1.3.2.
 
         Changes since 0.16:
 
