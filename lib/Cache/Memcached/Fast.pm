@@ -103,7 +103,7 @@ our $VERSION = '0.17';
   $memd->delete('skey');
 
   my @keys = qw(k1 k2 k3);
-  $memd->delete_multi(@keys, ['k5', 20]);
+  $memd->delete_multi(@keys);
 
   # Wait for all commands that were executed in nowait mode.
   $memd->nowait_push;
@@ -1075,12 +1075,8 @@ learn what the result value is.
 =item C<delete>
 
   $memd->delete($key);
-  $memd->delete($key, $delay);
 
-Delete I<$key> and its value from the cache.  I<$delay> is an optional
-non-negative integer number of seconds to delay the operation.  During
-this time L</add> and L</replace> commands will be rejected by the
-server.  When omitted, zero is assumed, i.e. delete immediately.
+Delete I<$key> and its value from the cache.
 
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
@@ -1101,16 +1097,10 @@ Alias for L</delete>, for compatibility with B<Cache::Memcached>.
 
 =item C<delete_multi>
 
-  $memd->delete_multi(
-      @keys,
-      [$key],
-      [$key, $delay],
-      ...
-  );
+  $memd->delete_multi(@keys);
 
 Like L</delete>, but operates on more than one key.  Takes the list of
-keys and references to arrays each holding I<$key> and optional
-I<$delay>.
+keys.
 
 Note that multi commands are not all-or-nothing, some operations may
 succeed, while others may fail.

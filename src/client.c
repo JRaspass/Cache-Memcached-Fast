@@ -1991,10 +1991,10 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
 
 int
 client_prepare_delete(struct client *c, int key_index,
-                      const char *key, size_t key_len, delay_type delay)
+                      const char *key, size_t key_len)
 {
   static const size_t request_size = 4;
-  static const size_t str_size = sizeof(" " DELAY_STUB " " NOREPLY "\r\n");
+  static const size_t str_size = sizeof(" " NOREPLY "\r\n");
 
   struct command_state *state;
 
@@ -2011,8 +2011,7 @@ client_prepare_delete(struct client *c, int key_index,
 
   {
     char *buf = array_end(c->str_buf, char);
-    size_t str_size =
-      sprintf(buf, " " FMT_DELAY "%s\r\n", delay, get_noreply(state));
+    size_t str_size = sprintf(buf, "%s\r\n", get_noreply(state));
     iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }

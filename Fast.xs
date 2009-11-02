@@ -1043,7 +1043,6 @@ delete(memd, ...)
         int noreply;
         const char *key;
         STRLEN key_len;
-        delay_type delay = 0;
     PPCODE:
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
@@ -1052,12 +1051,14 @@ delete(memd, ...)
         key = SvPV(ST(1), key_len);
         if (items > 2)
           {
+            /* Compatibility with old [key, delay] syntax].  */
+
             /* delay doesn't have to be defined.  */
             SV *sv = ST(2);
-            if (SvOK(sv))
-              delay = SvUV(sv);
+            if (SvOK(sv) && SvUV(sv) != 0)
+              warn("non-zero delete expiration time is ignored");
           }
-        client_prepare_delete(memd->c, 0, key, key_len, delay);
+        client_prepare_delete(memd->c, 0, key, key_len);
         client_execute(memd->c);
         if (! noreply)
           {
@@ -1086,10 +1087,8 @@ delete_multi(memd, ...)
         for (i = 1; i < items; ++i)
           {
             SV *sv;
-            AV *av;
             const char *key;
             STRLEN key_len;
-            delay_type delay = 0;
 
             sv = ST(i);
             if (! SvROK(sv))
@@ -1098,6 +1097,10 @@ delete_multi(memd, ...)
               }
             else
               {
+                /* Compatibility with old [key, delay] syntax].  */
+
+                AV *av;
+
                 if (SvTYPE(SvRV(sv)) != SVt_PVAV)
                   croak("Not an array reference");
 
@@ -1111,12 +1114,12 @@ delete_multi(memd, ...)
                   {
                     /* delay doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
-                    if (ps && SvOK(*ps))
-                      delay = SvUV(*ps);
+                    if (ps && SvOK(*ps) && SvUV(*ps) != 0)
+                      warn("non-zero delete expiration time is ignored");
                   }
               }
  
-            client_prepare_delete(memd->c, i - 1, key, key_len, delay);
+            client_prepare_delete(memd->c, i - 1, key, key_len);
           }
         client_execute(memd->c);
         if (! noreply)

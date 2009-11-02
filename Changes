@@ -6,7 +6,17 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.16:
 
-        ???
+        Warn about ignoring non-zero delete expiration time.
+        Expiration time for "delete" command has been optional in
+        older versions of memcached, and was dropped in memcached
+        1.3.2 (in an incompatible manner).  Not knowing server version
+        it's impossible to tell whether the server will handle the
+        parameter or not, so we simply do not send it at all.
+        Explicit zero passed to delete() or delete_multi() is silently
+        ignored, and a warning is given if you pass non-zero delete
+        expiration time.  Furthermore the syntax delete($key, $delay)
+        and delete_multi([$key, $delay]) is obsoleted and no more
+        documented.
 
 
 0.16  2009-06-15
