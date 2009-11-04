@@ -22,6 +22,7 @@ t/serialize.t
 t/pod-coverage.t
 t/pod.t
 t/utf8.t
+t/threads.t
 lib/Cache/Memcached/Fast.pm
 src/Makefile.PL
 src/gencrc32.pl

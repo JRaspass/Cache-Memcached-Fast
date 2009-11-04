@@ -557,6 +557,8 @@ sub _check_args {
 }
 
 
+our %instance;
+
 sub new {
     my Cache::Memcached::Fast $class = shift;
     my ($conf) = @_;
@@ -582,7 +584,40 @@ sub new {
 
     $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
 
-    return Cache::Memcached::Fast::_new($class, $conf);
+    my $memd = Cache::Memcached::Fast::_new($class, $conf);
+
+    if (eval "require Scalar::Util") {
+        my $context = [$memd, $conf];
+        Scalar::Util::weaken($context->[0]);
+        $instance{$$memd} = $context;
+    }
+
+    return $memd;
+}
+
+
+sub CLONE {
+    my ($class) = @_;
+
+    my @contexts = values %instance;
+    %instance = ();
+    foreach my $context (@contexts) {
+        my $memd = Cache::Memcached::Fast::_new($class, $context->[1]);
+        ${$context->[0]} = $$memd;
+        $instance{$$memd} = $context;
+        $$memd = 0;
+    }
+}
+
+
+sub DESTROY {
+    my ($memd) = @_;
+
+    return unless $$memd;
+
+    delete $instance{$$memd};
+
+    Cache::Memcached::Fast::_destroy($memd);
 }
 
 
@@ -1303,6 +1338,56 @@ Not supported.  Perhaps will appear in the future releases.
 In current implementation tainted flag is neither tested nor
 preserved, storing tainted data and retrieving it back would clear
 tainted flag.  See L<perlsec|perlsec>.
+
+
+=head1 Threads
+
+This module is thread-safe when used with Perl >= 5.7.2.  As with
+other Perl data each thread gets its own copy of
+Cache::Memcached::Fast object that is in scope when the thread is
+created.  Such copies share no state, and may be used concurrently.
+For example:
+
+  use threads;
+
+  my $memd = new Cache::Memcached::Fast({...});
+
+  sub thread_job {
+    $memd->set("key", "thread value");
+  }
+
+  threads->new(\&thread_job);
+  $memd->set("key", "main value");
+
+Here both C<set>s will be executed concurrently, and the value of
+I<key> will be either I<main value> or I<thread value>, depending on
+the timing of operations.  Note that C<$memd> inside C<thread_job>
+internally refers to a different Cache::Memcached::Fast object than
+C<$memd> from the outer scope.  Each object has its own connections to
+servers, its own counter of outstanding replies for L</nowait> mode,
+etc.
+
+New object copy is created with the same constructor arguments, but
+initially is not connected to any server (even when master copy has
+open connections).  No file descriptor is allocated until the command
+is executed through this new object.
+
+You may safely create Cache::Memcached::Fast object from threads other
+than main thread, and/or pass them as parameters to threads::new().
+However you can't return the object from top-level thread function.
+I.e., the following won't work:
+
+  use threads;
+
+  sub thread_job {
+    return new Cache::Memcached::Fast({...});
+  }
+
+  my $thread = threads->new(\&thread_job);
+
+  my $memd = $thread->join;  # The object will be destroyed here.
+
+This is a Perl limitation (see L<threads/"BUGS AND LIMITATIONS">).
 
 
 =head1 BUGS

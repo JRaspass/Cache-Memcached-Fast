@@ -612,7 +612,7 @@ _new(class, conf)
 
 
 void
-DESTROY(memd)
+_destroy(memd)
         Cache_Memcached_Fast *  memd
     PROTOTYPE: $
     CODE:

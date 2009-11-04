@@ -6,7 +6,7 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.17:
 
-        ???
+        Make module thread-safe with Perl >= 5.7.2.
 
 
 0.17  2009-11-02
