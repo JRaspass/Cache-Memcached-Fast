@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2008 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
 
   This library is free software; you can redistribute it and/or modify
   it under the same terms as Perl itself, either Perl version 5.8.8
@@ -1051,7 +1051,7 @@ delete(memd, ...)
         key = SvPV(ST(1), key_len);
         if (items > 2)
           {
-            /* Compatibility with old [key, delay] syntax].  */
+            /* Compatibility with old (key, delay) syntax.  */
 
             /* delay doesn't have to be defined.  */
             SV *sv = ST(2);
@@ -1097,7 +1097,7 @@ delete_multi(memd, ...)
               }
             else
               {
-                /* Compatibility with old [key, delay] syntax].  */
+                /* Compatibility with old [key, delay] syntax.  */
 
                 AV *av;
 
