@@ -9,12 +9,12 @@
 
 - tainted_in, tainted_out parameters.
 
-- 'more' flag for better streaming latency.
+- 'more' flag for better streaming latency (MSG_MORE).
 
 - Instead of accumulating requests do I/O on every client_prepare_*()
   to improve streaming speed.
 
-- Add statistics: count item sizes, requests, timeouts/errors.
+- Add statistics: count item sizes, requests, timeouts/errors (XProbes).
 
 - Replace av_push() with av_store(), test result.
 
@@ -27,3 +27,13 @@
 - Add benchmark for compression.
 
 - More tests for TCP_CORK/TCP_NOPUSH.
+
+- In BSD, you can avoid signals by setsockopt() with SO_NOSIGPIPE
+  (SOL_SOCKET option).
+
+- use sigpending() for SIGPIPE.
+
+- set close-on-exec (SO_CLOEXEC).
+
+- Fix bugs from http://cpants.perl.org/dist/kwalitee/Cache-Memcached-Fast
+  (enable experimental features, license, dependensies, ...).
