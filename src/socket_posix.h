@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2008 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2008, 2010 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -28,7 +28,24 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <limits.h>
 #include <errno.h>
+
+
+#if defined(_SC_IOV_MAX)
+
+#define get_iov_max()  sysconf(_SC_IOV_MAX)
+
+#elif defined(IOV_MAX)
+
+#define get_iov_max()  IOV_MAX
+
+#else
+
+#define get_iov_max()  16
+
+#endif
+
 
 #if defined(HAVE_POLL_H)
 

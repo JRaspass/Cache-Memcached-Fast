@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2010 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -39,11 +39,6 @@
 #else  /* WIN32 */
 #include "socket_win32.h"
 #endif  /* WIN32 */
-
-
-#ifndef MAX_IOVEC
-#define MAX_IOVEC  1024
-#endif
 
 
 /* REPLY_BUF_SIZE should be large enough to contain first reply line.  */
@@ -297,6 +292,7 @@ struct client
 
   struct array index_list;
   struct array str_buf;
+  int iov_max;
 
   generation_type generation;
 
@@ -399,6 +395,8 @@ client_init()
   c->close_on_error = 1;
   c->nowait = 0;
   c->hash_namespace = 0;
+
+  c->iov_max = get_iov_max();
 
   c->generation = 1;            /* Different from initial command state.  */
 
@@ -1192,8 +1190,8 @@ send_request(struct command_state *state, struct server *s)
       ssize_t res;
       size_t len;
 
-      count = (state->iov_count < MAX_IOVEC
-               ? state->iov_count : MAX_IOVEC);
+      count = (state->iov_count < state->client->iov_max
+               ? state->iov_count : state->client->iov_max);
 
       state->iov->iov_base =
         (char *) state->iov->iov_base + state->write_offset;

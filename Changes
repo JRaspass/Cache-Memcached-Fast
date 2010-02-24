@@ -6,6 +6,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.17:
 
+        Fix t/command.t failure on some Solaris distributions.
+
         Make module thread-safe with Perl >= 5.7.2.
 
 

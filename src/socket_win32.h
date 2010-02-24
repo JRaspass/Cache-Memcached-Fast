@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2008-2009 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2008-2010 Tomash Brechko.  All rights reserved.
 
   When used to build Perl module:
 
@@ -27,6 +27,9 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <sys/types.h>
+
+
+#define get_iov_max()  64
 
 
 #if _WIN32_WINNT >= 0x0501
