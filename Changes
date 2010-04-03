@@ -6,6 +6,8 @@ Revision history for Perl extension Cache::Memcached::Fast.
 
         Changes since 0.17:
 
+        Fix RT#56142: handle Perl magic.
+
         Fix SIGPIPE handling, make it thread-safe.  Now we use
         pthread_sigmask() from <signal.h>.  I hope this won't break
         the build on some platforms.

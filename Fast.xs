@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
+  Copyright (C) 2007-2010 Tomash Brechko.  All rights reserved.
 
   This library is free software; you can redistribute it and/or modify
   it under the same terms as Perl itself, either Perl version 5.8.8
@@ -98,12 +98,18 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
             int noreply = 0;
 
             addr_sv = hv_fetch(hv, "address", 7, 0);
-            if (! addr_sv)
+            if (addr_sv)
+              SvGETMAGIC(*addr_sv);
+            else
               croak("server should have { address => $addr }");
             ps = hv_fetch(hv, "weight", 6, 0);
+            if (ps)
+              SvGETMAGIC(*ps);
             if (ps && SvOK(*ps))
               weight = SvNV(*ps);
             ps = hv_fetch(hv, "noreply", 7, 0);
+            if (ps)
+              SvGETMAGIC(*ps);
             if (ps && SvOK(*ps))
               noreply = SvTRUE(*ps);
             add_server(memd, *addr_sv, weight, noreply);
@@ -117,7 +123,9 @@ parse_server(Cache_Memcached_Fast *memd, SV *sv)
             double weight = 1.0;
 
             addr_sv = av_fetch(av, 0, 0);
-            if (! addr_sv)
+            if (addr_sv)
+              SvGETMAGIC(*addr_sv);
+            else
               croak("server should be [$addr, $weight]");
             weight_sv = av_fetch(av, 1, 0);
             if (weight_sv)
@@ -145,10 +153,14 @@ parse_serialize(Cache_Memcached_Fast *memd, HV *conf)
   memd->deserialize_method = NULL;
 
   ps = hv_fetch(conf, "utf8", 4, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->utf8 = SvTRUE(*ps);
 
   ps = hv_fetch(conf, "serialize_methods", 17, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
@@ -176,14 +188,20 @@ parse_compress(Cache_Memcached_Fast *memd, HV *conf)
   memd->decompress_method = NULL;
 
   ps = hv_fetch(conf, "compress_threshold", 18, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->compress_threshold = SvIV(*ps);
 
   ps = hv_fetch(conf, "compress_ratio", 14, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->compress_ratio = SvNV(*ps);
 
   ps = hv_fetch(conf, "compress_methods", 16, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
@@ -208,6 +226,8 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
   memd->servers = newAV();
 
   ps = hv_fetch(conf, "ketama_points", 13, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     {
       int res = client_set_ketama_points(c, SvIV(*ps));
@@ -216,10 +236,14 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
     }
 
   ps = hv_fetch(conf, "hash_namespace", 14, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_hash_namespace(c, SvTRUE(*ps));
 
   ps = hv_fetch(conf, "servers", 7, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     {
       AV *a;
@@ -235,11 +259,14 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
           if (! ps)
             continue;
 
+          SvGETMAGIC(*ps);
           parse_server(memd, *ps);
         }
     }
 
   ps = hv_fetch(conf, "namespace", 9, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     {
       const char *ns;
@@ -250,35 +277,51 @@ parse_config(Cache_Memcached_Fast *memd, HV *conf)
     }
 
   ps = hv_fetch(conf, "connect_timeout", 15, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_connect_timeout(c, SvNV(*ps) * 1000.0);
 
   ps = hv_fetch(conf, "io_timeout", 10, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_io_timeout(c, SvNV(*ps) * 1000.0);
 
   /* For compatibility with Cache::Memcached.  */
   ps = hv_fetch(conf, "select_timeout", 14, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_io_timeout(c, SvNV(*ps) * 1000.0);
 
   ps = hv_fetch(conf, "max_failures", 12, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_max_failures(c, SvIV(*ps));
 
   ps = hv_fetch(conf, "failure_timeout", 15, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_failure_timeout(c, SvIV(*ps));
 
   ps = hv_fetch(conf, "close_on_error", 14, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_close_on_error(c, SvTRUE(*ps));
 
   ps = hv_fetch(conf, "nowait", 6, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_nowait(c, SvTRUE(*ps));
 
   ps = hv_fetch(conf, "max_size", 8, 0);
+  if (ps)
+    SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->max_size = SvUV(*ps);
   else
@@ -689,6 +732,7 @@ set(memd, ...)
           {
             /* exptime doesn't have to be defined.  */
             sv = ST(arg);
+            SvGETMAGIC(sv);
             if (SvOK(sv))
               exptime = SvIV(sv);
           }
@@ -777,6 +821,8 @@ set_multi(memd, ...)
               {
                 /* exptime doesn't have to be defined.  */
                 SV **ps = av_fetch(av, arg, 0);
+                if (ps)
+                  SvGETMAGIC(*ps);
                 if (ps && SvOK(*ps))
                   exptime = SvIV(*ps);
               }
@@ -924,6 +970,7 @@ incr(memd, ...)
           {
             /* increment doesn't have to be defined.  */
             SV *sv = ST(2);
+            SvGETMAGIC(sv);
             if (SvOK(sv))
               arg = SvUV(sv);
           }
@@ -983,6 +1030,8 @@ incr_multi(memd, ...)
                   {
                     /* increment doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
+                    if (ps)
+                      SvGETMAGIC(*ps);
                     if (ps && SvOK(*ps))
                       arg = SvUV(*ps);
                   }
@@ -1055,6 +1104,7 @@ delete(memd, ...)
 
             /* delay doesn't have to be defined.  */
             SV *sv = ST(2);
+            SvGETMAGIC(sv);
             if (SvOK(sv) && SvUV(sv) != 0)
               warn("non-zero delete expiration time is ignored");
           }
@@ -1114,6 +1164,8 @@ delete_multi(memd, ...)
                   {
                     /* delay doesn't have to be defined.  */
                     SV **ps = av_fetch(av, 1, 0);
+                    if (ps)
+                      SvGETMAGIC(*ps);
                     if (ps && SvOK(*ps) && SvUV(*ps) != 0)
                       warn("non-zero delete expiration time is ignored");
                   }
@@ -1178,8 +1230,13 @@ flush_all(memd, ...)
         /* Why sv_2mortal() is needed is explained in perlxs.  */
         sv_2mortal((SV *) RETVAL);
         object.arg = sv_2mortal((SV *) newAV());
-        if (items > 1 && SvOK(ST(1)))
-          delay = SvUV(ST(1));
+        if (items > 1)
+          {
+            SV *sv = ST(1);
+            SvGETMAGIC(sv);
+            if (SvOK(sv))
+              delay = SvUV(sv);
+          }
         noreply = (GIMME_V == G_VOID);
         client_flush_all(memd->c, delay, &object, noreply);
         if (! noreply)
