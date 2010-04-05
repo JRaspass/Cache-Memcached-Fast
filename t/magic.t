@@ -52,12 +52,23 @@ tie my $scalar2, 'MyScalar';
 ok($memd->set($scalar2, $scalar2));
 ok(exists $memd->get_multi($scalar2)->{$scalar2});
 
+SKIP: {
+    eval { require Readonly };
+    skip "Skipping Readonly tests because the module is not present", 3
+      if $@;
 
-use Readonly;
-Readonly my $expires => 3;
+    # 'require Readonly' as above can be used to test if the module is
+    # present, but won't actually work.  So below we 'use Readonly',
+    # but in a string eval.
+    eval q{
+        use Readonly;
 
-Readonly my $key2 => "Третий.ключ";
-ok($memd->set($key2, $key2, $expires));
-ok(exists $memd->get_multi($key2)->{$key2});
-sleep(4);
-ok(! exists $memd->get_multi($key2)->{$key2});
+        Readonly my $expires => 3;
+
+        Readonly my $key2 => "Третий.ключ";
+        ok($memd->set($key2, $key2, $expires));
+        ok(exists $memd->get_multi($key2)->{$key2});
+        sleep(4);
+        ok(! exists $memd->get_multi($key2)->{$key2});
+    };
+}
