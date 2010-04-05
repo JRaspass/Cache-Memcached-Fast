@@ -27,7 +27,7 @@ if ($Memd::memd) {
 }
 
 
-use threads;
+require threads;
 
 sub job {
     my ($num) = @_;
