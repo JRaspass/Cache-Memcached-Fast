@@ -24,6 +24,7 @@
 #include "socket_posix.h"
 #include <fcntl.h>
 #include <sys/un.h>
+#include <string.h>
 
 
 /*
