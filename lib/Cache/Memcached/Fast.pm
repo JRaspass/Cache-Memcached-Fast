@@ -1476,7 +1476,7 @@ There's B<NONE>, neither explicit nor implied.  But you knew it already
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2007-2009 Tomash Brechko.  All rights reserved.
+Copyright (C) 2007-2010 Tomash Brechko.  All rights reserved.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.8 or,
