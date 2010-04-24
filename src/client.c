@@ -282,8 +282,6 @@ struct client
   char *prefix;
   size_t prefix_len;
 
-  sigset_t sigpipe_mask;
-
   int connect_timeout;          /* 1/1000 sec.  */
   int io_timeout;               /* 1/1000 sec.  */
   int max_failures;
@@ -387,9 +385,6 @@ client_init()
   array_init(&c->str_buf);
 
   dispatch_init(&c->dispatch);
-
-  sigemptyset(&c->sigpipe_mask);
-  sigaddset(&c->sigpipe_mask, SIGPIPE);
 
   c->connect_timeout = 250;
   c->io_timeout = 1000;
@@ -1441,18 +1436,15 @@ client_execute(struct client *c)
   int first_iter = 1;
 
 #if ! defined(MSG_NOSIGNAL) && ! defined(WIN32)
-  int sigpipe_pending, sigpipe_unblock = 0;
-  sigset_t pending;
+  struct sigaction orig, ignore;
+  int res;
 
-  sigpending(&pending);
-  sigpipe_pending = sigismember(&pending, SIGPIPE);
-  if (! sigpipe_pending)
-    {
-      sigset_t blocked;
-
-      pthread_sigmask(SIG_BLOCK, &c->sigpipe_mask, &blocked);
-      sigpipe_unblock = ! sigismember(&blocked, SIGPIPE);
-    }
+  ignore.sa_handler = SIG_IGN;
+  sigemptyset(&ignore.sa_mask);
+  ignore.sa_flags = 0;
+  res = sigaction(SIGPIPE, &ignore, &orig);
+  if (res == -1)
+    return MEMCACHED_FAILURE;
 #endif /* ! defined(MSG_NOSIGNAL) && ! defined(WIN32) */
 
   while (1)
@@ -1558,22 +1550,11 @@ client_execute(struct client *c)
     }
 
 #if ! defined(MSG_NOSIGNAL) && ! defined(WIN32)
-  if (! sigpipe_pending)
-    {
-      sigpending(&pending);
-      if (sigismember(&pending, SIGPIPE))
-        {
-          static const struct timespec nowait = { 0, 0 };
-          int res;
-
-          do
-            res = sigtimedwait(&c->sigpipe_mask, NULL, &nowait);
-          while (res == -1 && errno == EINTR);
-        }
-
-      if (sigpipe_unblock)
-        pthread_sigmask(SIG_UNBLOCK, &c->sigpipe_mask, NULL);
-    }
+  /*
+    Ignore return value of sigaction(), there's nothing we can do in
+    the case of error.
+  */
+  sigaction(SIGPIPE, &orig, NULL);
 #endif /* ! defined(MSG_NOSIGNAL) && ! defined(WIN32) */
 
   return MEMCACHED_SUCCESS;
