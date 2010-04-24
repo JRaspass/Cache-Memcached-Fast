@@ -31,8 +31,6 @@
 - In BSD, you can avoid signals by setsockopt() with SO_NOSIGPIPE
   (SOL_SOCKET option).
 
-- use sigpending() for SIGPIPE.
-
 - set close-on-exec (SO_CLOEXEC).
 
 - Fix bugs from http://cpants.perl.org/dist/kwalitee/Cache-Memcached-Fast

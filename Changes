@@ -1,12 +1,19 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.19  ???
-        - ???
+0.19  2010-04-24
+        - revert SIGPIPE suppression change.  Upgrade if you couldn't
+        build 0.18.
 
         Changes since 0.18:
 
-        ???
+        Turned out some orthodox systems do not have sigtimedwait().
+        Since advanced systems that have sigtimedwait() also have
+        MSG_NOSIGNAL and thus do not use SIGPIPE suppression code in
+        question, and other systems have neither MSG_NOSIGNAL nor
+        sigtimedwait(), the only option is to revert to the previous
+        suppression code.  It works correctly unless your program is
+        multi-threaded.
 
 
 0.18  2010-04-06
