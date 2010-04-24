@@ -19,10 +19,6 @@ Revision history for Perl extension Cache::Memcached::Fast.
         hashes are supported now, as well as Readonly variables and
         other magic stuff.
 
-        Fix SIGPIPE handling, make it thread-safe.  Now we use
-        pthread_sigmask() from <signal.h>.  I hope this won't break
-        the build on some platforms.
-
         Fix t/command.t failure on some Solaris distributions.
 
         Make module thread-safe with Perl >= 5.7.2.
