@@ -114,7 +114,7 @@ our $VERSION = '0.20';
 
 =head1 DESCRIPTION
 
-B<Cache::Memcahced::Fast> is a Perl client for B<memcached>, a memory
+B<Cache::Memcached::Fast> is a Perl client for B<memcached>, a memory
 cache daemon (L<http://www.danga.com/memcached/>).  Module core is
 implemented in C and tries hard to minimize number of system calls and
 to avoid any key/value copying for speed.  As a result, it has very
@@ -297,7 +297,7 @@ Consider the following scenario:
   set key 10\r\n
   value_data\r\n
 
-=item 2 Memcahced server reads first line, 'set key 10', and can't
+=item 2 Memcached server reads first line, 'set key 10', and can't
         parse it, because there's wrong number of tokens in it.  So it
         sends
 
