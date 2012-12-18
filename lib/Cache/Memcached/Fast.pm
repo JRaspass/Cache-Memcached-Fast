@@ -704,7 +704,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</set> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</set> to
 learn what the result value is.
 
 =cut
@@ -756,7 +756,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</cas> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</cas> to
 learn what the result value is.
 
 B<cas> command first appeared in B<memcached> 1.2.4.
@@ -803,7 +803,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</add> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</add> to
 learn what the result value is.
 
 =cut
@@ -848,7 +848,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</replace> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</replace> to
 learn what the result value is.
 
 =cut
@@ -892,7 +892,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</append> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</append> to
 learn what the result value is.
 
 B<append> command first appeared in B<memcached> 1.2.4.
@@ -938,7 +938,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</prepend> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</prepend> to
 learn what the result value is.
 
 B<prepend> command first appeared in B<memcached> 1.2.4.
@@ -1054,7 +1054,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</incr> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</incr> to
 learn what the result value is.
 
 =cut
@@ -1102,7 +1102,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</decr> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</decr> to
 learn what the result value is.
 
 =cut
@@ -1146,7 +1146,7 @@ succeed, while others may fail.
 I<Return:> in list context returns the list of results, each
 I<$list[$index]> is the result value corresponding to the argument at
 position I<$index>.  In scalar context, hash reference is returned,
-where I<$href-E<gt>{$key}> hols the result value.  See L</delete> to
+where I<$href-E<gt>{$key}> holds the result value.  See L</delete> to
 learn what the result value is.
 
 =cut
