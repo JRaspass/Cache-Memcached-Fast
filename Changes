@@ -1,6 +1,14 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.21  ???
+        - ???
+
+        Changes since 0.20:
+
+        ???
+
+
 0.20  2013-04-03
         - finally fix magic.t failure.  Magic handling introduced in
         0.18 wasn't correct until this release.  Upgrade if you use
