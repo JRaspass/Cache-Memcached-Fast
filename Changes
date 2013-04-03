@@ -1,12 +1,22 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.20  ???
-        - ???
+0.20  2013-04-03
+        - finally fix magic.t failure.  Magic handling introduced in
+        0.18 wasn't correct until this release.  Upgrade if you use
+        Perl 'tie' feature or its derivatives like Readonly.
 
         Changes since 0.19:
 
+        Fix RT#57150, RT#67106: magic.t failure.  Thanks to
+        <listposter@...> for instructions on how to reproduce the
+        problem.
 
+        Fix RT#77254: typo in POD documentation.  Tnanks to Alex
+        <alex112358@...>.
+
+        Fix RT#81782: Unnecessary string eval in constructor.  Thanks
+        to Andrew Holland for the patch.
 
 
 0.19  2010-04-24
