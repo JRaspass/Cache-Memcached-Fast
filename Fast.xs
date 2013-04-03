@@ -631,6 +631,26 @@ embedded_store(void *arg, void *opaque, int key_index, void *meta)
 }
 
 
+/*
+  When SvPV() is called on a magic SV the result of mg_get() is cached
+  in PV slot.  Since we pass around pointers to this storage we have
+  to avoid value refetch and reallocation that would happen if
+  mg_get() is called again.  Because any magic SV may be put to the
+  argument list more than once we create a temporal copies of them,
+  thus braking possible ties and ensuring that every argument is
+  fetched exactly once.
+*/
+static inline
+char *
+SvPV_stable_storage(SV *sv, STRLEN *lp)
+{
+  if (SvGAMAGIC(sv))
+    sv = sv_2mortal(newSVsv(sv));
+
+  return SvPV(sv, *lp);
+}
+
+
 MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast
 
 
@@ -714,7 +734,7 @@ set(memd, ...)
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c, &object, noreply);
-        key = SvPV(ST(arg), key_len);
+        key = SvPV_stable_storage(ST(arg), &key_len);
         ++arg;
         if (ix == CMD_CAS)
           {
@@ -725,7 +745,7 @@ set(memd, ...)
         ++arg;
         sv = serialize(memd, sv, &flags);
         sv = compress(memd, sv, &flags);
-        buf = (void *) SvPV(sv, buf_len);
+        buf = (void *) SvPV_stable_storage(sv, &buf_len);
         if (buf_len > memd->max_size)
           XSRETURN_EMPTY;
         if (items > arg)
@@ -803,7 +823,7 @@ set_multi(memd, ...)
               The following values should be defined, so we do not do
               any additional checks for speed.
             */
-            key = SvPV(*av_fetch(av, arg, 0), key_len);
+            key = SvPV_stable_storage(*av_fetch(av, arg, 0), &key_len);
             ++arg;
             if (ix == CMD_CAS)
               {
@@ -814,7 +834,7 @@ set_multi(memd, ...)
             ++arg;
             sv = serialize(memd, sv, &flags);
             sv = compress(memd, sv, &flags);
-            buf = (void *) SvPV(sv, buf_len);
+            buf = (void *) SvPV_stable_storage(sv, &buf_len);
             if (buf_len > memd->max_size)
               continue;
             if (av_len(av) >= arg)
@@ -926,7 +946,7 @@ get_multi(memd, ...)
             const char *key;
             STRLEN key_len;
 
-            key = SvPV(ST(i + 1), key_len);
+            key = SvPV_stable_storage(ST(i + 1), &key_len);
             client_prepare_get(memd->c, ix, i, key, key_len);
           }
         client_execute(memd->c);
@@ -965,7 +985,7 @@ incr(memd, ...)
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c, &object, noreply);
-        key = SvPV(ST(1), key_len);
+        key = SvPV_stable_storage(ST(1), &key_len);
         if (items > 2)
           {
             /* increment doesn't have to be defined.  */
@@ -1013,7 +1033,7 @@ incr_multi(memd, ...)
             sv = ST(i);
             if (! SvROK(sv))
               {
-                key = SvPV(sv, key_len);
+                key = SvPV_stable_storage(sv, &key_len);
               }
             else
               {
@@ -1025,7 +1045,7 @@ incr_multi(memd, ...)
                   The following values should be defined, so we do not
                   do any additional checks for speed.
                 */
-                key = SvPV(*av_fetch(av, 0, 0), key_len);
+                key = SvPV_stable_storage(*av_fetch(av, 0, 0), &key_len);
                 if (av_len(av) >= 1)
                   {
                     /* increment doesn't have to be defined.  */
@@ -1097,7 +1117,7 @@ delete(memd, ...)
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
         client_reset(memd->c, &object, noreply);
-        key = SvPV(ST(1), key_len);
+        key = SvPV_stable_storage(ST(1), &key_len);
         if (items > 2)
           {
             /* Compatibility with old (key, delay) syntax.  */
@@ -1143,7 +1163,7 @@ delete_multi(memd, ...)
             sv = ST(i);
             if (! SvROK(sv))
               {
-                key = SvPV(sv, key_len);
+                key = SvPV_stable_storage(sv, &key_len);
               }
             else
               {
@@ -1159,7 +1179,7 @@ delete_multi(memd, ...)
                   The following values should be defined, so we do not
                   do any additional checks for speed.
                 */
-                key = SvPV(*av_fetch(av, 0, 0), key_len);
+                key = SvPV_stable_storage(*av_fetch(av, 0, 0), &key_len);
                 if (av_len(av) >= 1)
                   {
                     /* delay doesn't have to be defined.  */
