@@ -1,12 +1,18 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
-0.21  ???
-        - ???
+0.21  2013-04-06
+        - regenerate distribution archive to include META.json and
+        META.yml.  There's no need to upgrade as these files are used
+        only by CPAN itself.
 
         Changes since 0.20:
 
-        ???
+        There are no changes since 0.20.  CPAN::Meta hasn't been
+        installed on the build host and this resulted in creation of
+        0.20 distribution missing META.json/META.yml without any
+        warning.  Turns out the absence of these files prevents the
+        released module from being tested on CPAN tester network.
 
 
 0.20  2013-04-03
