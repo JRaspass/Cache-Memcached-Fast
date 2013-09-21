@@ -14,6 +14,11 @@ WriteMakefile(
     ABSTRACT_FROM     => 'lib/Cache/Memcached/Fast.pm',
     AUTHOR            => 'Tomash Brechko <tomash.brechko@gmail.com>',
     MYEXTLIB          => 'src/libclient$(LIB_EXT)',
+    META_MERGE        => {
+        resources => {
+            repository => 'https://github.com/kroki/Cache-Memcached-Fast',
+        },
+    },
 );
 
 sub MY::postamble {
