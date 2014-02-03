@@ -444,12 +444,19 @@ serialize(Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
 
       PUTBACK;
     }
-  else if (memd->utf8 && SvUTF8(sv))
+  else if (SvUTF8(sv))
     {
       /* Copy the value because we will modify it in place.  */
       sv = sv_2mortal(newSVsv(sv));
-      sv_utf8_encode(sv);
-      *flags |= F_UTF8;
+      if (memd->utf8)
+        {
+          sv_utf8_encode(sv);
+          *flags |= F_UTF8;
+        }
+      else
+        {
+          sv_utf8_downgrade(sv, 0);
+        }
     }
 
   return sv;
