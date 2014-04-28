@@ -1,6 +1,19 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.22  2014-04-28
+        - warn about UTF-8 strings when utf8 option is disabled.
+
+        Changes since 0.21:
+
+        Fix RT#92678: behaviour with utf8=0.  When utf8 option is
+        disabled C::M::F will try to downgrade UTF-8 strings and will
+        croak if failed to do so.
+
+        Also updated ppport.h and removed outdated test case
+        encoding.t.
+
+
 0.21  2013-04-06
         - regenerate distribution archive to include META.json and
         META.yml.  There's no need to upgrade as these files are used
