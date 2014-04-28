@@ -438,7 +438,7 @@ exception (call I<die>).  The exception will be caught by the module
 and L</get> will then pretend that the key hasn't been found.
 
 
-=item I<utf8> (B<experimental, Perl 5.8.1 and later>)
+=item I<utf8>
 
   utf8 => 1
   (default: disabled)
