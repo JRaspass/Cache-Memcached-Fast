@@ -1444,8 +1444,10 @@ L<http://search.cpan.org/dist/Cache-Memcached-Fast>
 
 =head1 SEE ALSO
 
-L<http://openhack.ru/Cache-Memcached-Fast> - project home.  Latest
+L<https://github.com/kroki/Cache-Memcached-Fast> - project home.  Latest
 development tree can be found there.
+
+L<http://openhack.ru/Cache-Memcached-Fast> - old project home.
 
 L<Cache::Memcached|Cache::Memcached> - original pure Perl B<memcached>
 client.
