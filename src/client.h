@@ -26,6 +26,9 @@
 
 #include <stddef.h>
 
+#include "EXTERN.h"
+#include "perl.h"
+
 
 struct client;
 
@@ -66,10 +69,10 @@ typedef unsigned long long arith_type;
 #define FMT_ARITH "%llu"
 
 
-typedef void *(*alloc_value_func)(value_size_type value_size, void **opaque);
-typedef void (*store_value_func)(void *arg, void *opaque, int key_index,
+typedef void *(*alloc_value_func)(pTHX_ value_size_type value_size, void **opaque);
+typedef void (*store_value_func)(pTHX_ void *arg, void *opaque, int key_index,
                                  void *meta);
-typedef void (*free_value_func)(void *opaque);
+typedef void (*free_value_func)(pTHX_ void *opaque);
 
 struct result_object
 {
@@ -94,7 +97,7 @@ client_init();
 
 extern
 void
-client_destroy(struct client *c);
+client_destroy(pTHX_ struct client *c);
 
 extern
 void
@@ -188,20 +191,20 @@ client_prepare_delete(struct client *c, int key_index,
 
 extern
 int
-client_execute(struct client *c);
+client_execute(pTHX_ struct client *c);
 
 extern
 int
-client_flush_all(struct client *c, delay_type delay,
+client_flush_all(pTHX_ struct client *c, delay_type delay,
                  struct result_object *o, int noreply);
 
 extern
 int
-client_nowait_push(struct client *c);
+client_nowait_push(pTHX_ struct client *c);
 
 extern
 int
-client_server_versions(struct client *c, struct result_object *o);
+client_server_versions(pTHX_ struct client *c, struct result_object *o);
 
 
 #endif /* ! CLIENT_H */

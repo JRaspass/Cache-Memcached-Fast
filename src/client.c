@@ -77,7 +77,7 @@ struct embedded_state
 
 
 struct command_state;
-typedef int (*parse_reply_func)(struct command_state *state);
+typedef int (*parse_reply_func)(pTHX_ struct command_state *state);
 
 
 enum command_phase
@@ -303,7 +303,8 @@ struct client
 
 static inline
 void
-command_state_reset(struct command_state *state, int str_step,
+command_state_reset(struct command_state *state, 
+					int str_step,
                     parse_reply_func parse_reply)
 {
   state->reply_count = 0;
@@ -409,16 +410,16 @@ client_init()
 
 static
 int
-client_noreply_push(struct client *c);
+client_noreply_push(pTHX_ struct client *c);
 
 
 void
-client_destroy(struct client *c)
+client_destroy(pTHX_ struct client *c)
 {
   struct server *s;
 
-  client_nowait_push(c);
-  client_noreply_push(c);
+  client_nowait_push(aTHX_ c);
+  client_noreply_push(aTHX_ c);
 
   for (array_each(c->servers, struct server, s))
     server_destroy(s);
@@ -730,7 +731,7 @@ parse_key(struct command_state *state)
 
 static
 int
-read_value(struct command_state *state)
+read_value(pTHX_ struct command_state *state)
 {
   value_size_type size;
   size_t remains;
@@ -774,7 +775,7 @@ read_value(struct command_state *state)
               if (res == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
                 return MEMCACHED_EAGAIN;
 
-              state->object->free(state->u.value.opaque);
+              state->object->free(aTHX_ state->u.value.opaque);
               return MEMCACHED_CLOSED;
             }
 
@@ -796,13 +797,13 @@ read_value(struct command_state *state)
 
   if (memcmp(state->pos, eol, sizeof(eol)) != 0)
     {
-      state->object->free(state->u.value.opaque);
+      state->object->free(aTHX_ state->u.value.opaque);
       return MEMCACHED_UNKNOWN;
     }
   state->pos += sizeof(eol);
   state->eol = state->pos;
 
-  state->object->store(state->object->arg, state->u.value.opaque,
+  state->object->store(aTHX_ state->object->arg, state->u.value.opaque,
                        state->index, &state->u.value.meta);
 
   return MEMCACHED_SUCCESS;
@@ -857,7 +858,7 @@ parse_ull(struct command_state *state, unsigned long long *result)
 
 static
 int
-parse_get_reply(struct command_state *state)
+parse_get_reply(pTHX_ struct command_state *state)
 {
   unsigned long long num;
   int res;
@@ -903,7 +904,7 @@ parse_get_reply(struct command_state *state)
   if (res != MEMCACHED_SUCCESS)
     return res;
 
-  state->u.value.ptr = state->object->alloc(state->u.value.size,
+  state->u.value.ptr = state->object->alloc(aTHX_ state->u.value.size,
                                             &state->u.value.opaque);
   if (! state->u.value.ptr)
     return MEMCACHED_FAILURE;
@@ -916,28 +917,28 @@ parse_get_reply(struct command_state *state)
 
 static inline
 void
-store_result(struct command_state *state, int res)
+store_result(pTHX_ struct command_state *state, int res)
 {
   int index = get_index(state);
   next_index(state);
-  state->object->store(state->object->arg, (void *) (long) res, index, NULL);
+  state->object->store(aTHX_ state->object->arg, (void *) (intptr_t) res, index, NULL);
 }
 
 
 static
 int
-parse_set_reply(struct command_state *state)
+parse_set_reply(pTHX_ struct command_state *state)
 {
   switch (state->match)
     {
     case MATCH_STORED:
-      store_result(state, 1);
+      store_result(aTHX_ state, 1);
       break;
 
     case MATCH_NOT_STORED:
     case MATCH_NOT_FOUND:
     case MATCH_EXISTS:
-      store_result(state, 0);
+      store_result(aTHX_ state, 0);
       break;
 
     default:
@@ -950,16 +951,16 @@ parse_set_reply(struct command_state *state)
 
 static
 int
-parse_delete_reply(struct command_state *state)
+parse_delete_reply(pTHX_ struct command_state *state)
 {
   switch (state->match)
     {
     case MATCH_DELETED:
-      store_result(state, 1);
+      store_result(aTHX_ state, 1);
       break;
 
     case MATCH_NOT_FOUND:
-      store_result(state, 0);
+      store_result(aTHX_ state, 0);
       break;
 
     default:
@@ -972,7 +973,7 @@ parse_delete_reply(struct command_state *state)
 
 static
 int
-parse_arith_reply(struct command_state *state)
+parse_arith_reply(pTHX_ struct command_state *state)
 {
   char *beg;
   size_t len;
@@ -986,11 +987,11 @@ parse_arith_reply(struct command_state *state)
     case MATCH_NOT_FOUND:
       /* On NOT_FOUND we store the defined empty string.  */
       state->u.embedded.ptr =
-        state->object->alloc(0, &state->u.embedded.opaque);
+        state->object->alloc(aTHX_ 0, &state->u.embedded.opaque);
       if (! state->u.embedded.ptr)
         return MEMCACHED_FAILURE;
 
-      state->object->store(state->object->arg, state->u.embedded.opaque,
+      state->object->store(aTHX_ state->object->arg, state->u.embedded.opaque,
                            state->index, NULL);
 
       return swallow_eol(state, 0, 1);
@@ -1024,7 +1025,7 @@ parse_arith_reply(struct command_state *state)
   if (zero)
     len = 3;
 
-  state->u.embedded.ptr = state->object->alloc(len, &state->u.embedded.opaque);
+  state->u.embedded.ptr = state->object->alloc(aTHX_ len, &state->u.embedded.opaque);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
@@ -1033,7 +1034,7 @@ parse_arith_reply(struct command_state *state)
   else
     memcpy(state->u.embedded.ptr, "0E0", 3);
 
-  state->object->store(state->object->arg, state->u.embedded.opaque,
+  state->object->store(aTHX_ state->object->arg, state->u.embedded.opaque,
                        state->index, NULL);
 
   /* Value may be space padded.  */
@@ -1043,12 +1044,12 @@ parse_arith_reply(struct command_state *state)
 
 static
 int
-parse_ok_reply(struct command_state *state)
+parse_ok_reply(pTHX_ struct command_state *state)
 {
   switch (state->match)
     {
     case MATCH_OK:
-      store_result(state, 1);
+      store_result(aTHX_ state, 1);
       return swallow_eol(state, 0, 1);
 
     default:
@@ -1059,7 +1060,7 @@ parse_ok_reply(struct command_state *state)
 
 static
 int
-parse_version_reply(struct command_state *state)
+parse_version_reply(pTHX_ struct command_state *state)
 {
   const char *beg;
   size_t len;
@@ -1088,13 +1089,13 @@ parse_version_reply(struct command_state *state)
 
   len = state->pos - sizeof(eol) - beg;
 
-  state->u.embedded.ptr = state->object->alloc(len, &state->u.embedded.opaque);
+  state->u.embedded.ptr = state->object->alloc(aTHX_ len, &state->u.embedded.opaque);
   if (! state->u.embedded.ptr)
     return MEMCACHED_FAILURE;
 
   memcpy(state->u.embedded.ptr, beg, len);
 
-  state->object->store(state->object->arg, state->u.embedded.opaque,
+  state->object->store(aTHX_ state->object->arg, state->u.embedded.opaque,
                        state->index, NULL);
 
   return MEMCACHED_SUCCESS;
@@ -1103,7 +1104,7 @@ parse_version_reply(struct command_state *state)
 
 static
 int
-parse_nowait_reply(struct command_state *state)
+parse_nowait_reply(pTHX_ struct command_state *state)
 {
   int res;
 
@@ -1293,7 +1294,7 @@ receive_reply(struct command_state *state)
 
 static
 int
-parse_reply(struct command_state *state)
+parse_reply(pTHX_ struct command_state *state)
 {
   int res, skip;
 
@@ -1309,9 +1310,9 @@ parse_reply(struct command_state *state)
 
     default:
       if (state->nowait_count)
-        return parse_nowait_reply(state);
+        return parse_nowait_reply(aTHX_ state);
       else
-        return state->parse_reply(state);
+        return state->parse_reply(aTHX_ state);
 
     case NO_MATCH:
       return MEMCACHED_UNKNOWN;
@@ -1321,7 +1322,7 @@ parse_reply(struct command_state *state)
 
 static
 int
-process_reply(struct command_state *state, struct server *s)
+process_reply(pTHX_ struct command_state *state, struct server *s)
 {
   int res = 0;
 
@@ -1341,7 +1342,7 @@ process_reply(struct command_state *state, struct server *s)
           /* Fall into below.  */
 
         case PHASE_PARSE:
-          res = parse_reply(state);
+          res = parse_reply(aTHX_ state);
           if (res != MEMCACHED_SUCCESS)
             break;
 
@@ -1356,7 +1357,7 @@ process_reply(struct command_state *state, struct server *s)
           break;
 
         case PHASE_VALUE:
-          res = read_value(state);
+          res = read_value(aTHX_ state);
           if (res != MEMCACHED_SUCCESS)
             break;
 
@@ -1422,7 +1423,7 @@ state_prepare(struct command_state *state)
 
       while (count > 0)
         {
-          iov->iov_base = (void *) (buf + (long) (iov->iov_base));
+          iov->iov_base = (void *) (buf + (intptr_t) (iov->iov_base));
           iov += step;
           count -= step;
         }
@@ -1431,7 +1432,7 @@ state_prepare(struct command_state *state)
 
 
 int
-client_execute(struct client *c)
+client_execute(pTHX_ struct client *c)
 {
   int first_iter = 1;
 
@@ -1492,7 +1493,7 @@ client_execute(struct client *c)
                 }
 
               if (may_read)
-                process_reply(state, s);
+                process_reply(aTHX_ state, s);
 
               if (! is_active(state))
                 continue;
@@ -1537,7 +1538,7 @@ client_execute(struct client *c)
                     requires redesign.
                   */
                   if (state->phase == PHASE_VALUE)
-                    state->object->free(state->u.value.opaque);
+                    state->object->free(aTHX_ state->u.value.opaque);
 
                   client_mark_failed(c, s);
                 }
@@ -1744,9 +1745,14 @@ init_state(struct command_state *state, int index, size_t request_size,
 
 static
 struct command_state *
-get_state(struct client *c, int index, const char *key, size_t key_len,
-          size_t request_size, size_t str_size,
-          parse_reply_func parse_reply)
+get_state(
+	struct client *c, 
+	int index, 
+	const char *key, 
+	size_t key_len,
+	size_t request_size, 
+	size_t str_size,
+	parse_reply_func parse_reply)
 {
   struct server *s;
   int server_index, fd;
@@ -1790,7 +1796,7 @@ client_reset(struct client *c, struct result_object *o, int noreply)
 }
 
 
-#define STR_WITH_LEN(str) (str), (sizeof(str) - 1)
+//#define STR_WITH_LEN(str) (str), (sizeof(str) - 1)
 
 
 int
@@ -1847,7 +1853,7 @@ client_prepare_set(struct client *c, enum set_cmd_e cmd, int key_index,
     size_t str_size =
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE "%s\r\n",
               flags, exptime, value_size, get_noreply(state));
-    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (intptr_t) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -1888,7 +1894,7 @@ client_prepare_cas(struct client *c, int key_index,
       sprintf(buf, " " FMT_FLAGS " " FMT_EXPTIME " " FMT_VALUE_SIZE
               " " FMT_CAS "%s\r\n", flags, exptime, value_size, cas,
               get_noreply(state));
-    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (intptr_t) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -1979,7 +1985,7 @@ client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
     char *buf = array_end(c->str_buf, char);
     size_t str_size =
       sprintf(buf, " " FMT_ARITH "%s\r\n", arg, get_noreply(state));
-    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (intptr_t) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -2010,7 +2016,7 @@ client_prepare_delete(struct client *c, int key_index,
   {
     char *buf = array_end(c->str_buf, char);
     size_t str_size = sprintf(buf, "%s\r\n", get_noreply(state));
-    iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
+    iov_push(state, (void *) (intptr_t) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }
 
@@ -2019,7 +2025,7 @@ client_prepare_delete(struct client *c, int key_index,
 
 
 int
-client_flush_all(struct client *c, delay_type delay,
+client_flush_all(pTHX_ struct client *c, delay_type delay,
                  struct result_object *o, int noreply)
 {
   static const size_t request_size = 1;
@@ -2057,17 +2063,17 @@ client_flush_all(struct client *c, delay_type delay,
         size_t str_size =
           sprintf(buf, "flush_all " FMT_DELAY "%s\r\n",
                   (delay_type) (ddelay + 0.5), get_noreply(state));
-        iov_push(state, (void *) (long) array_size(c->str_buf), str_size);
+        iov_push(state, (void *) (intptr_t) array_size(c->str_buf), str_size);
         array_append(c->str_buf, str_size);
       }
     }
 
-  return client_execute(c);
+  return client_execute(aTHX_ c);
 }
 
 
 int
-client_nowait_push(struct client *c)
+client_nowait_push(pTHX_ struct client *c)
 {
   struct server *s;
 
@@ -2100,12 +2106,12 @@ client_nowait_push(struct client *c)
       ++state->reply_count;
     }
 
-  return client_execute(c);
+  return client_execute(aTHX_ c);
 }
 
 
 int
-client_server_versions(struct client *c, struct result_object *o)
+client_server_versions(pTHX_ struct client *c, struct result_object *o)
 {
   static const size_t request_size = 1;
 
@@ -2131,7 +2137,7 @@ client_server_versions(struct client *c, struct result_object *o)
       iov_push(state, STR_WITH_LEN("version\r\n"));
     }
 
-  return client_execute(c);
+  return client_execute(aTHX_ c);
 }
 
 
@@ -2144,7 +2150,7 @@ client_server_versions(struct client *c, struct result_object *o)
 */
 static
 int
-client_noreply_push(struct client *c)
+client_noreply_push(pTHX_ struct client *c)
 {
   static const size_t request_size = 1;
 
@@ -2172,5 +2178,5 @@ client_noreply_push(struct client *c)
       iov_push(state, STR_WITH_LEN("version\r\n"));
     }
 
-  return client_execute(c);
+  return client_execute(aTHX_ c);
 }
