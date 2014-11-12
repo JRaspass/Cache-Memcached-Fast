@@ -619,7 +619,7 @@ result_store(void *arg, void *opaque, int key_index, void *meta)
 {
   dTHX;
   AV *av = (AV *) arg;
-  int res = (long) opaque;
+  int res = (ptrdiff_t) opaque;
 
   /* Suppress warning about unused meta.  */
   if (meta) {}
