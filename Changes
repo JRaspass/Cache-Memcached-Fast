@@ -1,6 +1,22 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.23  2014-11-15
+        - add touch and touch_multi commands, speedup for the case
+        when application threads have per-thread Perl interpreters
+        (multithreaded Apache, etc.).
+
+        Changes since 0.22:
+
+        Alexandr Evstigneev (hurricup@gmail.com) provided patches that
+        make querying per-thread Perl state more efficient, and also
+        fix compilation warnings on Win64.
+
+        neguse (negcee@gmail.com) provided patches that implement
+        "touch" and "touch_multi" commands that appeared in memcached
+        1.4.8.
+
+
 0.22  2014-04-28
         - warn about UTF-8 strings when utf8 option is disabled.
 
