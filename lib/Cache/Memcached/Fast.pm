@@ -1154,6 +1154,53 @@ learn what the result value is.
 # See Fast.xs.
 
 
+=item C<touch>
+
+  $memd->touch($key, $expiration_time);
+
+Update the expiration time of I<$key> without fetching it.
+
+Optional I<$expiration_time> is a positive integer number of seconds
+after which the value will expire and wouldn't be accessible any
+longer.
+
+I<Return:> boolean, true for positive server reply, false for negative
+server reply, or I<undef> in case of some error.
+
+B<touch> command first appeared in B<memcached> 1.4.8.
+
+=cut
+
+# See Fast.xs.
+
+
+=item C<touch_multi>
+
+  $memd->touch_multi(
+      [$key],
+      [$key, $expiration_time],
+      ...
+  );
+
+Like L</touch>, but operates on more than one key.  Takes the list of
+references to arrays each holding I<$key> and optional I<$expiration_time>.
+
+Note that multi commands are not all-or-nothing, some operations may
+succeed, while others may fail.
+
+I<Return:> in list context returns the list of results, each
+I<$list[$index]> is the result value corresponding to the argument at
+position I<$index>.  In scalar context, hash reference is returned,
+where I<$href-E<gt>{$key}> holds the result value.  See L</touch> to
+learn what the result value is.
+
+B<touch> command first appeared in B<memcached> 1.4.8.
+
+=cut
+
+# See Fast.xs.
+
+
 =item C<flush_all>
 
   $memd->flush_all;

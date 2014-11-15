@@ -188,6 +188,12 @@ client_prepare_delete(struct client *c, int key_index,
 
 extern
 int
+client_prepare_touch(struct client *c, int key_index,
+                      const char* key, size_t key_len,
+                      exptime_type exptime);
+
+extern
+int
 client_execute(struct client *c);
 
 extern
