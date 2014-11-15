@@ -115,7 +115,7 @@ our $VERSION = '0.22';
 =head1 DESCRIPTION
 
 B<Cache::Memcached::Fast> is a Perl client for B<memcached>, a memory
-cache daemon (L<http://www.danga.com/memcached/>).  Module core is
+cache daemon (L<http://www.memcached.org/>).  Module core is
 implemented in C and tries hard to minimize number of system calls and
 to avoid any key/value copying for speed.  As a result, it has very
 low CPU consumption.
@@ -1499,7 +1499,7 @@ L<http://openhack.ru/Cache-Memcached-Fast> - old project home.
 L<Cache::Memcached|Cache::Memcached> - original pure Perl B<memcached>
 client.
 
-L<http://www.danga.com/memcached/> - B<memcached> website.
+L<http://www.memcached.org/> - B<memcached> website.
 
 
 =head1 AUTHORS
