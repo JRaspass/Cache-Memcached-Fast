@@ -26,6 +26,7 @@ OK
 SERVER_ERROR
 STAT
 STORED
+TOUCHED
 VALUE
 VERSION
 # incr and decr return non-negative number.

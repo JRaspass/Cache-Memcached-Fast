@@ -973,6 +973,29 @@ parse_delete_reply(struct command_state *state)
 
 static
 int
+parse_touch_reply(struct command_state *state)
+{
+  switch (state->match)
+    {
+    case MATCH_TOUCHED:
+      store_result(state, 1);
+      break;
+
+    case MATCH_NOT_FOUND:
+      store_result(state, 0);
+      break;
+
+    default:
+      return MEMCACHED_UNKNOWN;
+    }
+
+  return swallow_eol(state, 0, 1);
+}
+
+
+
+static
+int
 parse_arith_reply(struct command_state *state)
 {
   char *beg;
@@ -1120,6 +1143,7 @@ parse_nowait_reply(struct command_state *state)
     case MATCH_EXISTS:
     case MATCH_NOT_FOUND:
     case MATCH_NOT_STORED:
+    case MATCH_TOUCHED:
       return swallow_eol(state, 0, 1);
 
     case MATCH_0: case MATCH_1: case MATCH_2: case MATCH_3: case MATCH_4:
@@ -2011,6 +2035,38 @@ client_prepare_delete(struct client *c, int key_index,
   {
     char *buf = array_end(c->str_buf, char);
     size_t str_size = sprintf(buf, "%s\r\n", get_noreply(state));
+    iov_push(state, (void *) (ptrdiff_t) array_size(c->str_buf), str_size);
+    array_append(c->str_buf, str_size);
+  }
+
+  return MEMCACHED_SUCCESS;
+}
+
+
+int
+client_prepare_touch(struct client *c, int key_index,
+                      const char *key, size_t key_len,
+                      exptime_type exptime)
+{
+  static const size_t request_size = 4;
+  static const size_t str_size = sizeof(" " NOREPLY "\r\n");
+
+  struct command_state *state;
+
+  state = get_state(c, key_index, key, key_len, request_size, str_size,
+                    parse_touch_reply);
+  if (! state)
+    return MEMCACHED_FAILURE;
+
+  ++state->key_count;
+
+  iov_push(state, STR_WITH_LEN("touch"));
+  iov_push(state, c->prefix, c->prefix_len);
+  iov_push(state, key, key_len);
+
+  {
+    char *buf = array_end(c->str_buf, char);
+    size_t str_size = sprintf(buf, " " FMT_EXPTIME "%s\r\n", exptime, get_noreply(state));
     iov_push(state, (void *) (ptrdiff_t) array_size(c->str_buf), str_size);
     array_append(c->str_buf, str_size);
   }

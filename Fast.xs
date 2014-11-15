@@ -1251,6 +1251,134 @@ delete_multi(memd, ...)
           }
 
 
+void
+touch(memd, ...)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $@
+    PREINIT:
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
+        int noreply;
+        const char *key;
+        STRLEN key_len;
+        exptime_type exptime = 0;
+        SV *sv;
+    PPCODE:
+        object.arg = newAV();
+        sv_2mortal((SV *) object.arg);
+        noreply = (GIMME_V == G_VOID);
+        client_reset(memd->c, &object, noreply);
+        key = SvPV_stable_storage(aTHX_ ST(1), &key_len);
+        if (items > 2)
+          {
+            /* exptime doesn't have to be defined.  */
+            sv = ST(2);
+            SvGETMAGIC(sv);
+            if (SvOK(sv))
+              exptime = SvIV(sv);
+          }
+        client_prepare_touch(memd->c, 0, key, key_len, exptime);
+        client_execute(memd->c);
+        if (! noreply)
+          {
+            SV **val = av_fetch(object.arg, 0, 0);
+            if (val)
+              {
+                PUSHs(*val);
+                XSRETURN(1);
+              }
+          }
+
+
+void
+touch_multi(memd, ...)
+        Cache_Memcached_Fast *  memd
+    PROTOTYPE: $@
+    PREINIT:
+        struct result_object object =
+            { NULL, result_store, NULL, NULL };
+        int i, noreply;
+    PPCODE:
+        object.arg = newAV();
+        sv_2mortal((SV *) object.arg);
+        noreply = (GIMME_V == G_VOID);
+        client_reset(memd->c, &object, noreply);
+        for (i = 1; i < items; ++i)
+          {
+            SV *sv;
+            AV *av;
+            const char *key;
+            STRLEN key_len;
+            exptime_type exptime = 0;
+            int arg = 0;
+
+            sv = ST(i);
+            if (! (SvROK(sv) && SvTYPE(SvRV(sv)) == SVt_PVAV))
+              croak("Not an array reference");
+
+            av = (AV *) SvRV(sv);
+            /*
+              The following values should be defined, so we do not do
+              any additional checks for speed.
+            */
+            key = SvPV_stable_storage(aTHX_ *av_fetch(av, arg, 0), &key_len);
+            ++arg;
+
+            if (av_len(av) >= 1)
+              {
+                /* exptime doesn't have to be defined.  */
+                SV **ps = av_fetch(av, arg, 0);
+                if (ps)
+                  SvGETMAGIC(*ps);
+                if (ps && SvOK(*ps))
+                  exptime = SvIV(*ps);
+              }
+
+            client_prepare_touch(memd->c, i - 1, key, key_len, exptime);
+          }
+        client_execute(memd->c);
+        if (! noreply)
+          {
+            if (GIMME_V == G_SCALAR)
+              {
+                HV *hv = newHV();
+                for (i = 0; i <= av_len(object.arg); ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val && SvOK(*val))
+                      {
+                        SV *key;
+                        HE *he;
+
+                        key = ST(i + 1);
+                        if (SvROK(key))
+                          key = *av_fetch((AV *) SvRV(key), 0, 0);
+
+                        he = hv_store_ent(hv, key, SvREFCNT_inc(*val), 0);
+                        if (! he)
+                          SvREFCNT_dec(*val);
+                      }
+                  }
+                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                XSRETURN(1);
+              }
+            else
+              {
+                I32 max_index = av_len(object.arg);
+                EXTEND(SP, max_index + 1);
+                for (i = 0; i <= max_index; ++i)
+                  {
+                    SV **val = av_fetch(object.arg, i, 0);
+                    if (val)
+                      PUSHs(*val);
+                    else
+                      PUSHs(&PL_sv_undef);
+                  }
+                XSRETURN(max_index + 1);
+              }
+          }
+
+
 HV *
 flush_all(memd, ...)
         Cache_Memcached_Fast *  memd

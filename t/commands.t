@@ -9,7 +9,7 @@ use lib "$FindBin::Bin";
 use Memd;
 
 if ($Memd::memd) {
-    plan tests => 68;
+    plan tests => 91;
 } else {
     plan skip_all => 'Not connected';
 }
@@ -133,6 +133,74 @@ SKIP: {
     is(scalar keys %$res, 0);
 }
 
+SKIP: {
+    skip "memcached 1.4.8 is required for touch commands", 23
+      if $Memd::version_num < 10408;
+
+    # Avoiding immediately expiration by 2 seconds expiration_time.
+    # Because memcached truncates XXX1.999 seconds to XXX1.0 seconds,
+    # 1 second expiration_time potentially expire immediately.
+    my $expire = 2;
+    # Wait +1 seconds for test stability.
+    my $wait_expire = $expire + 1;
+
+    # expiration_time will updated by touch
+    ok($Memd::memd->set($key, 'value'), 'Store');
+    ok($Memd::memd->touch($key, $expire), 'Touch expiration_time : undef -> $expire');
+    sleep $wait_expire;
+    ok(!$Memd::memd->get($key), 'Expired');
+
+    # expiration_time will updated by touch
+    ok($Memd::memd->set($key, 'value', $expire), 'Store');
+    ok($Memd::memd->touch($key), 'Touch expire_time : $expire -> undef');
+    sleep $wait_expire;
+    ok($Memd::memd->get($key), 'Not Expired');
+
+    $Memd::memd->delete($key);
+    ok(!$Memd::memd->touch($key), 'Touch no-such-key');
+
+    # test touch_multi in array context
+    $Memd::memd->set($keys[0], 'value');
+    $Memd::memd->set($keys[1], 'value', $expire);
+    my @res = $Memd::memd->touch_multi([$keys[0], $expire],
+                                       [$keys[1]],
+                                       ['no-such-key']);
+    is(@res, 3);
+    ok($res[0]);
+    ok($res[1]);
+    ok(!$res[2]);
+    sleep $wait_expire;
+    ok(!defined $Memd::memd->get($keys[0]), 'Expired');
+    ok($Memd::memd->get($keys[1]), 'Not Expired');
+
+    # test touch_multi in scalar context
+    $Memd::memd->set($keys[0], 'value');
+    $Memd::memd->set($keys[1], 'value', $expire);
+    my $res = $Memd::memd->touch_multi([$keys[0], $expire],
+                                       [$keys[1]],
+                                       ['no-such-key']);
+    isa_ok($res, 'HASH');
+    is(scalar keys %$res, 3);
+    ok($res->{$keys[0]});
+    ok($res->{$keys[1]});
+    ok(defined $res->{'no-such-key'} and not $res->{'no-such-key'});
+    sleep $wait_expire;
+    ok(!$Memd::memd->get($keys[0]), 'Expired');
+    ok($Memd::memd->get($keys[1]), 'Not Expired');
+
+    $res = $Memd::memd->touch_multi();
+    isa_ok($res, 'HASH');
+    is(scalar keys %$res, 0);
+
+    @res = $Memd::memd->touch_multi();
+    is(@res, 0);
+}
+
+
+$Memd::memd->set($key, 'value');
+foreach my $k (@keys) {
+    $Memd::memd->set($k, 'value');
+}
 ok($Memd::memd->replace_multi(map { [$_,0] } @keys),'replace_multi to reset to numeric');
 $res = $Memd::memd->incr_multi([$keys[0], 2], [$keys[1]], @keys[2..$#keys]);
 ok(values %$res == @keys);
