@@ -134,7 +134,7 @@ SKIP: {
 }
 
 SKIP: {
-    skip "memcached 1.4.8 is required for cas/gets/append/prepend commands", 2
+    skip "memcached 1.4.8 is required for touch commands", 23
       if $Memd::version_num < 10408;
 
     # expiration_time will updated by touch
