@@ -7,6 +7,7 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     NAME              => 'Cache::Memcached::Fast',
+    LICENSE           => 'perl_5',
     VERSION_FROM      => 'lib/Cache/Memcached/Fast.pm',
     PREREQ_PM         => {
         'Test::More'  =>  0
