@@ -176,8 +176,8 @@ parse_serialize(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
-      memd->serialize_method = newSVsv(*safe_av_fetch(av, 0, 0));
-      memd->deserialize_method = newSVsv(*safe_av_fetch(av, 1, 0));
+      memd->serialize_method = newSVsv(*safe_av_fetch(aTHX_ av, 0, 0));
+      memd->deserialize_method = newSVsv(*safe_av_fetch(aTHX_ av, 1, 0));
     }
 
   if (! memd->serialize_method)
@@ -217,8 +217,8 @@ parse_compress(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
-      memd->compress_method = newSVsv(*safe_av_fetch(av, 0, 0));
-      memd->decompress_method = newSVsv(*safe_av_fetch(av, 1, 0));
+      memd->compress_method = newSVsv(*safe_av_fetch(aTHX_ av, 0, 0));
+      memd->decompress_method = newSVsv(*safe_av_fetch(aTHX_ av, 1, 0));
     }
   else if (memd->compress_threshold > 0)
     {
@@ -844,14 +844,14 @@ set_multi(memd, ...)
               croak("Not an array reference");
 
             av = (AV *) SvRV(sv);
-            key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, arg, 0), &key_len);
+            key = SvPV_stable_storage(aTHX_ *safe_av_fetch(aTHX_ av, arg, 0), &key_len);
             ++arg;
             if (ix == CMD_CAS)
               {
-                cas = SvUV(*safe_av_fetch(av, arg, 0));
+                cas = SvUV(*safe_av_fetch(aTHX_ av, arg, 0));
                 ++arg;
               }
-            sv = *safe_av_fetch(av, arg, 0);
+            sv = *safe_av_fetch(aTHX_ av, arg, 0);
             ++arg;
             sv = serialize(aTHX_ memd, sv, &flags);
             sv = compress(aTHX_ memd, sv, &flags);
@@ -1062,7 +1062,7 @@ incr_multi(memd, ...)
                   croak("Not an array reference");
 
                 av = (AV *) SvRV(sv);
-                key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, 0, 0), &key_len);
+                key = SvPV_stable_storage(aTHX_ *safe_av_fetch(aTHX_ av, 0, 0), &key_len);
                 if (av_len(av) >= 1)
                   {
                     /* increment doesn't have to be defined.  */
@@ -1192,7 +1192,7 @@ delete_multi(memd, ...)
                   croak("Not an array reference");
 
                 av = (AV *) SvRV(sv);
-                key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, 0, 0), &key_len);
+                key = SvPV_stable_storage(aTHX_ *safe_av_fetch(aTHX_ av, 0, 0), &key_len);
                 if (av_len(av) >= 1)
                   {
                     /* delay doesn't have to be defined.  */
@@ -1315,7 +1315,7 @@ touch_multi(memd, ...)
               croak("Not an array reference");
 
             av = (AV *) SvRV(sv);
-            key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, arg, 0), &key_len);
+            key = SvPV_stable_storage(aTHX_ *safe_av_fetch(aTHX_ av, arg, 0), &key_len);
             ++arg;
 
             if (av_len(av) >= 1)
