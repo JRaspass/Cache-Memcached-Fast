@@ -102,6 +102,7 @@ struct command_state
   struct pollfd *pollfd;
   enum socket_mode_e socket_mode;
   int noreply;
+  int prepared_last_cmd_noreply;
   int last_cmd_noreply;
 
   struct array iov_buf;
@@ -110,6 +111,7 @@ struct command_state
   generation_type generation;
 
   int phase;
+  int prepared_nowait_count;
   int nowait_count;
   int reply_count;
 
@@ -306,6 +308,7 @@ void
 command_state_reset(struct command_state *state, int str_step,
                     parse_reply_func parse_reply)
 {
+  state->prepared_nowait_count = 0;
   state->reply_count = 0;
   state->str_step = str_step;
   state->key_count = 0;
@@ -1429,6 +1432,9 @@ static inline
 void
 state_prepare(struct command_state *state)
 {
+  state->last_cmd_noreply = state->prepared_last_cmd_noreply;
+  state->nowait_count += state->prepared_nowait_count;
+
   state->key = array_elem(state->iov_buf, struct iovec, 2);
   state->iov = array_beg(state->iov_buf, struct iovec);
   state->iov_count = array_size(state->iov_buf);
@@ -1724,11 +1730,11 @@ init_state(struct command_state *state, int index, size_t request_size,
               tcp_optimize_throughput(state);
             }
 
-          state->last_cmd_noreply = state->noreply;
+          state->prepared_last_cmd_noreply = state->noreply;
         }
       else
         {
-          state->last_cmd_noreply = 0;
+          state->prepared_last_cmd_noreply = 0;
           tcp_optimize_latency(state);
         }
 
@@ -1760,8 +1766,8 @@ init_state(struct command_state *state, int index, size_t request_size,
 
   if (state->parse_reply)
     ++state->reply_count;
-  else if (! state->last_cmd_noreply)
-    ++state->nowait_count;
+  else if (! state->prepared_last_cmd_noreply)
+    ++state->prepared_nowait_count;
 
   return state;
 }

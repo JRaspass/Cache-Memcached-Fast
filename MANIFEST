@@ -16,6 +16,7 @@ t/big_value.t
 t/commands.t
 t/key_ref.t
 t/magic.t
+t/malformed.t
 t/namespace.t
 t/nowait.t
 t/noreply.t
