@@ -9,7 +9,8 @@ WriteMakefile(
     NAME              => 'Cache::Memcached::Fast',
     VERSION_FROM      => 'lib/Cache/Memcached/Fast.pm',
     PREREQ_PM         => {
-        'Test::More'  =>  0
+       'Test::More'  =>  0,
+       'Test::Exception' => 0,
     },
     ABSTRACT_FROM     => 'lib/Cache/Memcached/Fast.pm',
     AUTHOR            => 'Tomash Brechko <tomash.brechko@gmail.com>',

@@ -40,6 +40,16 @@ struct xs_state
 
 typedef struct xs_state Cache_Memcached_Fast;
 
+static inline
+SV**
+safe_av_fetch(pTHX_ AV *av, SSize_t key, I32 lval)
+{
+  SV ** v = av_fetch(av, key, lval);
+  if ( !v || !SvOK(*v) )
+    croak("undefined value passed to av_fetch");
+
+  return v;
+}
 
 static
 void
@@ -166,8 +176,8 @@ parse_serialize(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
-      memd->serialize_method = newSVsv(*av_fetch(av, 0, 0));
-      memd->deserialize_method = newSVsv(*av_fetch(av, 1, 0));
+      memd->serialize_method = newSVsv(*safe_av_fetch(av, 0, 0));
+      memd->deserialize_method = newSVsv(*safe_av_fetch(av, 1, 0));
     }
 
   if (! memd->serialize_method)
@@ -207,8 +217,8 @@ parse_compress(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
   if (ps && SvOK(*ps))
     {
       AV *av = (AV *) SvRV(*ps);
-      memd->compress_method = newSVsv(*av_fetch(av, 0, 0));
-      memd->decompress_method = newSVsv(*av_fetch(av, 1, 0));
+      memd->compress_method = newSVsv(*safe_av_fetch(av, 0, 0));
+      memd->decompress_method = newSVsv(*safe_av_fetch(av, 1, 0));
     }
   else if (memd->compress_threshold > 0)
     {
@@ -834,18 +844,14 @@ set_multi(memd, ...)
               croak("Not an array reference");
 
             av = (AV *) SvRV(sv);
-            /*
-              The following values should be defined, so we do not do
-              any additional checks for speed.
-            */
-            key = SvPV_stable_storage(aTHX_ *av_fetch(av, arg, 0), &key_len);
+            key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, arg, 0), &key_len);
             ++arg;
             if (ix == CMD_CAS)
               {
-                cas = SvUV(*av_fetch(av, arg, 0));
+                cas = SvUV(*safe_av_fetch(av, arg, 0));
                 ++arg;
               }
-            sv = *av_fetch(av, arg, 0);
+            sv = *safe_av_fetch(av, arg, 0);
             ++arg;
             sv = serialize(aTHX_ memd, sv, &flags);
             sv = compress(aTHX_ memd, sv, &flags);
@@ -1056,11 +1062,7 @@ incr_multi(memd, ...)
                   croak("Not an array reference");
 
                 av = (AV *) SvRV(sv);
-                /*
-                  The following values should be defined, so we do not
-                  do any additional checks for speed.
-                */
-                key = SvPV_stable_storage(aTHX_ *av_fetch(av, 0, 0), &key_len);
+                key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, 0, 0), &key_len);
                 if (av_len(av) >= 1)
                   {
                     /* increment doesn't have to be defined.  */
@@ -1190,11 +1192,7 @@ delete_multi(memd, ...)
                   croak("Not an array reference");
 
                 av = (AV *) SvRV(sv);
-                /*
-                  The following values should be defined, so we do not
-                  do any additional checks for speed.
-                */
-                key = SvPV_stable_storage(aTHX_ *av_fetch(av, 0, 0), &key_len);
+                key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, 0, 0), &key_len);
                 if (av_len(av) >= 1)
                   {
                     /* delay doesn't have to be defined.  */
@@ -1317,11 +1315,7 @@ touch_multi(memd, ...)
               croak("Not an array reference");
 
             av = (AV *) SvRV(sv);
-            /*
-              The following values should be defined, so we do not do
-              any additional checks for speed.
-            */
-            key = SvPV_stable_storage(aTHX_ *av_fetch(av, arg, 0), &key_len);
+            key = SvPV_stable_storage(aTHX_ *safe_av_fetch(av, arg, 0), &key_len);
             ++arg;
 
             if (av_len(av) >= 1)
