@@ -1463,7 +1463,7 @@ You can also look for information at:
 
 =item * Project home
 
-L<http://openhack.ru/Cache-Memcached-Fast>
+L<https://github.com/kroki/Cache-Memcached-Fast>
 
 
 =item * RT: CPAN's request tracker
