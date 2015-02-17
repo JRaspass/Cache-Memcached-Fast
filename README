@@ -40,7 +40,7 @@ Latest release of this module is available from CPAN:
 
 Latest development tree is available from project home:
 
-  http://openhack.ru/Cache-Memcached-Fast
+  https://github.com/kroki/Cache-Memcached-Fast
 
 
 To install this module type the following:
@@ -50,7 +50,7 @@ To install this module type the following:
    make test
    make install
 
-Don't forget to start memcahced daemon on local host port 11211 (the
+Don't forget to start memcached daemon on local host port 11211 (the
 default) before running 'make test'.
 
 
