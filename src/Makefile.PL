@@ -60,5 +60,10 @@ parse_keyword.c parse_keyword.h :: genparser.pl reply.kw
 
 compute_crc32.c compute_crc32.h :: gencrc32.pl
 	$(PERL) gencrc32.pl compute_crc32.c compute_crc32.h
-'
+'.($ExtUtils::MakeMaker::VERSION >= 7.16?'
+
+dynamic ::
+	$(NOECHO) $(NOOP)
+':'' #https://rt.cpan.org/Ticket/Display.html?id=117800
+)
 }
