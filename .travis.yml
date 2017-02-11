@@ -5,6 +5,7 @@ before_install:
 dist: trusty
 env:
   # Old stables.
+  - CC=gcc   PB_OPT=perl-5.6.2
   - CC=gcc   PB_OPT=perl-5.8.9
   - CC=gcc   PB_OPT=perl-5.10.1
   - CC=gcc   PB_OPT=perl-5.12.4
@@ -27,9 +28,9 @@ env:
   - CC=gcc   PB_OPT='--ld     perl-5.24.1'
   - CC=gcc   PB_OPT='--multi  perl-5.24.1'
   - CC=gcc   PB_OPT='--thread perl-5.24.1'
+install: true
 language: perl
 script:
   - perl Makefile.PL CC=$CC INSTALLMAN3DIR=none NO_MYMETA=1
-  - make
-  - prove -bl
+  - make test
 sudo: false

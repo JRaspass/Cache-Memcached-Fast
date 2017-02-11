@@ -6,7 +6,6 @@ use warnings;
 use FindBin;
 use lib "$FindBin::Bin";
 use Memd;
-use Test::Exception;
 use Test::More;
 
 if ($Memd::memd) {
@@ -36,10 +35,11 @@ my @tests = (
    [ undef, ['k2', 'new v2'] ],
 );
 foreach my $test ( @tests ) {
-   dies_ok {
+   eval {
       # no values should be updated after this set_multi
-      $Memd::memd->set_multi( @$test );   
-   } 'Croaked on empty value passed to set_multi';
+      $Memd::memd->set_multi( @$test );
+   };
+   ok $@, 'Croaked on empty value passed to set_multi';
 
    foreach ( 1 .. 3 ) {
       my ($key, $val) = ("k$_", "v$_");
