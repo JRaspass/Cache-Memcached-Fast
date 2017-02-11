@@ -8,6 +8,10 @@ use FindBin;
 use lib "$FindBin::Bin";
 use Memd;
 
+if ($^V lt v5.8.0) {
+   plan skip_all => 'Perl >= 5.8.0 is required';
+}
+
 if ($Memd::memd) {
     plan tests => 9;
 } else {
