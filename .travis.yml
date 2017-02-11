@@ -1,36 +1,19 @@
-before_install:
-  - travis_retry perlbrew install -Accflags=-DNO_MATHOMS -Dusedevel -j`nproc` -n --noman $PB_OPT
-  - perlbrew use ${PB_OPT/* }
-  - perl -V
+before_install: eval $(curl https://travis-perl.github.io/init) --auto
 dist: trusty
-env:
-  # Old stables.
-  - CC=gcc   PB_OPT=perl-5.6.2
-  - CC=gcc   PB_OPT=perl-5.8.9
-  - CC=gcc   PB_OPT=perl-5.10.1
-  - CC=gcc   PB_OPT=perl-5.12.4
-  - CC=gcc   PB_OPT=perl-5.14.2
-  - CC=gcc   PB_OPT=perl-5.16.3
-  - CC=gcc   PB_OPT=perl-5.18.4
-  - CC=gcc   PB_OPT=perl-5.20.3
-  - CC=gcc   PB_OPT=perl-5.22.3
-
-  # Stable, with each compiler.
-  - CC=clang PB_OPT=perl-5.24.1
-  - CC=gcc   PB_OPT=perl-5.24.1
-
-  # Latest.
-  - CC=gcc   PB_OPT=perl-5.25.9
-
-  # Stable, weird and whacky config options.
-  - CC=gcc   PB_OPT='--64all  perl-5.24.1'
-  - CC=gcc   PB_OPT='--64int  perl-5.24.1'
-  - CC=gcc   PB_OPT='--ld     perl-5.24.1'
-  - CC=gcc   PB_OPT='--multi  perl-5.24.1'
-  - CC=gcc   PB_OPT='--thread perl-5.24.1'
-install: true
+install: cpan-install Storable
 language: perl
-script:
-  - perl Makefile.PL CC=$CC INSTALLMAN3DIR=none NO_MYMETA=1
-  - make test
+perl:
+  - "5.6"
+  - "5.8"
+  - "5.10"
+  - "5.12"
+  - "5.14"
+  - "5.16"
+  - "5.18"
+  - "5.20"
+  - "5.22"
+  - "5.24"
+  - "5.24-mb"
+  - "5.24-thr"
+  - "dev"
 sudo: false
