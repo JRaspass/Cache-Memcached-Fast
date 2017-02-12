@@ -1480,3 +1480,11 @@ disconnect_all(memd)
     PROTOTYPE: $
     CODE:
         client_reinit(memd->c);
+
+
+void
+_weaken(sv)
+        SV *sv
+    PROTOTYPE: $
+    CODE:
+        sv_rvweaken(sv);

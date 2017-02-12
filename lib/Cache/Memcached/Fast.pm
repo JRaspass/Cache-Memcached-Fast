@@ -589,11 +589,9 @@ sub new {
 
     my $memd = Cache::Memcached::Fast::_new($class, $conf);
 
-    if (eval "require Scalar::Util") {
-        my $context = [$memd, $conf];
-        Scalar::Util::weaken($context->[0]);
-        $instance{$$memd} = $context;
-    }
+    my $context = [$memd, $conf];
+    _weaken($context->[0]);
+    $instance{$$memd} = $context;
 
     return $memd;
 }
