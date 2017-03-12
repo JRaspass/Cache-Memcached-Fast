@@ -1,6 +1,23 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.24  2017-03-12
+        - prevent undefined values causing a segmentation fault,
+        avoid a superfluous eval require in calls to new.
+
+        Changes since 0.23:
+
+        Hunter McMillen (mcmillhj@gmail.com) provided patches to fix
+        RT#43537: undefined values passed to the multi functions no
+        longer cause segmentation faults.
+
+        Dmitry Shalashov (dimaniac83@mail.ru) provided patches that
+        replace the openhack project home reference with github.
+
+        Avoid an eval require on Scalar::Util per call to new,
+        just use sv_rvweaken directly.
+
+
 0.23  2014-11-15
         - add touch and touch_multi commands, speedup for the case
         when application threads have per-thread Perl interpreters
