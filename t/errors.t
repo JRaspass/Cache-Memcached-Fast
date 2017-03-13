@@ -1,7 +1,7 @@
 use warnings;
 use strict;
 
-use Test::More;
+use Test::More tests => 4;
 
 use Cache::Memcached::Fast;
 
@@ -31,5 +31,3 @@ ok(not(defined($rv)), "add()");
 
 $rv = $memd->get('key');
 ok(not(defined($rv)), "get()");
-
-done_testing();
