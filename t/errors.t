@@ -1,6 +1,6 @@
-#!/usr/bin/perl
+use warnings;
+use strict;
 
-use Modern::Perl;
 use Test::More;
 
 use Cache::Memcached::Fast;
