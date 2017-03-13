@@ -21,24 +21,15 @@ my $memd = new Cache::Memcached::Fast({
 });
 
 # Get server versions.
+my $rv = $memd->server_versions;
+is(ref($rv), 'HASH', "server_versions() still returns a HASH");
+my @versionKeys = keys %$rv;
+ok(not(@versionKeys), "No versions found");
 
+$rv = $memd->add('key', 'text');
+ok(not(defined($rv)), "add()");
 
-
-subtest "Memcached is unreachable, so operations return undef", sub {
-
-    my $rv;
-
-    $rv = $memd->server_versions;
-    is(ref($rv), 'HASH', "server_versions() still returns a HASH");
-    my @versionKeys = keys %$rv;
-    ok(not(@versionKeys), "No versions found");
-
-    $rv = $memd->add('key', 'text');
-    ok(not(defined($rv)), "add()");
-
-    $rv = $memd->get('key');
-    ok(not(defined($rv)), "get()");
-
-};
+$rv = $memd->get('key');
+ok(not(defined($rv)), "get()");
 
 done_testing();
