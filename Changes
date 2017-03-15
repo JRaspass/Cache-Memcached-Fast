@@ -1,6 +1,20 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.25  2017-03-15
+        - ensure we build on modern EUMM, restore dynamic_config in
+        META.
+
+        Changes since 0.24:
+
+        Alexandr Ciornii (alexchorny@gmail.com) provided patches to
+        workaround RT#117800: ExtUtils-MakeMaker: don't know how to
+        make dynamic.
+
+        Olli-Antti Kivilahti (olli-antti.kivilahti@jns.fi) provided
+        patches to test that we return undef on server errors.
+
+
 0.24  2017-03-12
         - prevent undefined values causing a segmentation fault,
         avoid a superfluous eval require in calls to new.
