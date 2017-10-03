@@ -22,6 +22,13 @@ WriteMakefile(
     },
 );
 
+sub MY::cflags {
+  my $self = shift;
+  my $orig = $self->MM::cflags(@_);
+  $orig =~ s/-flto\b//g;
+  return $orig;
+}
+
 sub MY::postamble {
 '
 $(MYEXTLIB): src/Makefile
