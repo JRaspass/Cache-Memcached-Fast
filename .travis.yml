@@ -3,8 +3,9 @@ dist: xenial
 install: cpan-install Storable
 language: perl
 perl:
-  # Oldest we support.
+  # Old perls.
   - "5.6"
+  - "5.8"
   # Travis has these, nice & quick.
   - "5.22"
   - "5.24"
