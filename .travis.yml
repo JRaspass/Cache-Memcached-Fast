@@ -1,10 +1,8 @@
 before_install: eval $(curl https://travis-perl.github.io/init) --auto
 dist: xenial
-install: cpan-install Storable
 language: perl
 perl:
-  # Old perls.
-  - "5.6"
+  # Old perl.
   - "5.8"
   # Travis has these, nice & quick.
   - "5.22"
