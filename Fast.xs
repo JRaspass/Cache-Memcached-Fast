@@ -791,7 +791,7 @@ set(memd, ...)
             client_prepare_cas(memd->c, 0, key, key_len, cas, flags,
                                exptime, buf, buf_len);
           }
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             SV **val = av_fetch(object.arg, 0, 0);
@@ -879,7 +879,7 @@ set_multi(memd, ...)
                                    exptime, buf, buf_len);
               }
           }
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             if (GIMME_V == G_SCALAR)
@@ -935,7 +935,7 @@ get(memd, ...)
         client_reset(memd->c, &object, 0);
         key = SvPV(ST(1), key_len);
         client_prepare_get(memd->c, ix, 0, key, key_len);
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (value_res.vals)
           {
             PUSHs(sv_2mortal(value_res.vals));
@@ -970,7 +970,7 @@ get_multi(memd, ...)
             key = SvPV_stable_storage(aTHX_ ST(i + 1), &key_len);
             client_prepare_get(memd->c, ix, i, key, key_len);
           }
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         hv = newHV();
         for (i = 0; i <= av_len((AV *) value_res.vals); ++i)
           {
@@ -978,6 +978,90 @@ get_multi(memd, ...)
             if (val && SvOK(*val))
               {
                 SV *key = ST(i + 1);
+                HE *he = hv_store_ent(hv, key,
+                                      SvREFCNT_inc(*val), 0);
+                if (! he)
+                  SvREFCNT_dec(*val);
+              }
+          }
+        PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+        XSRETURN(1);
+
+
+void
+gat(memd, ...)
+        Cache_Memcached_Fast *  memd
+    ALIAS:
+        gats = CMD_GATS
+    PROTOTYPE: $@
+    PREINIT:
+        struct xs_value_result value_res;
+        struct result_object object =
+            { alloc_value, svalue_store, free_value, &value_res };
+        const char *key;
+        STRLEN key_len;
+        const char *exptime = "0";
+        STRLEN exptime_len = 1;
+        SV *sv;
+    PPCODE:
+        value_res.memd = memd;
+        value_res.vals = NULL;
+        client_reset(memd->c, &object, 0);
+        sv = ST(1);
+        SvGETMAGIC(sv);
+        if (SvOK(sv))
+          exptime = SvPV(sv, exptime_len);
+        key = SvPV(ST(2), key_len);
+        client_prepare_gat(memd->c, ix, 0, key, key_len, exptime, exptime_len);
+        client_execute(memd->c, 4);
+        if (value_res.vals)
+          {
+            PUSHs(sv_2mortal(value_res.vals));
+            XSRETURN(1);
+          }
+
+
+void
+gat_multi(memd, ...)
+        Cache_Memcached_Fast *  memd
+    ALIAS:
+        gats_multi = CMD_GATS
+    PROTOTYPE: $@
+    PREINIT:
+        struct xs_value_result value_res;
+        struct result_object object =
+            { alloc_value, mvalue_store, free_value, &value_res };
+        int i, key_count;
+        HV *hv;
+        SV *sv;
+        const char *exptime = "0";
+        STRLEN exptime_len = 1;
+    PPCODE:
+        key_count = items - 2;
+        value_res.memd = memd;
+        value_res.vals = (SV *) newAV();
+        sv_2mortal(value_res.vals);
+        av_extend((AV *) value_res.vals, key_count - 1);
+        client_reset(memd->c, &object, 0);
+        sv = ST(1);
+        SvGETMAGIC(sv);
+        if (SvOK(sv))
+          exptime = SvPV(sv, exptime_len);
+        for (i = 0; i < key_count; ++i)
+          {
+            const char *key;
+            STRLEN key_len;
+            key = SvPV_stable_storage(aTHX_ ST(i + 2), &key_len);
+            client_prepare_gat(memd->c, ix, i, key, key_len, exptime, exptime_len);
+          }
+        client_execute(memd->c, 4);
+        hv = newHV();
+        for (i = 0; i <= av_len((AV *) value_res.vals); ++i)
+          {
+            SV **val = av_fetch((AV *) value_res.vals, i, 0);
+            if (val && SvOK(*val))
+              {
+                SV *key = ST(i + 2);
                 HE *he = hv_store_ent(hv, key,
                                       SvREFCNT_inc(*val), 0);
                 if (! he)
@@ -1016,7 +1100,7 @@ incr(memd, ...)
               arg = SvUV(sv);
           }
         client_prepare_incr(memd->c, ix, 0, key, key_len, arg);
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             SV **val = av_fetch(object.arg, 0, 0);
@@ -1076,7 +1160,7 @@ incr_multi(memd, ...)
  
             client_prepare_incr(memd->c, ix, i - 1, key, key_len, arg);
           }
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             if (GIMME_V == G_SCALAR)
@@ -1146,7 +1230,7 @@ delete(memd, ...)
               warn("non-zero delete expiration time is ignored");
           }
         client_prepare_delete(memd->c, 0, key, key_len);
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             SV **val = av_fetch(object.arg, 0, 0);
@@ -1206,7 +1290,7 @@ delete_multi(memd, ...)
  
             client_prepare_delete(memd->c, i - 1, key, key_len);
           }
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             if (GIMME_V == G_SCALAR)
@@ -1276,7 +1360,7 @@ touch(memd, ...)
               exptime = SvIV(sv);
           }
         client_prepare_touch(memd->c, 0, key, key_len, exptime);
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             SV **val = av_fetch(object.arg, 0, 0);
@@ -1330,7 +1414,7 @@ touch_multi(memd, ...)
 
             client_prepare_touch(memd->c, i - 1, key, key_len, exptime);
           }
-        client_execute(memd->c);
+        client_execute(memd->c, 2);
         if (! noreply)
           {
             if (GIMME_V == G_SCALAR)
