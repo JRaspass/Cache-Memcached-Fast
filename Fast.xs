@@ -1019,7 +1019,7 @@ gat(memd, ...)
             PUSHs(sv_2mortal(value_res.vals));
             XSRETURN(1);
           }
-
+        XSRETURN_EMPTY;
 
 void
 gat_multi(memd, ...)
