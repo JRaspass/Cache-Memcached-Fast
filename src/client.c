@@ -2105,7 +2105,7 @@ client_prepare_touch(struct client *c, int key_index,
                       exptime_type exptime)
 {
   static const size_t request_size = 4;
-  static const size_t str_size = sizeof(" " NOREPLY "\r\n");
+  static const size_t str_size = sizeof(" " EXPTIME_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
 
