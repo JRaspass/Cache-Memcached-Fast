@@ -800,6 +800,7 @@ set(memd, ...)
                 PUSHs(*val);
                 XSRETURN(1);
               }
+            XSRETURN_EMPTY;
           }
 
 
@@ -941,6 +942,7 @@ get(memd, ...)
             PUSHs(sv_2mortal(value_res.vals));
             XSRETURN(1);
           }
+        XSRETURN_EMPTY;
 
 
 void
@@ -1025,6 +1027,7 @@ incr(memd, ...)
                 PUSHs(*val);
                 XSRETURN(1);
               }
+            XSRETURN_EMPTY;
           }
 
 
@@ -1155,6 +1158,7 @@ delete(memd, ...)
                 PUSHs(*val);
                 XSRETURN(1);
               }
+            XSRETURN_EMPTY;
           }
 
 
@@ -1285,6 +1289,7 @@ touch(memd, ...)
                 PUSHs(*val);
                 XSRETURN(1);
               }
+            XSRETURN_EMPTY;
           }
 
 
