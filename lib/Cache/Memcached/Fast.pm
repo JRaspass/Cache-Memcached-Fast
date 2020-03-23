@@ -718,7 +718,7 @@ learn what the result value is.
 Store the I<$value> on the server under the I<$key>, but only if CAS
 (I<Consistent Access Storage>) value associated with this key is equal
 to I<$cas>.  I<$cas> is an opaque object returned with L</gets> or
-L</gets_multi>.
+L</gets_multi> or L</gats> or L</gats_multi>.
 
 See L</set> for I<$key>, I<$value>, I<$expiration_time> parameters
 description.
@@ -726,7 +726,7 @@ description.
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.  Thus if the key
 exists on the server, false would mean that some other client has
-updated the value, and L</gets>, L</cas> command sequence should be
+updated the value, and L</gets>, L</gats>, L</cas> command sequence should be
 repeated.
 
 B<cas> command first appeared in B<memcached> 1.2.4.
@@ -1195,6 +1195,76 @@ learn what the result value is.
 B<touch> command first appeared in B<memcached> 1.4.8.
 
 =cut
+
+# See Fast.xs.
+
+
+=item C<gat>
+
+  $memd->gat($expiration_time, $key);
+
+Update the expiration time and retrieve the value for a I<$key>.
+
+I<$key> should be a scalar. I<$expiration_time> is a positive integer number
+of seconds after which the value will expire and wouldn't be accessible any
+longer.
+
+I<Return:> value associated with the I<$key>, or nothing.
+
+B<gat> command first appeared in B<memcached> 1.5.3.
+
+=cut
+
+# See Fast.xs.
+
+=item C<gat_multi>
+
+  $memd->gat_multi($expiration_time, @keys);
+
+Update the expiration time of the I<@keys> and get the associated values.
+I<@keys> should be an array of scalars.
+
+I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds
+corresponding value.
+
+B<gat> command first appeared in B<memcached> 1.5.3.
+
+# See Fast.xs.
+
+
+=item C<gats>
+
+  $memd->gets($expiration_time, $key);
+
+Update the expiration time and Retrieve the value and its CAS for a I<$key>.
+
+I<Return:> reference to an array I<[$cas, $value]>, or nothing.  You
+may conveniently pass it back to L</cas> with I<@$res>:
+
+  my $cas_val = $memd->gats($expiration_time, $key);
+  # Update value.
+  if (defined $cas_val) {
+      $$cas_val[1] = 3;
+      $memd->cas($key, @$cas_val);
+  }
+
+B<gat> command first appeared in B<memcached> 1.5.3.
+
+# See Fast.xs.
+
+
+=item C<gats_multi>
+
+  $memd->gats_multi($expiration_time, @keys);
+
+Update the expiration time and retrieve several values and their CASs
+associated with I<@keys>.
+I<@keys> should be an array of scalars.
+
+I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds a
+reference to an array I<[$cas, $value]>.  Compare with L</gats>.
+
+B<gat> command first appeared in B<memcached> 1.5.3.
 
 # See Fast.xs.
 

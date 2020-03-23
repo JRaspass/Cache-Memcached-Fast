@@ -1430,12 +1430,12 @@ process_reply(struct command_state *state, struct server *s)
 
 static inline
 void
-state_prepare(struct command_state *state)
+state_prepare(struct command_state *state, int key_index)
 {
   state->last_cmd_noreply = state->prepared_last_cmd_noreply;
   state->nowait_count += state->prepared_nowait_count;
 
-  state->key = array_elem(state->iov_buf, struct iovec, 2);
+  state->key = array_elem(state->iov_buf, struct iovec, key_index);
   state->iov = array_beg(state->iov_buf, struct iovec);
   state->iov_count = array_size(state->iov_buf);
 
@@ -1462,7 +1462,7 @@ state_prepare(struct command_state *state)
 
 
 int
-client_execute(struct client *c)
+client_execute(struct client *c, int key_index)
 {
   int first_iter = 1;
 
@@ -1497,7 +1497,7 @@ client_execute(struct client *c)
 
           if (first_iter)
             {
-              state_prepare(state);
+              state_prepare(state, key_index);
 
               may_write = 1;
               may_read = (state->reply_count > 0
@@ -1978,6 +1978,56 @@ client_prepare_get(struct client *c, enum get_cmd_e cmd, int key_index,
 
 
 int
+client_prepare_gat(struct client *c, enum gat_cmd_e cmd,
+                   int key_index, const char *key, size_t key_len, const char *exptime, size_t exptime_len)
+{
+  static const size_t request_size = 6;
+
+  struct command_state *state;
+
+  state = get_state(c, key_index, key, key_len, request_size, 0,
+                    parse_get_reply);
+  if (! state)
+    return MEMCACHED_FAILURE;
+
+  ++state->key_count;
+
+  if (! array_empty(state->iov_buf))
+    {
+      /* Pop off trailing \r\n because we are about to add another key.  */
+      array_pop(state->iov_buf);
+
+      /* get can't be in noreply mode, so reply_count is positive.  */
+      --state->reply_count;
+    }
+  else
+    {
+      switch (cmd)
+        {
+        case CMD_GAT:
+          state->u.value.meta.use_cas = 0;
+          iov_push(state, STR_WITH_LEN("gat"));
+          break;
+
+        case CMD_GATS:
+          state->u.value.meta.use_cas = 1;
+          iov_push(state, STR_WITH_LEN("gats"));
+          break;
+        }
+
+      iov_push(state, STR_WITH_LEN(" "));
+      iov_push(state, exptime, exptime_len);
+    }
+
+  iov_push(state, c->prefix, c->prefix_len);
+  iov_push(state, key, key_len);
+  iov_push(state, STR_WITH_LEN("\r\n"));
+
+  return MEMCACHED_SUCCESS;
+}
+
+
+int
 client_prepare_incr(struct client *c, enum arith_cmd_e cmd, int key_index,
                     const char *key, size_t key_len, arith_type arg)
 {
@@ -2055,7 +2105,7 @@ client_prepare_touch(struct client *c, int key_index,
                       exptime_type exptime)
 {
   static const size_t request_size = 4;
-  static const size_t str_size = sizeof(" " NOREPLY "\r\n");
+  static const size_t str_size = sizeof(" " EXPTIME_STUB " " NOREPLY "\r\n");
 
   struct command_state *state;
 
@@ -2125,7 +2175,7 @@ client_flush_all(struct client *c, delay_type delay,
       }
     }
 
-  return client_execute(c);
+  return client_execute(c, 2);
 }
 
 
@@ -2163,7 +2213,7 @@ client_nowait_push(struct client *c)
       ++state->reply_count;
     }
 
-  return client_execute(c);
+  return client_execute(c, 2);
 }
 
 
@@ -2194,7 +2244,7 @@ client_server_versions(struct client *c, struct result_object *o)
       iov_push(state, STR_WITH_LEN("version\r\n"));
     }
 
-  return client_execute(c);
+  return client_execute(c, 2);
 }
 
 
@@ -2235,5 +2285,5 @@ client_noreply_push(struct client *c)
       iov_push(state, STR_WITH_LEN("version\r\n"));
     }
 
-  return client_execute(c);
+  return client_execute(c, 2);
 }
