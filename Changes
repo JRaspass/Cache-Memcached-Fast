@@ -1,6 +1,18 @@
 Revision history for Perl extension Cache::Memcached::Fast.
 
 
+0.26  2020-03-26
+        - stack manipulation fixes, add gat/gat_multi methods.
+
+        Changes since 0.25:
+
+        Sergey Aleynikov (sergey.aleynikov@gmail.com) provided
+        patches to fix the stack when not returning anything.
+
+        Mutsutoshi Yoshimoto (negachov@gmail.com) provided patches
+        to add gat/gat_multi methods.
+
+
 0.25  2017-03-15
         - ensure we build on modern EUMM, restore dynamic_config in
         META.
