@@ -1043,7 +1043,8 @@ gat_multi(memd, ...)
         value_res.memd = memd;
         value_res.vals = (SV *) newAV();
         sv_2mortal(value_res.vals);
-        av_extend((AV *) value_res.vals, key_count - 1);
+        if (key_count > 1)
+          av_extend((AV *) value_res.vals, key_count - 1);
         client_reset(memd->c, &object, 0);
         sv = ST(1);
         SvGETMAGIC(sv);
