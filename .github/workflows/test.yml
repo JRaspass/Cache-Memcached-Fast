@@ -63,9 +63,10 @@ jobs:
 
       - uses: shogo82148/actions-setup-perl@v1
         with:
-          install-modules: ${{ matrix.cpan }}
-          multi-thread:    ${{ matrix.ithread }}
-          perl-version:    ${{ matrix.perl }}
+          install-modules:      ${{ matrix.cpan }}
+          install-modules-with: cpanm
+          multi-thread:         ${{ matrix.ithread }}
+          perl-version:         ${{ matrix.perl }}
 
       - run: perl -v
 
