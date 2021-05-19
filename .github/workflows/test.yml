@@ -30,14 +30,17 @@ jobs:
 
           - name: ' (ithread)'
             ithread: true
+            os: ubuntu-latest
             perl: '5.32'
 
           - name: ' (no memcached)'
             no-memcached: true
+            os: ubuntu-latest
             perl: '5.32'
 
           # This is effectively our normal one, with xt ran at the end.
           - name: ' (xt)'
+            os: ubuntu-latest
             perl: '5.32'
             xt: true
 
