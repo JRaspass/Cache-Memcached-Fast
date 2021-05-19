@@ -22,10 +22,12 @@ jobs:
 
         # Variants of the latest Perl.
         include:
-          - os: macos-latest
+          - no-memcached: true
+            os: macos-latest
             perl: '5.32'
 
-          - os: windows-latest
+          - no-memcached: true
+            os: windows-latest
             perl: '5.32'
 
           - name: ' (ithread)'
