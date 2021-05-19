@@ -1234,7 +1234,7 @@ B<gat> command first appeared in B<memcached> 1.5.3.
 
 =item C<gats>
 
-  $memd->gets($expiration_time, $key);
+  $memd->gats($expiration_time, $key);
 
 Update the expiration time and Retrieve the value and its CAS for a I<$key>.
 
