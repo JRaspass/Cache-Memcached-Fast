@@ -23,17 +23,22 @@ jobs:
         # Variants of the latest Perl.
         include:
           - os: macos-latest
+            perl: '5.32'
 
           - os: windows-latest
+            perl: '5.32'
 
           - name: ' (ithread)'
             ithread: true
+            perl: '5.32'
 
           - name: ' (no memcached)'
             no-memcached: true
+            perl: '5.32'
 
           # This is effectively our normal one, with xt ran at the end.
           - name: ' (xt)'
+            perl: '5.32'
             xt: true
 
     runs-on: ${{ matrix.os }}
