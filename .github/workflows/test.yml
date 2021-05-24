@@ -18,33 +18,33 @@ jobs:
         # All supported Perl versions except latest.
         perl: [
           '5.8',  '5.10', '5.12', '5.14', '5.16', '5.18', '5.20', '5.22',
-          '5.24', '5.26', '5.28', '5.30'
+          '5.24', '5.26', '5.28', '5.30', '5.32'
         ]
 
         # Variants of the latest Perl.
         include:
           - no-memcached: true
             os: macos-latest
-            perl: '5.32'
+            perl: '5.34'
 
           - no-memcached: true
             os: windows-latest
-            perl: '5.32'
+            perl: '5.34'
 
           - name: ' (ithread)'
             ithread: true
             os: ubuntu-latest
-            perl: '5.32'
+            perl: '5.34'
 
           - name: ' (no memcached)'
             no-memcached: true
             os: ubuntu-latest
-            perl: '5.32'
+            perl: '5.34'
 
           # This is effectively our normal one, with xt ran at the end.
           - name: ' (xt)'
             os: ubuntu-latest
-            perl: '5.32'
+            perl: '5.34'
             xt: true
 
     runs-on: ${{ matrix.os }}
