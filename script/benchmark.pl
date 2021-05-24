@@ -33,16 +33,15 @@ my $value = 'x' x 40;
 
 use FindBin;
 
-@ARGV >= 1
-    or die("Usage: $FindBin::Script HOST:PORT... [COUNT] [\"compare\"]\n"
-           . "\n"
-           . "HOST:PORT...  - list of memcached server addresses.\n"
-           . "COUNT         - number of iterations (default "
-                              . default_iteration_count . ").\n"
-           . "                (each iteration will process "
-                              . key_count . " keys).\n"
-           . "\"compare\"     - literal string to enable comparison with\n"
-           . "                Cache::Memcached.\n");
+die <<HELP unless @ARGV;
+Usage: $FindBin::Script HOST:PORT... [COUNT] ["compare"]
+
+HOST:PORT...  - list of memcached server addresses.
+COUNT         - number of iterations (default ${\default_iteration_count})
+                (each iteration will process ${\key_count} keys).
+"compare"     - literal string to enable comparison with
+                Cache::Memcached.
+HELP
 
 my $compare = ($ARGV[$#ARGV] =~ /^compare$/);
 pop @ARGV if $compare;
