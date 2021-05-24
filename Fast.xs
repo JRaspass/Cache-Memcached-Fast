@@ -1210,6 +1210,8 @@ incr_multi(memd, ...)
 void
 delete(memd, ...)
         Cache_Memcached_Fast *  memd
+    ALIAS:
+        remove = CMD_REMOVE
     PROTOTYPE: $@
     PREINIT:
         struct result_object object =

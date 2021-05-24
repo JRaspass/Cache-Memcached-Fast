@@ -1126,11 +1126,6 @@ server reply, or I<undef> in case of some error.
 
 Alias for L</delete>, for compatibility with B<Cache::Memcached>.
 
-=cut
-
-*remove = \&delete;
-
-
 =item C<delete_multi>
 
   $memd->delete_multi(@keys);

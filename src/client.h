@@ -48,6 +48,7 @@ enum gat_cmd_e { CMD_GAT, CMD_GATS };
 
 enum arith_cmd_e { CMD_INCR, CMD_DECR };
 
+enum delete_cmd_e { CMD_DELETE, CMD_REMOVE };
 
 typedef unsigned int flags_type;
 #define FMT_FLAGS "%u"
