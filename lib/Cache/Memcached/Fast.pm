@@ -639,11 +639,6 @@ is set.
 
 I<Return:> none.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<namespace>
 
   $memd->namespace;
@@ -655,11 +650,6 @@ prefix.
 
 I<Return:> scalar, the namespace prefix that was in effect before the
 call.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<set>
 
@@ -678,11 +668,6 @@ longer.
 
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<set_multi>
 
@@ -705,11 +690,6 @@ position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> holds the result value.  See L</set> to
 learn what the result value is.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<cas>
 
   $memd->cas($key, $cas, $value);
@@ -730,11 +710,6 @@ updated the value, and L</gets>, L</gats>, L</cas> command sequence should be
 repeated.
 
 B<cas> command first appeared in B<memcached> 1.2.4.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<cas_multi>
 
@@ -759,11 +734,6 @@ learn what the result value is.
 
 B<cas> command first appeared in B<memcached> 1.2.4.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<add>
 
   $memd->add($key, $value);
@@ -777,11 +747,6 @@ description.
 
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<add_multi>
 
@@ -804,11 +769,6 @@ position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> holds the result value.  See L</add> to
 learn what the result value is.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<replace>
 
  $memd->replace($key, $value);
@@ -822,11 +782,6 @@ description.
 
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<replace_multi>
 
@@ -849,11 +804,6 @@ position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> holds the result value.  See L</replace> to
 learn what the result value is.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<append>
 
   $memd->append($key, $value);
@@ -868,11 +818,6 @@ I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
 
 B<append> command first appeared in B<memcached> 1.2.4.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<append_multi>
 
@@ -895,11 +840,6 @@ learn what the result value is.
 
 B<append> command first appeared in B<memcached> 1.2.4.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<prepend>
 
   $memd->prepend($key, $value);
@@ -914,11 +854,6 @@ I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
 
 B<prepend> command first appeared in B<memcached> 1.2.4.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<prepend_multi>
 
@@ -941,11 +876,6 @@ learn what the result value is.
 
 B<prepend> command first appeared in B<memcached> 1.2.4.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<get>
 
   $memd->get($key);
@@ -953,11 +883,6 @@ B<prepend> command first appeared in B<memcached> 1.2.4.
 Retrieve the value for a I<$key>.  I<$key> should be a scalar.
 
 I<Return:> value associated with the I<$key>, or nothing.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<get_multi>
 
@@ -968,11 +893,6 @@ an array of scalars.
 
 I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds
 corresponding value.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<gets>
 
@@ -993,11 +913,6 @@ may conveniently pass it back to L</cas> with I<@$res>:
 
 B<gets> command first appeared in B<memcached> 1.2.4.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<gets_multi>
 
   $memd->gets_multi(@keys);
@@ -1009,11 +924,6 @@ I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds a
 reference to an array I<[$cas, $value]>.  Compare with L</gets>.
 
 B<gets> command first appeared in B<memcached> 1.2.4.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<incr>
 
@@ -1027,11 +937,6 @@ is assumed.  Note that the server doesn't check for overflow.
 
 I<Return:> unsigned integer, new value for the I<$key>, or false for
 negative server reply, or I<undef> in case of some error.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<incr_multi>
 
@@ -1055,11 +960,6 @@ position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> holds the result value.  See L</incr> to
 learn what the result value is.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<decr>
 
   $memd->decr($key);
@@ -1075,11 +975,6 @@ true in a boolean context.
 
 I<Return:> unsigned integer, new value for the I<$key>, or false for
 negative server reply, or I<undef> in case of some error.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<decr_multi>
 
@@ -1103,11 +998,6 @@ position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> holds the result value.  See L</decr> to
 learn what the result value is.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<delete>
 
   $memd->delete($key);
@@ -1116,11 +1006,6 @@ Delete I<$key> and its value from the cache.
 
 I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<remove> (B<deprecated>)
 
@@ -1142,11 +1027,6 @@ position I<$index>.  In scalar context, hash reference is returned,
 where I<$href-E<gt>{$key}> holds the result value.  See L</delete> to
 learn what the result value is.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<touch>
 
   $memd->touch($key, $expiration_time);
@@ -1161,11 +1041,6 @@ I<Return:> boolean, true for positive server reply, false for negative
 server reply, or I<undef> in case of some error.
 
 B<touch> command first appeared in B<memcached> 1.4.8.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<touch_multi>
 
@@ -1189,11 +1064,6 @@ learn what the result value is.
 
 B<touch> command first appeared in B<memcached> 1.4.8.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<gat>
 
   $memd->gat($expiration_time, $key);
@@ -1208,10 +1078,6 @@ I<Return:> value associated with the I<$key>, or nothing.
 
 B<gat> command first appeared in B<memcached> 1.5.3.
 
-=cut
-
-# See Fast.xs.
-
 =item C<gat_multi>
 
   $memd->gat_multi($expiration_time, @keys);
@@ -1223,9 +1089,6 @@ I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds
 corresponding value.
 
 B<gat> command first appeared in B<memcached> 1.5.3.
-
-# See Fast.xs.
-
 
 =item C<gats>
 
@@ -1245,9 +1108,6 @@ may conveniently pass it back to L</cas> with I<@$res>:
 
 B<gat> command first appeared in B<memcached> 1.5.3.
 
-# See Fast.xs.
-
-
 =item C<gats_multi>
 
   $memd->gats_multi($expiration_time, @keys);
@@ -1260,9 +1120,6 @@ I<Return:> reference to hash, where I<$href-E<gt>{$key}> holds a
 reference to an array I<[$cas, $value]>.  Compare with L</gats>.
 
 B<gat> command first appeared in B<memcached> 1.5.3.
-
-# See Fast.xs.
-
 
 =item C<flush_all>
 
@@ -1284,11 +1141,6 @@ F</path/to/unix.sock>, as described in L</servers>.  Result value is a
 boolean, true for positive server reply, false for negative server
 reply, or I<undef> in case of some error.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<nowait_push>
 
   $memd->nowait_push;
@@ -1307,11 +1159,6 @@ processed before the connection is closed.
 
 I<Return:> nothing.
 
-=cut
-
-# See Fast.xs.
-
-
 =item C<server_versions>
 
   $memd->server_versions;
@@ -1321,11 +1168,6 @@ Get server versions.
 I<Return:> reference to hash, where I<$href-E<gt>{$server}> holds
 corresponding server version.  I<$server> is either I<host:port> or
 F</path/to/unix.sock>, as described in L</servers>.
-
-=cut
-
-# See Fast.xs.
-
 
 =item C<disconnect_all>
 
@@ -1339,9 +1181,6 @@ socket which leads to protocol errors.)
 I<Return:> nothing.
 
 =cut
-
-# See Fast.xs.
-
 
 1;
 
