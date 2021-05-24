@@ -1,12 +1,146 @@
-# See the end of the file for copyright and license.
-#
-
 package Cache::Memcached::Fast;
 
 use 5.006;
 use strict;
 use warnings;
 
+use Carp;
+use Storable;
+
+our $VERSION = '0.27';
+
+require XSLoader;
+XSLoader::load('Cache::Memcached::Fast', $VERSION);
+
+our %instance;
+our %known_params = (
+    servers => [ { address => 1, weight => 1, noreply => 1 } ],
+    namespace => 1,
+    nowait => 1,
+    hash_namespace => 1,
+    connect_timeout => 1,
+    io_timeout => 1,
+    select_timeout => 1,
+    close_on_error => 1,
+    compress_threshold => 1,
+    compress_ratio => 1,
+    compress_methods => 1,
+    compress_algo => sub {
+        carp "compress_algo has been removed in 0.08,"
+          . " use compress_methods instead"
+    },
+    max_failures => 1,
+    failure_timeout => 1,
+    ketama_points => 1,
+    serialize_methods => 1,
+    utf8 => 1,
+    max_size => 1,
+    check_args => 1,
+);
+
+sub new {
+    my Cache::Memcached::Fast $class = shift;
+    my ($conf) = @_;
+
+    _check_args(\%known_params, $conf);
+
+    if (not $conf->{compress_methods}
+        and defined $conf->{compress_threshold}
+        and $conf->{compress_threshold} >= 0
+        and eval "require Compress::Zlib") {
+        # Note that the functions below can't return false when
+        # operation succeed.  This is because "" and "0" compress to a
+        # longer values (because of additional format data), and
+        # compress_ratio will force them to be stored uncompressed,
+        # thus decompression will never return them.
+        $conf->{compress_methods} = [
+            sub { ${$_[1]} = Compress::Zlib::memGzip(${$_[0]}) },
+            sub { ${$_[1]} = Compress::Zlib::memGunzip(${$_[0]}) }
+        ];
+    }
+
+    if ($conf->{utf8} and $^V lt v5.8.1) {
+        carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
+        undef $conf->{utf8};
+    }
+
+    $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
+
+    my $memd = Cache::Memcached::Fast::_new($class, $conf);
+
+    my $context = [$memd, $conf];
+    _weaken($context->[0]);
+    $instance{$$memd} = $context;
+
+    return $memd;
+}
+
+sub _check_args {
+    my ($checker, $args, $level) = @_;
+
+    $level = 0 unless defined $level;
+
+    my @unknown;
+
+    if (ref($args) ne 'HASH') {
+        if (ref($args) eq 'ARRAY' and ref($checker) eq 'ARRAY') {
+            foreach my $v (@$args) {
+                push @unknown, _check_args($checker->[0], $v, $level + 1);
+            }
+        }
+        return @unknown;
+    }
+
+    if (exists $args->{check_args}
+        and lc($args->{check_args}) eq 'skip') {
+        return;
+    }
+
+    while (my ($k, $v) = each %$args) {
+        if (exists $checker->{$k}) {
+            if (ref($checker->{$k}) eq 'CODE') {
+                $checker->{$k}->($args, $k, $v);
+            } elsif (ref($checker->{$k})) {
+                push @unknown, _check_args($checker->{$k}, $v, $level + 1);
+            }
+        } else {
+            push @unknown, $k;
+        }
+    }
+
+    if ($level > 0) {
+        return @unknown;
+    } else {
+        carp "Unknown parameter: @unknown" if @unknown;
+    }
+}
+
+sub CLONE {
+    my ($class) = @_;
+
+    my @contexts = values %instance;
+    %instance = ();
+    foreach my $context (@contexts) {
+        my $memd = Cache::Memcached::Fast::_new($class, $context->[1]);
+        ${$context->[0]} = $$memd;
+        $instance{$$memd} = $context;
+        $$memd = 0;
+    }
+}
+
+sub DESTROY {
+    my ($memd) = @_;
+
+    return unless $$memd;
+
+    delete $instance{$$memd};
+
+    Cache::Memcached::Fast::_destroy($memd);
+}
+
+1;
+
+__END__
 
 =head1 NAME
 
@@ -15,11 +149,6 @@ Cache::Memcached::Fast - Perl client for B<memcached>, in C language
 =head1 VERSION
 
 Version 0.27.
-
-=cut
-
-our $VERSION = '0.27';
-
 
 =head1 SYNOPSIS
 
@@ -126,17 +255,6 @@ using this module by installing it and adding I<"::Fast"> to the old
 name in their scripts (see L</"Compatibility with Cache::Memcached">
 below for full details).
 
-
-=cut
-
-
-use Carp;
-use Storable;
-
-require XSLoader;
-XSLoader::load('Cache::Memcached::Fast', $VERSION);
-
-
 =head1 CONSTRUCTOR
 
 =over
@@ -178,7 +296,6 @@ version 1.2.5.  If you enable I<noreply> for earlier server versions,
 things will go wrongly, and the client will eventually block.  Use
 with care.
 
-
 =item I<namespace>
 
   namespace => 'my::'
@@ -187,7 +304,6 @@ with care.
 The value is a scalar that will be prepended to all key names passed
 to the B<memcached> server.  By using different namespaces clients
 avoid interference with each other.
-
 
 =item I<hash_namespace>
 
@@ -218,7 +334,6 @@ examples above will use the same server, the one that I<'prefix/key'>
 is mapped to.  Note that there's no performance penalty then, as
 namespace prefix is hashed only once.  See L</namespace>.
 
-
 =item I<nowait>
 
   nowait => 1
@@ -236,7 +351,6 @@ should be, and on any command the client reads and discards any
 replies that have already arrived.  When you later execute some method
 in a non-void context, all outstanding replies will be waited for, and
 then the reply for this command will be read and returned.
-
 
 =item I<connect_timeout>
 
@@ -258,7 +372,6 @@ applies only to one such connect, i.e. to one I<connect(2)>
 call.  Thus overall connect process may take longer than
 I<connect_timeout> seconds, but this is unavoidable.
 
-
 =item I<io_timeout> (or deprecated I<select_timeout>)
 
   io_timeout => 0.5
@@ -273,7 +386,6 @@ server.  Thus it won't expire if one server is quick enough to
 communicate, even if others are silent.  But if some servers are dead
 those alive will finish communication, and then dead servers would
 timeout.
-
 
 =item I<close_on_error>
 
@@ -321,7 +433,6 @@ When connection dies, or the client receives the reply that it can't
 understand, it closes the socket regardless the I<close_on_error>
 setting.
 
-
 =item I<compress_threshold>
 
   compress_threshold => 10_000
@@ -333,7 +444,6 @@ compressed.  See L</compress_ratio> and L</compress_methods> below.
 
 Negative value disables compression.
 
-
 =item I<compress_ratio>
 
   compress_ratio => 0.9
@@ -343,7 +453,6 @@ The value is a fractional number between 0 and 1.  When
 L</compress_threshold> triggers the compression, compressed size
 should be less or equal to S<(original-size * I<compress_ratio>)>.
 Otherwise the data will be stored uncompressed.
-
 
 =item I<compress_methods>
 
@@ -375,7 +484,6 @@ By default we use L<Compress::Zlib|Compress::Zlib> because as of this
 writing it appears to be much faster than
 L<IO::Uncompress::Gunzip|IO::Uncompress::Gunzip>.
 
-
 =item I<max_failures>
 
   max_failures => 3
@@ -386,7 +494,6 @@ I<max_failures> in I<failure_timeout> seconds, the client does not try
 to connect to this particular server for another I<failure_timeout>
 seconds.  Value of zero disables this behaviour.
 
-
 =item I<failure_timeout>
 
   failure_timeout => 30
@@ -394,7 +501,6 @@ seconds.  Value of zero disables this behaviour.
 
 The value is a positive integer number of seconds.  See
 L</max_failures>.
-
 
 =item I<ketama_points>
 
@@ -414,7 +520,6 @@ integers each), so you probably shouldn't worry.
 
 Zero value disables the Ketama algorithm.  See also server weight in
 L</servers> above.
-
 
 =item I<serialize_methods>
 
@@ -437,7 +542,6 @@ if deserialization fails (say, wrong data format) it should throw an
 exception (call I<die>).  The exception will be caught by the module
 and L</get> will then pretend that the key hasn't been found.
 
-
 =item I<utf8>
 
   utf8 => 1
@@ -448,7 +552,6 @@ conversion of Perl character strings to octet sequences in UTF-8
 encoding on store, and the reverse conversion on fetch (when the
 retrieved data is marked as being UTF-8 octet sequence).  See
 L<perlunicode|perlunicode>.
-
 
 =item I<max_size>
 
@@ -466,7 +569,6 @@ S<I<[1MB - N bytes, 1MB]>>, where N is several hundreds, will still be
 sent to the server, and rejected there.  You may set I<max_size> to a
 smaller value to avoid this.
 
-
 =item I<check_args>
 
   check_args => 'skip'
@@ -483,144 +585,9 @@ When set to I<'skip'>, the check will be bypassed.  This may be
 desired when you share the same argument hash among different client
 versions, or among different clients.
 
-
 =back
 
 =back
-
-=cut
-
-our %known_params = (
-    servers => [ { address => 1, weight => 1, noreply => 1 } ],
-    namespace => 1,
-    nowait => 1,
-    hash_namespace => 1,
-    connect_timeout => 1,
-    io_timeout => 1,
-    select_timeout => 1,
-    close_on_error => 1,
-    compress_threshold => 1,
-    compress_ratio => 1,
-    compress_methods => 1,
-    compress_algo => sub {
-        carp "compress_algo has been removed in 0.08,"
-          . " use compress_methods instead"
-    },
-    max_failures => 1,
-    failure_timeout => 1,
-    ketama_points => 1,
-    serialize_methods => 1,
-    utf8 => 1,
-    max_size => 1,
-    check_args => 1,
-);
-
-
-sub _check_args {
-    my ($checker, $args, $level) = @_;
-
-    $level = 0 unless defined $level;
-
-    my @unknown;
-
-    if (ref($args) ne 'HASH') {
-        if (ref($args) eq 'ARRAY' and ref($checker) eq 'ARRAY') {
-            foreach my $v (@$args) {
-                push @unknown, _check_args($checker->[0], $v, $level + 1);
-            }
-        }
-        return @unknown;
-    }
-
-    if (exists $args->{check_args}
-        and lc($args->{check_args}) eq 'skip') {
-        return;
-    }
-
-    while (my ($k, $v) = each %$args) {
-        if (exists $checker->{$k}) {
-            if (ref($checker->{$k}) eq 'CODE') {
-                $checker->{$k}->($args, $k, $v);
-            } elsif (ref($checker->{$k})) {
-                push @unknown, _check_args($checker->{$k}, $v, $level + 1);
-            }
-        } else {
-            push @unknown, $k;
-        }
-    }
-
-    if ($level > 0) {
-        return @unknown;
-    } else {
-        carp "Unknown parameter: @unknown" if @unknown;
-    }
-}
-
-
-our %instance;
-
-sub new {
-    my Cache::Memcached::Fast $class = shift;
-    my ($conf) = @_;
-
-    _check_args(\%known_params, $conf);
-
-    if (not $conf->{compress_methods}
-        and defined $conf->{compress_threshold}
-        and $conf->{compress_threshold} >= 0
-        and eval "require Compress::Zlib") {
-        # Note that the functions below can't return false when
-        # operation succeed.  This is because "" and "0" compress to a
-        # longer values (because of additional format data), and
-        # compress_ratio will force them to be stored uncompressed,
-        # thus decompression will never return them.
-        $conf->{compress_methods} = [
-            sub { ${$_[1]} = Compress::Zlib::memGzip(${$_[0]}) },
-            sub { ${$_[1]} = Compress::Zlib::memGunzip(${$_[0]}) }
-        ];
-    }
-
-    if ($conf->{utf8} and $^V lt v5.8.1) {
-        carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
-        undef $conf->{utf8};
-    }
-
-    $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
-
-    my $memd = Cache::Memcached::Fast::_new($class, $conf);
-
-    my $context = [$memd, $conf];
-    _weaken($context->[0]);
-    $instance{$$memd} = $context;
-
-    return $memd;
-}
-
-
-sub CLONE {
-    my ($class) = @_;
-
-    my @contexts = values %instance;
-    %instance = ();
-    foreach my $context (@contexts) {
-        my $memd = Cache::Memcached::Fast::_new($class, $context->[1]);
-        ${$context->[0]} = $$memd;
-        $instance{$$memd} = $context;
-        $$memd = 0;
-    }
-}
-
-
-sub DESTROY {
-    my ($memd) = @_;
-
-    return unless $$memd;
-
-    delete $instance{$$memd};
-
-    Cache::Memcached::Fast::_destroy($memd);
-}
-
 
 =head1 METHODS
 
@@ -1180,14 +1147,7 @@ socket which leads to protocol errors.)
 
 I<Return:> nothing.
 
-=cut
-
-1;
-
-__END__
-
 =back
-
 
 =head1 Compatibility with Cache::Memcached
 
@@ -1207,7 +1167,6 @@ However, as of this release, the following features of
 Cache::Memcached are not supported by Cache::Memcached::Fast (and some
 of them will never be):
 
-
 =head2 Constructor parameters
 
 =over
@@ -1224,13 +1183,11 @@ clients might fail to reach a particular server, others may still
 reach it, so some clients will start rehashing, while others will not,
 and they will no longer agree which key goes where.
 
-
 =item I<readonly>
 
 Not supported.  Easy to add.  However I'm not sure about the demand
 for it, and it will slow down things a bit (because from design point
 of view it's better to add it on Perl side rather than on XS side).
-
 
 =item I<debug>
 
@@ -1238,7 +1195,6 @@ Not supported.  Since the implementation is different, there can't be
 any compatibility on I<debug> level.
 
 =back
-
 
 =head2 Methods
 
@@ -1249,48 +1205,39 @@ any compatibility on I<debug> level.
 Every key should be a scalar.  The syntax when key is a reference to
 an array I<[$precomputed_hash, $key]> is not supported.
 
-
 =item C<set_servers>
 
 Not supported.  Server set should not change after client object
 construction.
 
-
 =item C<set_debug>
 
 Not supported.  See L</debug>.
-
 
 =item C<set_readonly>
 
 Not supported.  See L</readonly>.
 
-
 =item C<set_norehash>
 
 Not supported.  See L</no_rehash>.
-
 
 =item C<set_compress_threshold>
 
 Not supported.  Easy to add.  Currently you specify
 I<compress_threshold> during client object construction.
 
-
 =item C<stats>
 
 Not supported.  Perhaps will appear in the future releases.
 
-
 =back
-
 
 =head1 Tainted data
 
 In current implementation tainted flag is neither tested nor
 preserved, storing tainted data and retrieving it back would clear
 tainted flag.  See L<perlsec|perlsec>.
-
 
 =head1 Threads
 
@@ -1341,7 +1288,6 @@ I.e., the following won't work:
 
 This is a Perl limitation (see L<threads/"BUGS AND LIMITATIONS">).
 
-
 =head1 BUGS
 
 Please report any bugs or feature requests to
@@ -1350,7 +1296,6 @@ interface at
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cache-Memcached-Fast>.
 I will be notified, and then you'll automatically be notified of
 progress on your bug as I make changes.
-
 
 =head1 SUPPORT
 
@@ -1367,29 +1312,23 @@ You can also look for information at:
 
 L<https://github.com/kroki/Cache-Memcached-Fast>
 
-
 =item * RT: CPAN's request tracker
 
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cache-Memcached-Fast>
-
 
 =item * AnnoCPAN: Annotated CPAN documentation
 
 L<http://annocpan.org/dist/Cache-Memcached-Fast>
 
-
 =item * CPAN Ratings
 
 L<http://cpanratings.perl.org/d/Cache-Memcached-Fast>
-
 
 =item * Search CPAN
 
 L<http://search.cpan.org/dist/Cache-Memcached-Fast>
 
-
 =back
-
 
 =head1 SEE ALSO
 
@@ -1403,7 +1342,6 @@ client.
 
 L<http://www.memcached.org/> - B<memcached> website.
 
-
 =head1 AUTHORS
 
 S<Tomash Brechko>, C<< <tomash.brechko at gmail.com> >> - design and
@@ -1411,7 +1349,6 @@ implementation.
 
 S<Michael Monashev>, C<< <postmaster at softsearch.ru> >> - project
 management, design suggestions, testing.
-
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -1421,12 +1358,10 @@ Thanks to S<Peter J. Holzer> for enlightening on UTF-8 support.
 
 Thanks to S<Yasuhiro Matsumoto> for initial Win32 patch.
 
-
 =head1 WARRANTY
 
 There's B<NONE>, neither explicit nor implied.  But you knew it already
 ;).
-
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -1435,5 +1370,3 @@ Copyright (C) 2007-2010 Tomash Brechko.  All rights reserved.
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.8 or,
 at your option, any later version of Perl 5 you may have available.
-
-=cut
