@@ -13,92 +13,92 @@ use strict;
 use FindBin;
 
 @ARGV == 3
-  or die "Usage: $FindBin::Script KEYWORD_FILE FILE_C FILE_H\n";
+    or die "Usage: $FindBin::Script KEYWORD_FILE FILE_C FILE_H\n";
 
-my ($keyword_file, $file_c, $file_h) = @ARGV;
-
+my ( $keyword_file, $file_c, $file_h ) = @ARGV;
 
 my %C;
 my @keywords;
 
-open(my $kw, '<', $keyword_file)
-  or die "open(< $keyword_file): $!";
+open( my $kw, '<', $keyword_file )
+    or die "open(< $keyword_file): $!";
 
 my $section = 0;
-while (my $line = <$kw>) {
+while ( my $line = <$kw> ) {
     chomp $line;
 
-    if ($line =~ /^\s*(?:#.*)?$/) {
+    if ( $line =~ /^\s*(?:#.*)?$/ ) {
         next;
-    } elsif ($line =~ /^\s*%%\s*$/) {
+    }
+    elsif ( $line =~ /^\s*%%\s*$/ ) {
         ++$section;
         next;
     }
 
-    if ($section == 0 and $line =~ /^\s*(\S+)\s*=\s*(\S+)\s*$/) {
+    if ( $section == 0 and $line =~ /^\s*(\S+)\s*=\s*(\S+)\s*$/ ) {
         $C{$1} = $2;
-    } elsif ($section == 1) {
+    }
+    elsif ( $section == 1 ) {
         push @keywords, $line;
-    } else {
+    }
+    else {
         die "Can't parse line: $line";
     }
 }
 
 close($kw);
 
-
 sub dispatch_keywords {
     my ($words) = @_;
 
     return $words if @$words <= 1;
 
-    my $len = 0;
+    my $len    = 0;
     my $common = 1;
     while ($common) {
         ++$len;
-        my $prefix = substr($$words[0], 0, $len);
-        $common = ! grep(!/^$prefix/, @$words);
+        my $prefix = substr( $$words[0], 0, $len );
+        $common = !grep( !/^$prefix/, @$words );
     }
     --$len;
 
-    my $prefix = substr($$words[0], 0, $len);
+    my $prefix = substr( $$words[0], 0, $len );
 
     my %subtree;
     foreach my $word (@$words) {
-        my $key = substr($word, $len, 1);
-        my $val = substr($word, $len + 1);
-        push @{$subtree{$key}}, $val;
+        my $key = substr( $word, $len, 1 );
+        my $val = substr( $word, $len + 1 );
+        push @{ $subtree{$key} }, $val;
     }
 
-    foreach my $val (values %subtree) {
+    foreach my $val ( values %subtree ) {
         $val = dispatch_keywords($val);
     }
 
-    return [$prefix, \%subtree];
+    return [ $prefix, \%subtree ];
 }
 
-
-my $tree = dispatch_keywords(\@keywords);
-
+my $tree = dispatch_keywords( \@keywords );
 
 my @external_enum = qw(NO_MATCH);
 
 sub create_switch {
-    my ($depth, $prefix, $common, $hash) = @_;
+    my ( $depth, $prefix, $common, $hash ) = @_;
 
-    my $I = ' ' x ($depth * 4);
+    my $I    = ' ' x ( $depth * 4 );
     my @keys = sort keys %$hash;
-    (my $common_ident = $common) =~ s/[^A-Z_]//g;
+    ( my $common_ident = $common ) =~ s/[^A-Z_]//g;
     my $phase = $prefix . $common_ident;
-    my $res = '';
+    my $res   = '';
 
     if ($common) {
-        if ($C{loose_match}) {
+        if ( $C{loose_match} ) {
             $res .= <<"EOF";
 $I  *pos += @{[ length $common ]};
 
 EOF
-        } else {
+        }
+        else {
             $res .= <<"EOF";
 $I  match_pos = "$common";
 
@@ -115,8 +115,8 @@ $I  while (*match_pos != '\\0');
 EOF
         }
     }
-    if ($common or $depth) {
-        if (! @keys) {
+    if ( $common or $depth ) {
+        if ( !@keys ) {
             push @external_enum, $phase;
             $res .= <<"EOF";
 $I  return $phase;
@@ -136,7 +136,7 @@ EOF
         $res .= <<"EOF";
 $I    case '$key':
 EOF
-        $res .= create_switch($depth + 1, $subphase, @{$$hash{$key}});
+        $res .= create_switch( $depth + 1, $subphase, @{ $$hash{$key} } );
     }
 
     $res .= <<"EOF";
@@ -148,9 +148,7 @@ EOF
     return $res;
 }
 
-
-my $switch = create_switch(0, 'MATCH_', @$tree);
-
+my $switch = create_switch( 0, 'MATCH_', @$tree );
 
 my $gen_comment = <<"EOF";
 /*
@@ -161,9 +159,8 @@ my $gen_comment = <<"EOF";
 */
 EOF
 
-
-open(my $fc, '>', $file_c)
-  or die "open(> $file_c): $!";
+open( my $fc, '>', $file_c )
+    or die "open(> $file_c): $!";
 
 my $i = 0;
 print $fc <<"EOF";
@@ -176,7 +173,7 @@ $C{parser_func}(char **pos)
 {
 EOF
 
-unless ($C{loose_match}) {
+unless ( $C{loose_match} ) {
     print $fc <<"EOF";
   char *match_pos;
 
@@ -190,14 +187,13 @@ $switch
 EOF
 
 close($fc)
-  or die "close($file_c): $!";
-
+    or die "close($file_c): $!";
 
 my $guard = uc $file_h;
 $guard =~ s/[^[:alnum:]_]/_/g;
 
-open(my $fh, '>', $file_h)
-  or die "open(> $file_h): $!";
+open( my $fh, '>', $file_h )
+    or die "open(> $file_h): $!";
 
 print $fh <<"EOF";
 $gen_comment
@@ -219,4 +215,4 @@ $C{parser_func}(char **pos);
 EOF
 
 close($fh)
-  or die "close($file_h): $!";
+    or die "close($file_h): $!";

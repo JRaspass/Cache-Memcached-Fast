@@ -8,58 +8,57 @@ use FindBin;
 use lib "$FindBin::Bin";
 use Memd;
 
-if ($^V lt v5.8.0) {
-   plan skip_all => 'Perl >= 5.8.0 is required';
+if ( $^V lt v5.8.0 ) {
+    plan skip_all => 'Perl >= 5.8.0 is required';
 }
 
 if ($Memd::memd) {
     plan tests => 9;
-} else {
+}
+else {
     plan skip_all => 'Not connected';
 }
-
 
 use Tie::Scalar;
 use Tie::Array;
 use Tie::Hash;
 
 tie my $scalar, 'Tie::StdScalar';
-tie my @array, 'Tie::StdArray';
-tie my %hash, 'Tie::StdHash';
+tie my @array,  'Tie::StdArray';
+tie my %hash,   'Tie::StdHash';
 
-%hash = %Memd::params;
-@array = @{$hash{servers}};
+%hash          = %Memd::params;
+@array         = @{ $hash{servers} };
 $hash{servers} = \@array;
-my $memd = new Cache::Memcached::Fast(\%hash);
+my $memd = new Cache::Memcached::Fast( \%hash );
 
 use utf8;
 
 my $key = "Кириллица.в.UTF-8";
 $scalar = $key;
-ok($memd->set($scalar, $scalar));
-ok(exists $memd->get_multi($scalar)->{$scalar});
-is($memd->get($scalar), $key);
-is($memd->get($key), $scalar);
-
+ok( $memd->set( $scalar, $scalar ) );
+ok( exists $memd->get_multi($scalar)->{$scalar} );
+is( $memd->get($scalar), $key );
+is( $memd->get($key),    $scalar );
 
 package MyScalar;
 use base 'Tie::StdScalar';
 
 sub FETCH {
-    "Другой.ключ"
+    "Другой.ключ";
 }
 
 package main;
 
 tie my $scalar2, 'MyScalar';
 
-ok($memd->set($scalar2, $scalar2));
-ok(exists $memd->get_multi($scalar2)->{$scalar2});
+ok( $memd->set( $scalar2, $scalar2 ) );
+ok( exists $memd->get_multi($scalar2)->{$scalar2} );
 
 SKIP: {
     eval { require Readonly };
     skip "Skipping Readonly tests because the module is not present", 3
-      if $@;
+        if $@;
 
     # 'require Readonly' as above can be used to test if the module is
     # present, but won't actually work.  So below we 'use Readonly',

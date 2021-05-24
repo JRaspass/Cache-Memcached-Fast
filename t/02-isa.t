@@ -10,8 +10,9 @@ use Memd;
 
 if ($Memd::memd) {
     plan tests => 1;
-} else {
+}
+else {
     plan skip_all => 'Not connected';
 }
 
-isa_ok($Memd::memd, 'Cache::Memcached::Fast');
+isa_ok( $Memd::memd, 'Cache::Memcached::Fast' );

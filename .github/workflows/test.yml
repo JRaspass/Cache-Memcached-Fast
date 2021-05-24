@@ -70,5 +70,5 @@ jobs:
 
       - if: ${{ matrix.xt }}
         run: |
-          cpanm -n Test::Pod Test::Pod::Coverage
+          cpanm -n Test::PerlTidy Test::Pod Test::Pod::Coverage
           prove -blv xt
