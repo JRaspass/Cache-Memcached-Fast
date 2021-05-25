@@ -1,30 +1,16 @@
-use warnings;
+use lib 't';
 use strict;
-
-use Test::More;
-
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ( $^V lt v5.7.2 ) {
-    plan skip_all => 'Perl >= 5.7.2 is required';
-}
+use warnings;
 
 use Config;
-unless ( $Config{useithreads} ) {
-    plan skip_all => 'ithreads are not configured';
-}
+use Memd;
+use Test::More;
+
+plan skip_all => 'Perl >= 5.7.2 is required'   unless $^V ge v5.7.2;
+plan skip_all => 'ithreads are not configured' unless $Config{useithreads};
+plan skip_all => 'Not connected'               unless $Memd::memd;
 
 use constant COUNT => 5;
-
-if ($Memd::memd) {
-    plan tests => COUNT * 2;
-}
-else {
-    plan skip_all => 'Not connected';
-}
 
 require threads;
 
@@ -46,3 +32,5 @@ for my $num ( 1 .. COUNT ) {
     is( $n, $num );
     ok( $Memd::memd->delete($num) );
 }
+
+done_testing;

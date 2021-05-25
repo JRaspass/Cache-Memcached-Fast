@@ -1,19 +1,11 @@
-use warnings;
+use lib 't';
 use strict;
+use warnings;
 
+use Memd;
 use Test::More;
 
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ($Memd::memd) {
-    plan tests => 13;
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 use constant THRESHOLD => 1024 * 1024 - 1024;
 
@@ -85,3 +77,5 @@ SKIP: {
 }
 
 ok( $Memd::memd->delete($key), 'Delete' );
+
+done_testing;

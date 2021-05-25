@@ -1,27 +1,17 @@
-use warnings;
+use lib 't';
 use strict;
+use utf8;
+use warnings;
 
-use Test::More;
-
-use FindBin;
-
-use lib "$FindBin::Bin";
+use Config;
 use Memd;
-
-if ( $^V lt v5.8.0 ) {
-    plan skip_all => 'Perl >= 5.8.0 is required';
-}
-
-if ($Memd::memd) {
-    plan tests => 9;
-}
-else {
-    plan skip_all => 'Not connected';
-}
-
-use Tie::Scalar;
+use Test::More;
 use Tie::Array;
 use Tie::Hash;
+use Tie::Scalar;
+
+plan skip_all => 'Perl >= 5.8.0 is required' unless $^V ge v5.8.0;
+plan skip_all => 'Not connected'             unless $Memd::memd;
 
 tie my $scalar, 'Tie::StdScalar';
 tie my @array,  'Tie::StdArray';
@@ -31,8 +21,6 @@ tie my %hash,   'Tie::StdHash';
 @array         = @{ $hash{servers} };
 $hash{servers} = \@array;
 my $memd = new Cache::Memcached::Fast( \%hash );
-
-use utf8;
 
 my $key = "Кириллица.в.UTF-8";
 $scalar = $key;
@@ -75,3 +63,5 @@ SKIP: {
         ok(! exists $memd->get_multi($key2)->{$key2});
     };
 }
+
+done_testing;

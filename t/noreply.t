@@ -1,24 +1,14 @@
-use warnings;
+use lib 't';
 use strict;
+use warnings;
 
+use Config;
+use Memd;
 use Test::More;
 
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ($Memd::memd) {
-    if ( $Memd::version_num >= 10205 ) {
-        plan tests => 3;
-    }
-    else {
-        plan skip_all => 'memcached 1.2.5 is required for noreply mode';
-    }
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
+plan skip_all => 'memcached >= 1.2.5 is required'
+    unless $Memd::version_num >= 10205;
 
 use constant count => 100;
 
@@ -42,3 +32,5 @@ foreach my $k (@keys) {
 is( $count, count );
 
 $another_memd->delete_multi(@keys);
+
+done_testing;

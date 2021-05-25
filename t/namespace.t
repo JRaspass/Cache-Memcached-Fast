@@ -1,19 +1,11 @@
-use warnings;
+use lib 't';
 use strict;
+use warnings;
 
+use Memd;
 use Test::More;
 
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ($Memd::memd) {
-    plan tests => 2;
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 $Memd::memd->set( 'namespace', 1 );
 
@@ -28,3 +20,5 @@ is( $Memd::memd->namespace($ns), $new_ns );
 $Memd::memd->set( 'namespace', 4 );
 
 $Memd::memd->delete('namespace');
+
+done_testing;

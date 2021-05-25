@@ -1,19 +1,11 @@
-use warnings;
+use lib 't';
 use strict;
+use warnings;
 
+use Memd;
 use Test::More;
 
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ($Memd::memd) {
-    plan tests => 126;
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 # count should be >= 4.
 use constant count => 100;
@@ -334,3 +326,5 @@ ok( $Memd::memd->remove( $keys[2] ) );
 @res = $Memd::memd->delete_multi(@keys);
 is( @res,                     count );
 is( ( grep { not $_ } @res ), 3 );
+
+done_testing;

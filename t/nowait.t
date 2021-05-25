@@ -1,19 +1,11 @@
-use warnings;
+use lib 't';
 use strict;
+use warnings;
 
+use Memd;
 use Test::More;
 
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ($Memd::memd) {
-    plan tests => 5;
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 use constant count => 1000;
 
@@ -51,3 +43,5 @@ foreach my $k (@keys) {
 $Memd::memd->nowait_push;
 
 ok( not $another_memd->get( $keys[$#keys] ) );
+
+done_testing;

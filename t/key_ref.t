@@ -1,19 +1,11 @@
-use warnings;
+use lib 't';
 use strict;
+use warnings;
 
+use Memd;
 use Test::More;
 
-use FindBin;
-
-use lib "$FindBin::Bin";
-use Memd;
-
-if ($Memd::memd) {
-    plan tests => 5;
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 my $key   = "key_ref";
 my $value = "value ref check";
@@ -27,3 +19,5 @@ is( $h->{$old_key}, $value, 'Access with the old key' );
 ok( !exists $h->{$key}, 'Access with modified key' );
 
 ok( $Memd::memd->delete($old_key), 'Delete' );
+
+done_testing;

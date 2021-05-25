@@ -1,19 +1,11 @@
-#!/usr/bin/env perl
-
+use lib 't';
 use strict;
 use warnings;
 
-use FindBin;
-use lib "$FindBin::Bin";
 use Memd;
 use Test::More;
 
-if ($Memd::memd) {
-    plan tests => 34;
-}
-else {
-    plan skip_all => 'Not connected';
-}
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 # add some values to the server
 foreach ( 1 .. 3 ) {
@@ -47,3 +39,4 @@ foreach my $test (@tests) {
     }
 }
 
+done_testing;

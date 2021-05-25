@@ -1,7 +1,7 @@
-use warnings;
 use strict;
+use warnings;
 
-use Test::More tests => 1;
+use Test::More;
 
 BEGIN {
     use_ok('Cache::Memcached::Fast');
@@ -10,3 +10,5 @@ BEGIN {
 diag(
     "Testing Cache::Memcached::Fast $Cache::Memcached::Fast::VERSION, Perl $], $^X"
 );
+
+done_testing;
