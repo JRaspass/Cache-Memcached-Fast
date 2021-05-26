@@ -15,7 +15,6 @@ pass('connected');
 my $server_versions = $Memd::memd->server_versions;
 $Memd::memd->disconnect_all;
 is_deeply( $Memd::memd->server_versions,
-    $server_versions,
-    'server_versions still works after disconnect_all' );
+    $server_versions, 'server_versions still works after disconnect_all' );
 
 done_testing;
