@@ -4,13 +4,14 @@ use warnings;
 
 use ExtUtils::MakeMaker;
 
-WriteMakefile(
+my %args = (
     ABSTRACT_FROM => 'lib/Cache/Memcached/Fast.pm',
     AUTHOR        => 'Tomash Brechko <tomash.brechko@gmail.com>',
     LICENSE       => 'perl_5',
     MYEXTLIB      => 'src/libclient$(LIB_EXT)',
     NAME          => 'Cache::Memcached::Fast',
-    PREREQ_PM     => { 'Test::More' => 0 },
+    PREREQ_PM     => { 'XSLoader'   => '0' },
+    TEST_REQUIRES => { 'Test::More' => '0.88' },    # For done_testing.
     VERSION_FROM  => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE    => {
         'meta-spec' => { version => 2 },
@@ -23,6 +24,12 @@ WriteMakefile(
         },
     },
 );
+
+# Merge TEST_REQUIRES into PREREQ_PM if EU::MM is too old to understand.
+$args{PREREQ_PM} = { %{ $args{PREREQ_PM} }, %{ delete $args{TEST_REQUIRES} } }
+    unless eval { ExtUtils::MakeMaker->VERSION('6.64') };
+
+WriteMakefile(%args);
 
 sub MY::postamble { <<'MAKE' }
 $(MYEXTLIB): src/Makefile

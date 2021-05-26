@@ -64,6 +64,8 @@ jobs:
 
       - run: perl -v
 
+      - run: cpanm --installdeps -n .
+
       - run: perl Makefile.PL
 
       - run: make test
