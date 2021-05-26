@@ -39,8 +39,7 @@ our %known_params = (
 );
 
 sub new {
-    my Cache::Memcached::Fast $class = shift;
-    my ($conf) = @_;
+    my ( $class, $conf ) = @_;
 
     _check_args( \%known_params, $conf );
 
@@ -67,7 +66,7 @@ sub new {
 
     $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
 
-    my $memd = Cache::Memcached::Fast::_new( $class, $conf );
+    my $memd = $class->_new($conf);
 
     my $context = [ $memd, $conf ];
     _weaken( $context->[0] );
@@ -121,12 +120,12 @@ sub _check_args {
 }
 
 sub CLONE {
-    my ($class) = @_;
+    my $class = shift;
 
     my @contexts = values %instance;
     %instance = ();
     foreach my $context (@contexts) {
-        my $memd = Cache::Memcached::Fast::_new( $class, $context->[1] );
+        my $memd = $class->_new( $context->[1] );
         ${ $context->[0] } = $$memd;
         $instance{$$memd} = $context;
         $$memd = 0;
@@ -134,7 +133,7 @@ sub CLONE {
 }
 
 sub DESTROY {
-    my ($memd) = @_;
+    my $memd = shift;
 
     return unless $$memd;
 
