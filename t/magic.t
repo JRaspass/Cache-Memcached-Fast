@@ -24,24 +24,17 @@ my $memd = new Cache::Memcached::Fast( \%hash );
 
 my $key = "Кириллица.в.UTF-8";
 $scalar = $key;
-ok( $memd->set( $scalar, $scalar ) );
-ok( exists $memd->get_multi($scalar)->{$scalar} );
-is( $memd->get($scalar), $key );
-is( $memd->get($key),    $scalar );
+ok $memd->set( $scalar, $scalar );
+ok exists $memd->get_multi($scalar)->{$scalar};
+is $memd->get($scalar), $key;
+is $memd->get($key),    $scalar;
 
-package MyScalar;
-use base 'Tie::StdScalar';
-
-sub FETCH {
-    "Другой.ключ";
-}
-
-package main;
-
+@MyScalar::ISA = 'Tie::StdScalar';
+sub MyScalar::FETCH {'Другой.ключ'}
 tie my $scalar2, 'MyScalar';
 
-ok( $memd->set( $scalar2, $scalar2 ) );
-ok( exists $memd->get_multi($scalar2)->{$scalar2} );
+ok $memd->set( $scalar2 => $scalar2 );
+is $memd->get($scalar2), $scalar2;
 
 SKIP: {
     eval { require Readonly };
@@ -57,10 +50,10 @@ SKIP: {
         Readonly my $expires => 3;
 
         Readonly my $key2 => "Третий.ключ";
-        ok($memd->set($key2, $key2, $expires));
-        ok(exists $memd->get_multi($key2)->{$key2});
-        sleep(4);
-        ok(! exists $memd->get_multi($key2)->{$key2});
+        ok $memd->set($key2, $key2, $expires);
+        ok exists $memd->get_multi($key2)->{$key2};
+        sleep 4;
+        ok !exists $memd->get_multi($key2)->{$key2};
     };
 }
 

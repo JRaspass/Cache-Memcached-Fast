@@ -4,31 +4,13 @@ use warnings;
 use Cache::Memcached::Fast;
 use Test::More;
 
-## IN THIS FILE ##
-#
-# Trigger errors when the memcached server is not available.
-# -When actions are performed correctly, True is returned
-# -When actions failed, but not errored, False is returned
-# -When actions fail due to errors, undef is returned
+# Create a server handle to a nonexistent service.
+my $memd = new Cache::Memcached::Fast( { servers => ['127.0.0.1:22122'] } );
 
-#Create a bad server handle
-my $memd = new Cache::Memcached::Fast(
-    {   servers   => ['127.0.0.1:22122'],  #This must be a nonexistent service
-        namespace => 'bad:',
-        utf8      => 1,
-    }
-);
+is_deeply $memd->server_versions, {}, 'server_versions()';
 
-# Get server versions.
-my $rv = $memd->server_versions;
-is( ref($rv), 'HASH', "server_versions() still returns a HASH" );
-my @versionKeys = keys %$rv;
-ok( not(@versionKeys), "No versions found" );
+is $memd->add( key => 'value' ), undef, 'add()';
 
-$rv = $memd->add( 'key', 'text' );
-ok( not( defined($rv) ), "add()" );
-
-$rv = $memd->get('key');
-ok( not( defined($rv) ), "get()" );
+is $memd->get('key'), undef, 'get()';
 
 done_testing;

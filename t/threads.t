@@ -14,23 +14,14 @@ use constant COUNT => 5;
 
 require threads;
 
-sub job {
-    my ($num) = @_;
+my @threads = map threads->new( sub { $Memd::memd->set( (@_) x 2 ) }, $_ ),
+    1 .. COUNT;
 
-    $Memd::memd->set( $num, $num );
-}
+for ( 1 .. COUNT ) {
+    $threads[ $_ - 1 ]->join;
 
-my @threads;
-for my $num ( 1 .. COUNT ) {
-    push @threads, threads->new( \&job, $num );
-}
-
-for my $num ( 1 .. COUNT ) {
-    $threads[ $num - 1 ]->join;
-
-    my $n = $Memd::memd->get($num);
-    is( $n, $num );
-    ok( $Memd::memd->delete($num) );
+    is $Memd::memd->get($_), $_, "get($_)";
+    ok $Memd::memd->delete($_), "delete($_)";
 }
 
 done_testing;
