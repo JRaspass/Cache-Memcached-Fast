@@ -13,7 +13,7 @@ subtest server => sub {
     {
         my ( $server, $expected ) = @$_;
 
-        eval { Cache::Memcached::Fast->new( { servers => [ $server ] } ) };
+        eval { Cache::Memcached::Fast->new( { servers => [$server] } ) };
         like $@, $expected, lc ref $server;
     }
 };
