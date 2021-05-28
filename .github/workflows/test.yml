@@ -41,8 +41,9 @@ jobs:
             os: ubuntu-latest
             perl: '5.34'
 
-          # This is effectively our normal one, with xt ran at the end.
+          # This is effectively our normal one, with cover and xt.
           - name: ' (xt)'
+            cover: true
             os: ubuntu-latest
             perl: '5.34'
             xt: true
@@ -66,9 +67,18 @@ jobs:
 
       - run: cpanm --installdeps -n .
 
+      - if: ${{ matrix.cover }}
+        run: cpanm -n Devel::Cover::Report::Coveralls
+
       - run: perl Makefile.PL
 
-      - run: make test
+      - if: ${{ !matrix.cover }}
+        run: make test
+
+      - if: ${{ matrix.cover }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cover -ignore_re '\.h$' -report Coveralls -test
 
       - if: ${{ matrix.xt }}
         run: |
