@@ -3,13 +3,11 @@ use lib 't';
 use Memd;
 use Test2::V0;
 
-plan skip_all => 'Not connected' unless $Memd::memd;
-
 # add some values to the server
 for ( 1 .. 3 ) {
     my ( $key, $val ) = ( "k$_", "v$_" );
-    ok $Memd::memd->set( $key, $val ), "set('$key')";
-    is $Memd::memd->get($key), $val, "get('$key')";
+    ok $memd->set( $key, $val ), "set('$key')";
+    is $memd->get($key), $val, "get('$key')";
 }
 
 # test that the no values are set on the server if one or more
@@ -26,10 +24,10 @@ for (
     )
 {
     # no values should be updated after this set_multi
-    ok dies { $Memd::memd->set_multi(@$_) },
+    ok dies { $memd->set_multi(@$_) },
         'Croaked on empty value passed to set_multi';
 
-    is $Memd::memd->get("k$_"), "v$_", "get('k$_')" for 1 .. 3;
+    is $memd->get("k$_"), "v$_", "get('k$_')" for 1 .. 3;
 }
 
 done_testing;

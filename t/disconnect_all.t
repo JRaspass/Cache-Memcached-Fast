@@ -3,13 +3,11 @@ use lib 't';
 use Memd;
 use Test2::V0;
 
-plan skip_all => 'Not connected' unless $Memd::memd;
+my $versions = $memd->server_versions;
 
-my $versions = $Memd::memd->server_versions;
+$memd->disconnect_all;
 
-$Memd::memd->disconnect_all;
-
-is $Memd::memd->server_versions, $versions,
+is $memd->server_versions, $versions,
     'server_versions still works after disconnect_all';
 
 done_testing;

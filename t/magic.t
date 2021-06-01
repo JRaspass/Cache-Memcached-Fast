@@ -7,8 +7,6 @@ use Tie::Array;
 use Tie::Hash;
 use Tie::Scalar;
 
-plan skip_all => 'Not connected' unless $Memd::memd;
-
 tie my $scalar, 'Tie::StdScalar';
 tie my @array,  'Tie::StdArray';
 tie my %hash,   'Tie::StdHash';

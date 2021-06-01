@@ -3,8 +3,6 @@ use lib 't';
 use Memd;
 use Test2::V0 -target => 'Cache::Memcached::Fast';
 
-plan skip_all => 'Not connected' unless $Memd::memd;
-
 use constant THRESHOLD => 1024 * 1024 - 1024;
 
 my $key         = 'big_value';
@@ -22,12 +20,12 @@ $bigger_params{max_size} = THRESHOLD + 2048;
 $bigger_params{namespace} .= 'bigger/';
 my $bigger_memd = CLASS->new( \%bigger_params );
 
-$Memd::memd->enable_compress(0);
+$memd->enable_compress(0);
 $smaller_memd->enable_compress(0);
 $bigger_memd->enable_compress(0);
 
-ok( $Memd::memd->set( $key, $value ), 'Store value uncompressed' );
-ok( $Memd::memd->get($key) eq $value, 'Fetch' );
+ok( $memd->set( $key, $value ), 'Store value uncompressed' );
+ok( $memd->get($key) eq $value, 'Fetch' );
 ok( !$smaller_memd->set( $key, $value ),
     'Values equal to or greater than THRESHOLD should be rejected by module'
 );
@@ -49,7 +47,7 @@ SKIP: {
         local $SIG{__WARN__} = sub { die $_[0] };
 
         eval {
-            $Memd::memd->enable_compress(1);
+            $memd->enable_compress(1);
             $smaller_memd->enable_compress(1);
             $bigger_memd->enable_compress(1);
         }
@@ -74,6 +72,6 @@ SKIP: {
     ok( $bigger_memd->delete($key),  'Delete' );
 }
 
-ok( $Memd::memd->delete($key), 'Delete' );
+ok( $memd->delete($key), 'Delete' );
 
 done_testing;
