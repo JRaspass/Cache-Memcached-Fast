@@ -11,7 +11,7 @@ my %args = (
     MYEXTLIB      => 'src/libclient$(LIB_EXT)',
     NAME          => 'Cache::Memcached::Fast',
     PREREQ_PM     => { 'XSLoader'     => '0' },
-    TEST_REQUIRES => { 'Test2::Suite' => '0.000072' },  # For Test2::V0.
+    TEST_REQUIRES => { 'Test2::Suite' => '0.000072' },    # For Test2::V0.
     VERSION_FROM  => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE    => {
         'meta-spec' => { version => 2 },
