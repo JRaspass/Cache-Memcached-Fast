@@ -10,8 +10,7 @@ my %args = (
     LICENSE       => 'perl_5',
     MYEXTLIB      => 'src/libclient$(LIB_EXT)',
     NAME          => 'Cache::Memcached::Fast',
-    PREREQ_PM     => { 'XSLoader'     => '0' },
-    TEST_REQUIRES => { 'Test2::Suite' => '0.000072' },    # For Test2::V0.
+    PREREQ_PM     => { 'XSLoader' => '0' },
     VERSION_FROM  => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE    => {
         'meta-spec' => { version => 2 },
@@ -22,6 +21,10 @@ my %args = (
                 web  => 'https://github.com/JRaspass/Cache-Memcached-Fast',
             },
         },
+    },
+    TEST_REQUIRES => {
+        'Test2::Suite' => '0.000072',    # For Test2::V0.
+        'version'      => '0.77',        # For version->parse.
     },
 );
 

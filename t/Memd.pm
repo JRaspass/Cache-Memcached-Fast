@@ -1,6 +1,7 @@
 package Memd;
 
 use strict;
+use version;
 use warnings;
 
 use Cache::Memcached::Fast;
