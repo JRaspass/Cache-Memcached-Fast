@@ -1,5 +1,5 @@
 requires 'XSLoader';
 
 on test => sub {
-    requires 'Test::More' => '0.96';    # For subtest w/o plan.
+    requires 'Test2::Suite' => '0.000072';  # For Test2::V0.
 };

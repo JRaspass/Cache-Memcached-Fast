@@ -1,9 +1,7 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0 -target => 'Cache::Memcached::Fast';
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 
@@ -17,12 +15,12 @@ my $big_value   = 'x' x ( THRESHOLD + 2048 );
 my %smaller_params = %Memd::params;
 $smaller_params{max_size} = THRESHOLD - 2048;
 $smaller_params{namespace} .= 'smaller/';
-my $smaller_memd = new Cache::Memcached::Fast( \%smaller_params );
+my $smaller_memd = CLASS->new( \%smaller_params );
 
 my %bigger_params = %Memd::params;
 $bigger_params{max_size} = THRESHOLD + 2048;
 $bigger_params{namespace} .= 'bigger/';
-my $bigger_memd = new Cache::Memcached::Fast( \%bigger_params );
+my $bigger_memd = CLASS->new( \%bigger_params );
 
 $Memd::memd->enable_compress(0);
 $smaller_memd->enable_compress(0);

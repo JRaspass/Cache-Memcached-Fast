@@ -1,6 +1,6 @@
 package Cache::Memcached::Fast;
 
-use 5.006;
+use v5.8.1;
 use strict;
 use warnings;
 
@@ -57,11 +57,6 @@ sub new {
             sub { ${ $_[1] } = Compress::Zlib::memGzip( ${ $_[0] } ) },
             sub { ${ $_[1] } = Compress::Zlib::memGunzip( ${ $_[0] } ) }
         ];
-    }
-
-    if ( $conf->{utf8} and $^V lt v5.8.1 ) {
-        carp "'utf8' may be enabled only for Perl >= 5.8.1, disabled";
-        undef $conf->{utf8};
     }
 
     $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
@@ -176,7 +171,7 @@ Version 0.27.
       nowait => 1,
       hash_namespace => 1,
       serialize_methods => [ \&Storable::freeze, \&Storable::thaw ],
-      utf8 => ($^V ge v5.8.1 ? 1 : 0),
+      utf8 => 1,
       max_size => 512 * 1024,
   });
 

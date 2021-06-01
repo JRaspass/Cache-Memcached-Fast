@@ -1,15 +1,13 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0 -target => 'Cache::Memcached::Fast';
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 
 use constant count => 1000;
 
-my $another_memd = Cache::Memcached::Fast->new( \%Memd::params );
+my $another_memd = CLASS->new( \%Memd::params );
 
 my @keys = map "nowait-$_", 1 .. count;
 
@@ -22,7 +20,7 @@ my @extra_keys = @keys;
 splice @extra_keys, rand( @extra_keys + 1 ), 0, "no_such_key-$_"
     for 1 .. count;
 
-is_deeply $Memd::memd->get_multi(@extra_keys), { map { $_ => $_ } @keys };
+is $Memd::memd->get_multi(@extra_keys), { map { $_ => $_ } @keys };
 
 is $another_memd->get( $keys[-1] ), $keys[-1];
 

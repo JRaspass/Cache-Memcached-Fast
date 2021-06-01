@@ -1,4 +1,4 @@
-use 5.006;
+use v5.8.1;
 use strict;
 use warnings;
 
@@ -10,8 +10,8 @@ my %args = (
     LICENSE       => 'perl_5',
     MYEXTLIB      => 'src/libclient$(LIB_EXT)',
     NAME          => 'Cache::Memcached::Fast',
-    PREREQ_PM     => { 'XSLoader'   => '0' },
-    TEST_REQUIRES => { 'Test::More' => '0.96' },    # For subtest w/o plan.
+    PREREQ_PM     => { 'XSLoader'     => '0' },
+    TEST_REQUIRES => { 'Test2::Suite' => '0.000072' },  # For Test2::V0.
     VERSION_FROM  => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE    => {
         'meta-spec' => { version => 2 },

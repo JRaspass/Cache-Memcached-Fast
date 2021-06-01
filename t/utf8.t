@@ -1,15 +1,11 @@
 use lib 't';
-use strict;
-use utf8;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0 -target => 'Cache::Memcached::Fast';
 
-plan skip_all => 'Not connected'             unless $Memd::memd;
-plan skip_all => 'Perl >= 5.8.1 is required' unless $^V ge v5.8.1;
+plan skip_all => 'Not connected' unless $Memd::memd;
 
-my $memd_bytes = Cache::Memcached::Fast->new( { %Memd::params, utf8 => 0 } );
+my $memd_bytes = CLASS->new( { %Memd::params, utf8 => 0 } );
 
 utf8::encode my $bytes = my $string = 'Кириллица в UTF-8 🐪';
 
@@ -32,8 +28,8 @@ subtest string => sub {
 
     is $memd_bytes->get('string'), $bytes;
 
-    eval { $memd_bytes->set( string => $string ) };
-    is $@, 'Wide character in subroutine entry at '
+    is dies { $memd_bytes->set( string => $string ) },
+        'Wide character in subroutine entry at '
         . ( __FILE__ . ' line ' . ( __LINE__ - 2 ) . ".\n" );
 };
 

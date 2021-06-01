@@ -1,9 +1,7 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0;
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 
@@ -48,8 +46,8 @@ ok $Memd::memd->get($key) == 0, 'Fetch';
 
 ok $Memd::memd->get_multi, 'get_multi() with empty list';
 
-is_deeply { $Memd::memd->set_multi },    {}, 'list set_multi()';
-is_deeply scalar $Memd::memd->set_multi, {}, 'scalar set_multi()';
+is { $Memd::memd->set_multi }, {}, 'list set_multi()';
+is $Memd::memd->set_multi,     {}, 'scalar set_multi()';
 
 my @res = $Memd::memd->set_multi( map { [ $_, $_ ] } @keys );
 is @res, count;
@@ -62,7 +60,7 @@ my @extra_keys = @keys;
 splice @extra_keys, rand( @extra_keys + 1 ), 0, "no_such_key-$_"
     for 1 .. count;
 
-is_deeply $Memd::memd->get_multi(@extra_keys), { map { $_ => $_ } @keys };
+is $Memd::memd->get_multi(@extra_keys), { map { $_ => $_ } @keys };
 
 subtest 'cas/gets/append/prepend' => sub {
     plan skip_all => 'memcached 1.2.4 is required'
@@ -116,7 +114,7 @@ subtest 'cas/gets/append/prepend' => sub {
     ok !$res[1];
     ok $res[2];
 
-    is_deeply scalar $Memd::memd->cas_multi, {};
+    is $Memd::memd->cas_multi, {};
 };
 
 subtest gat => sub {
@@ -149,13 +147,13 @@ subtest gat => sub {
     $Memd::memd->set( key1 => 'key1_value' );
     $Memd::memd->set( key2 => 'key2_value', $expire );
 
-    is_deeply $Memd::memd->gat_multi( $expire, qw/key1 key2 no-key/ ),
+    is $Memd::memd->gat_multi( $expire, qw/key1 key2 no-key/ ),
         { key1 => 'key1_value', key2 => 'key2_value' };
 
     sleep $wait_expire;
 
-    is_deeply $Memd::memd->gat_multi( $expire, qw/key1 key2 no-key/ ), {};
-    is_deeply $Memd::memd->gat_multi,                                  {};
+    is $Memd::memd->gat_multi( $expire, qw/key1 key2 no-key/ ), {};
+    is $Memd::memd->gat_multi,                                  {};
 
     ok $Memd::memd->set( $key, 'value' ), 'Store';
     my $res = $Memd::memd->gats( $expire, $key );
@@ -196,9 +194,9 @@ subtest gat => sub {
         [ 'no-such-key', 123, 'value', 10 ],
         [ $keys[3],      @{ $hash->{ $keys[3] } }, 1000 ]
     );
-    is_deeply \@res, [ 1, '', 1 ];
+    is \@res, [ T, F, T ];
 
-    is_deeply scalar $Memd::memd->cas_multi, {};
+    is $Memd::memd->cas_multi, {};
 };
 
 subtest touch => sub {
@@ -239,7 +237,7 @@ subtest touch => sub {
         ['no-such-key'],
     );
 
-    is_deeply \@res, [ 1, 1, '' ];
+    is \@res, [ 1, 1, '' ];
 
     sleep $wait_expire;
 
@@ -256,14 +254,14 @@ subtest touch => sub {
         ['no-such-key'],
     );
 
-    is_deeply $res, { $keys[0] => 1, $keys[1] => 1, 'no-such-key' => '' };
+    is $res, { $keys[0] => 1, $keys[1] => 1, 'no-such-key' => '' };
 
     sleep $wait_expire;
 
     is $Memd::memd->get( $keys[0] ), undef,   'Expired';
     is $Memd::memd->get( $keys[1] ), 'value', 'Not Expired';
 
-    is_deeply scalar $Memd::memd->touch_multi, {};
+    is $Memd::memd->touch_multi, {};
 };
 
 $Memd::memd->set( $key, 'value' );

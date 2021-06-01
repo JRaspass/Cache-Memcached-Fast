@@ -1,17 +1,13 @@
 use lib 't';
-use strict;
-use utf8;
-use warnings;
 
 use Config;
 use Memd;
-use Test::More;
+use Test2::V0 -target => 'Cache::Memcached::Fast';
 use Tie::Array;
 use Tie::Hash;
 use Tie::Scalar;
 
-plan skip_all => 'Perl >= 5.8.0 is required' unless $^V ge v5.8.0;
-plan skip_all => 'Not connected'             unless $Memd::memd;
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 tie my $scalar, 'Tie::StdScalar';
 tie my @array,  'Tie::StdArray';
@@ -20,7 +16,8 @@ tie my %hash,   'Tie::StdHash';
 %hash          = %Memd::params;
 @array         = @{ $hash{servers} };
 $hash{servers} = \@array;
-my $memd = new Cache::Memcached::Fast( \%hash );
+
+my $memd = CLASS->new( \%hash );
 
 my $key = "Кириллица.в.UTF-8";
 $scalar = $key;

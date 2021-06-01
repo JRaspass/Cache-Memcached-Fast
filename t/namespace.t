@@ -1,9 +1,7 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0;
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 

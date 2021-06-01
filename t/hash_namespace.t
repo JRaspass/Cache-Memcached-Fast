@@ -1,16 +1,14 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0 -target => 'Cache::Memcached::Fast';
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 
 my %params = %Memd::params;
 $params{hash_namespace} = 1;
 
-my $another_memd = Cache::Memcached::Fast->new( \%params );
+my $another_memd = CLASS->new( \%params );
 
 my $ns  = $another_memd->namespace('');
 my $key = 'hash_namespace';

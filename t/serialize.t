@@ -1,9 +1,7 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0;
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 
@@ -12,9 +10,9 @@ my $key  = 'serialize';
 
 ok $Memd::memd->set( $key => \%hash ), 'set()';
 
-is_deeply $Memd::memd->get($key), \%hash, 'get()';
+is $Memd::memd->get($key), \%hash, 'get()';
 
-is_deeply $Memd::memd->get_multi($key), { $key => \%hash }, 'get_multi()';
+is $Memd::memd->get_multi($key), { $key => \%hash }, 'get_multi()';
 
 subtest prepend => sub {
     plan skip_all => 'memcached 1.2.4 is required'
@@ -24,7 +22,7 @@ subtest prepend => sub {
 
     is $Memd::memd->get($key), undef, 'get()';
 
-    is_deeply $Memd::memd->get_multi($key), {}, 'get_multi()';
+    is $Memd::memd->get_multi($key), {}, 'get_multi()';
 };
 
 ok $Memd::memd->delete($key), 'delete()';

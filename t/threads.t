@@ -1,14 +1,10 @@
 use lib 't';
-use strict;
-use warnings;
 
-use Config;
 use Memd;
-use Test::More;
+use Test2::Require::Threads;
+use Test2::V0;
 
-plan skip_all => 'Perl >= 5.7.2 is required'   unless $^V ge v5.7.2;
-plan skip_all => 'ithreads are not configured' unless $Config{useithreads};
-plan skip_all => 'Not connected'               unless $Memd::memd;
+plan skip_all => 'Not connected' unless $Memd::memd;
 
 use constant COUNT => 5;
 

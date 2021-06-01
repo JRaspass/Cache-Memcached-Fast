@@ -1,8 +1,4 @@
-use strict;
-use warnings;
-
-use Cache::Memcached::Fast;
-use Test::More;
+use Test2::V0 -target => 'Cache::Memcached::Fast';
 
 subtest server => sub {
     for (
@@ -13,15 +9,12 @@ subtest server => sub {
     {
         my ( $server, $expected ) = @$_;
 
-        eval { Cache::Memcached::Fast->new( { servers => [$server] } ) };
-        like $@, $expected, lc ref $server;
+        like dies { CLASS->new( { servers => [$server] } ) }, $expected,
+            lc ref $server;
     }
 };
 
-eval {
-    Cache::Memcached::Fast->new(
-        { servers => [ { address => 'localhost:11211', weight => -1 } ] } );
-};
-like $@, qr/^\QServer weight should be positive/, 'negative weight';
+like dies { CLASS->new( { servers => [ [ 'localhost:11211', -1 ] ] } ) },
+    qr/^\QServer weight should be positive/, 'negative weight';
 
 done_testing;

@@ -1,9 +1,7 @@
 use lib 't';
-use strict;
-use warnings;
 
 use Memd;
-use Test::More;
+use Test2::V0;
 
 plan skip_all => 'Not connected' unless $Memd::memd;
 
@@ -28,8 +26,8 @@ for (
     )
 {
     # no values should be updated after this set_multi
-    eval { $Memd::memd->set_multi(@$_) };
-    ok $@, 'Croaked on empty value passed to set_multi';
+    ok dies { $Memd::memd->set_multi(@$_) },
+        'Croaked on empty value passed to set_multi';
 
     is $Memd::memd->get("k$_"), "v$_", "get('k$_')" for 1 .. 3;
 }
