@@ -1,6 +1,7 @@
 use lib 't';
 
 use Memd;
+use Test2::IPC;
 use Test2::Require::Threads;
 use Test2::V0;
 
