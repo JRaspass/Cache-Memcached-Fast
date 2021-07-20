@@ -143,7 +143,7 @@ Version 0.27.
 
   use Cache::Memcached::Fast;
 
-  my $memd = new Cache::Memcached::Fast({
+  my $memd = Cache::Memcached::Fast->new({
       servers => [ { address => 'localhost:11211', weight => 2.5 },
                    '192.168.254.2:11211',
                    { address => '/path/to/unix.sock', noreply => 1 } ],
@@ -250,7 +250,7 @@ below for full details).
 
 =item C<new>
 
-  my $memd = new Cache::Memcached::Fast($params);
+  my $memd = Cache::Memcached::Fast->new($params);
 
 Create new client object.  I<$params> is a reference to a hash with
 client parameters.  Currently recognized keys are:
@@ -1238,7 +1238,7 @@ For example:
 
   use threads;
 
-  my $memd = new Cache::Memcached::Fast({...});
+  my $memd = Cache::Memcached::Fast->new({...});
 
   sub thread_job {
     $memd->set("key", "thread value");
@@ -1268,7 +1268,7 @@ I.e., the following won't work:
   use threads;
 
   sub thread_job {
-    return new Cache::Memcached::Fast({...});
+    return Cache::Memcached::Fast->new({...});
   }
 
   my $thread = threads->new(\&thread_job);
