@@ -46,7 +46,7 @@ sub new {
     if (    not $conf->{compress_methods}
         and defined $conf->{compress_threshold}
         and $conf->{compress_threshold} >= 0
-        and eval "require Compress::Zlib" )
+        and eval { require Compress::Zlib } )
     {
         # Note that the functions below can't return false when
         # operation succeed.  This is because "" and "0" compress to a
