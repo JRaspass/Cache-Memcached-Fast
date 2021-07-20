@@ -29,11 +29,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 #ifndef WIN32
 #include "socket_posix.h"
 #include <sys/uio.h>
 #include <signal.h>
-#include <time.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #else  /* WIN32 */
