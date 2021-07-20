@@ -560,7 +560,7 @@ struct xs_value_result
 
 static
 void
-svalue_store(void *arg, void *opaque, int PERL_UNUSED_DECL, void *meta)
+svalue_store(void *arg, void *opaque, int key_index PERL_UNUSED_DECL, void *meta)
 {
   dTHX;
   SV *value_sv = (SV *) opaque;
@@ -622,7 +622,7 @@ mvalue_store(void *arg, void *opaque, int key_index, void *meta)
 
 static
 void
-result_store(void *arg, void *opaque, int key_index, void * PERL_UNUSED_DECL)
+result_store(void *arg, void *opaque, int key_index, void *meta PERL_UNUSED_DECL)
 {
   dTHX;
   AV *av = (AV *) arg;
@@ -634,7 +634,7 @@ result_store(void *arg, void *opaque, int key_index, void * PERL_UNUSED_DECL)
 
 static
 void
-embedded_store(void *arg, void *opaque, int key_index, void * PERL_UNUSED_DECL)
+embedded_store(void *arg, void *opaque, int key_index, void *meta PERL_UNUSED_DECL)
 {
   dTHX;
   AV *av = (AV *) arg;
