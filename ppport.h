@@ -4,9 +4,9 @@ my $void = <<'SKIP';
 /*
 ----------------------------------------------------------------------
 
-    ppport.h -- Perl/Pollution/Portability Version 3.62
+    ppport.h -- Perl/Pollution/Portability Version 3.63
 
-    Automatically created by Devel::PPPort running under perl 5.032001.
+    Automatically created by Devel::PPPort running under perl 5.034000.
 
     Version 3.x, Copyright (c) 2004-2013, Marcus Holland-Moritz.
 
@@ -23,8 +23,8 @@ SKIP
 if (@ARGV && $ARGV[0] eq '--unstrip') {
   eval { require Devel::PPPort };
   $@ and die "Cannot require Devel::PPPort, please install.\n";
-  if (eval $Devel::PPPort::VERSION < 3.62) {
-    die "ppport.h was originally generated with Devel::PPPort 3.62.\n"
+  if (eval $Devel::PPPort::VERSION < 3.63) {
+    die "ppport.h was originally generated with Devel::PPPort 3.63.\n"
       . "Your Devel::PPPort is only version $Devel::PPPort::VERSION.\n"
       . "Please install a newer version, or --unstrip will not work.\n";
   }
@@ -49,7 +49,7 @@ __DATA__*/
 #endif
 #define DPPP_CAT2(x,y) CAT2(x,y)
 #define DPPP_(name) DPPP_CAT2(DPPP_NAMESPACE, name)
-#define D_PPP_RELEASE_DATE 1602806400
+#define D_PPP_RELEASE_DATE 1625616000
 #if ! defined(PERL_REVISION) && ! defined(PERL_VERSION_MAJOR)
 #if ! defined(__PATCHLEVEL_H_INCLUDED__) \
 && ! ( defined(PATCHLEVEL) && defined(SUBVERSION))
@@ -789,6 +789,40 @@ return cv;
 #define __ASSERT_(statement)
 #endif
 #endif
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+#if __has_builtin(__builtin_unreachable)
+#define D_PPP_HAS_BUILTIN_UNREACHABLE
+#elif (defined(__GNUC__) && ( __GNUC__ > 4 \
+|| __GNUC__ == 4 && __GNUC_MINOR__ >= 5))
+#define D_PPP_HAS_BUILTIN_UNREACHABLE
+#endif
+#ifndef ASSUME
+#ifdef DEBUGGING
+#define ASSUME(x) assert(x)
+#elif defined(_MSC_VER)
+#define ASSUME(x) __assume(x)
+#elif defined(__ARMCC_VERSION)
+#define ASSUME(x) __promise(x)
+#elif defined(D_PPP_HAS_BUILTIN_UNREACHABLE)
+#define ASSUME(x) ((x) ? (void) 0 : __builtin_unreachable())
+#else
+#define ASSUME(x) assert(x)
+#endif
+#endif
+#ifndef NOT_REACHED
+#ifdef D_PPP_HAS_BUILTIN_UNREACHABLE
+#define NOT_REACHED \
+STMT_START { \
+ASSUME(!"UNREACHABLE"); __builtin_unreachable(); \
+} STMT_END
+#elif ! defined(__GNUC__) && (defined(__sun) || defined(__hpux))
+#define NOT_REACHED
+#else
+#define NOT_REACHED ASSUME(!"UNREACHABLE")
+#endif
+#endif
 #ifndef WIDEST_UTYPE
 #ifdef QUADKIND
 #ifdef U64TYPE
@@ -1287,14 +1321,14 @@ typedef OP* (CPERLscope(*Perl_check_t)) (pTHX_ OP*);
 #define isCNTRL(c) ((WIDEST_UTYPE) (c) < ' ' || (c) == 127)
 #endif
 #ifndef isCNTRL_L1
-#define isCNTRL_L1(c) (isCNTRL(c) || ( (WIDEST_UTYPE) (c) <= 0x9F \
-&& (WIDEST_UTYPE) (c) >= 0x80))
+#define isCNTRL_L1(c) ( (WIDEST_UTYPE) (c) < ' ' \
+|| inRANGE((c), 0x7F, 0x9F))
 #endif
 #ifndef isLOWER
-#define isLOWER(c) ((c) >= 'a' && (c) <= 'z')
+#define isLOWER(c) inRANGE((c), 'a', 'z')
 #endif
 #ifndef isUPPER
-#define isUPPER(c) ((c) <= 'Z' && (c) >= 'A')
+#define isUPPER(c) inRANGE((c), 'A', 'Z')
 #endif
 #endif
 #ifndef isASCII_L1
@@ -1449,8 +1483,8 @@ typedef OP* (CPERLscope(*Perl_check_t)) (pTHX_ OP*);
 #endif
 #ifndef isXDIGIT
 #define isXDIGIT(c) ( isDIGIT(c) \
-|| ((c) >= 'a' && (c) <= 'f') \
-|| ((c) >= 'A' && (c) <= 'F'))
+|| inRANGE((c), 'a', 'f') \
+|| inRANGE((c), 'A', 'F'))
 #endif
 #ifndef isXDIGIT_L1
 #define isXDIGIT_L1(c) isXDIGIT(c)
@@ -2292,6 +2326,9 @@ SvPV_set((sv), (char *) saferealloc( \
 (Malloc_t)SvPVX(sv), (MEM_SIZE)((n)))); \
 } STMT_END
 #endif
+#ifndef SvPVCLEAR
+#define SvPVCLEAR(sv) sv_setpvs((sv), "")
+#endif
 #ifndef WARN_ALL
 #define WARN_ALL 0
 #endif
@@ -3019,6 +3056,9 @@ croak("Usage: CODE(0x%" UVxf ")(%s)", PTR2UV(cv), params);
 #define Perl_eval_pv perl_eval_pv
 #endif
 #endif
+#endif
+#ifndef G_LIST
+#define G_LIST G_ARRAY
 #endif
 #ifndef PERL_LOADMOD_DENY
 #define PERL_LOADMOD_DENY 0x1
@@ -4916,7 +4956,9 @@ return 0;
 }
 if (UNLIKELY(ret == 0 && (curlen == 0 || *s != '\0'))) {
 if (do_warnings) {
+if (retlen) {
 *retlen = (STRLEN) -1;
+}
 }
 else {
 ret = D_PPP_utf8_to_uvchr_buf_callee(
