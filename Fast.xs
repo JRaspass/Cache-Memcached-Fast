@@ -634,10 +634,7 @@ result_store(void *arg, void *opaque, int key_index, void *meta)
   /* Suppress warning about unused meta.  */
   if (meta) {}
 
-  if (res)
-    av_store(av, key_index, newSViv(res));
-  else
-    av_store(av, key_index, newSVpvs(""));
+  av_store(av, key_index, res ? newSViv(res) : newSVpvs(""));
 }
 
 
