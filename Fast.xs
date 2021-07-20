@@ -109,17 +109,17 @@ parse_server(pTHX_ Cache_Memcached_Fast *memd, SV *sv)
             double weight = 1.0;
             int noreply = 0;
 
-            addr_sv = hv_fetch(hv, "address", 7, 0);
+            addr_sv = hv_fetchs(hv, "address", 0);
             if (addr_sv)
               SvGETMAGIC(*addr_sv);
             else
               croak("server should have { address => $addr }");
-            ps = hv_fetch(hv, "weight", 6, 0);
+            ps = hv_fetchs(hv, "weight", 0);
             if (ps)
               SvGETMAGIC(*ps);
             if (ps && SvOK(*ps))
               weight = SvNV(*ps);
-            ps = hv_fetch(hv, "noreply", 7, 0);
+            ps = hv_fetchs(hv, "noreply", 0);
             if (ps)
               SvGETMAGIC(*ps);
             if (ps && SvOK(*ps))
@@ -164,13 +164,13 @@ parse_serialize(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
   memd->serialize_method = NULL;
   memd->deserialize_method = NULL;
 
-  ps = hv_fetch(conf, "utf8", 4, 0);
+  ps = hv_fetchs(conf, "utf8", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->utf8 = SvTRUE(*ps);
 
-  ps = hv_fetch(conf, "serialize_methods", 17, 0);
+  ps = hv_fetchs(conf, "serialize_methods", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
@@ -199,19 +199,19 @@ parse_compress(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
   memd->compress_method = NULL;
   memd->decompress_method = NULL;
 
-  ps = hv_fetch(conf, "compress_threshold", 18, 0);
+  ps = hv_fetchs(conf, "compress_threshold", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->compress_threshold = SvIV(*ps);
 
-  ps = hv_fetch(conf, "compress_ratio", 14, 0);
+  ps = hv_fetchs(conf, "compress_ratio", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     memd->compress_ratio = SvNV(*ps);
 
-  ps = hv_fetch(conf, "compress_methods", 16, 0);
+  ps = hv_fetchs(conf, "compress_methods", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
@@ -237,7 +237,7 @@ parse_config(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
 
   memd->servers = newAV();
 
-  ps = hv_fetch(conf, "ketama_points", 13, 0);
+  ps = hv_fetchs(conf, "ketama_points", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
@@ -247,13 +247,13 @@ parse_config(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
         croak("client_set_ketama() failed");
     }
 
-  ps = hv_fetch(conf, "hash_namespace", 14, 0);
+  ps = hv_fetchs(conf, "hash_namespace", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_hash_namespace(c, SvTRUE(*ps));
 
-  ps = hv_fetch(conf, "servers", 7, 0);
+  ps = hv_fetchs(conf, "servers", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
@@ -276,7 +276,7 @@ parse_config(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
         }
     }
 
-  ps = hv_fetch(conf, "namespace", 9, 0);
+  ps = hv_fetchs(conf, "namespace", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
@@ -288,50 +288,50 @@ parse_config(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
         croak("Not enough memory");
     }
 
-  ps = hv_fetch(conf, "connect_timeout", 15, 0);
+  ps = hv_fetchs(conf, "connect_timeout", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_connect_timeout(c, SvNV(*ps) * 1000.0);
 
-  ps = hv_fetch(conf, "io_timeout", 10, 0);
+  ps = hv_fetchs(conf, "io_timeout", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_io_timeout(c, SvNV(*ps) * 1000.0);
 
   /* For compatibility with Cache::Memcached.  */
-  ps = hv_fetch(conf, "select_timeout", 14, 0);
+  ps = hv_fetchs(conf, "select_timeout", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_io_timeout(c, SvNV(*ps) * 1000.0);
 
-  ps = hv_fetch(conf, "max_failures", 12, 0);
+  ps = hv_fetchs(conf, "max_failures", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_max_failures(c, SvIV(*ps));
 
-  ps = hv_fetch(conf, "failure_timeout", 15, 0);
+  ps = hv_fetchs(conf, "failure_timeout", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_failure_timeout(c, SvIV(*ps));
 
-  ps = hv_fetch(conf, "close_on_error", 14, 0);
+  ps = hv_fetchs(conf, "close_on_error", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_close_on_error(c, SvTRUE(*ps));
 
-  ps = hv_fetch(conf, "nowait", 6, 0);
+  ps = hv_fetchs(conf, "nowait", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
     client_set_nowait(c, SvTRUE(*ps));
 
-  ps = hv_fetch(conf, "max_size", 8, 0);
+  ps = hv_fetchs(conf, "max_size", 0);
   if (ps)
     SvGETMAGIC(*ps);
   if (ps && SvOK(*ps))
@@ -529,7 +529,7 @@ alloc_value(value_size_type value_size, void **opaque)
   SV *sv;
   char *res;
 
-  sv = newSVpvn("", 0);
+  sv = newSVpvs("");
   res = SvGROW(sv, value_size + 1); /* FIXME: check OOM.  */
   res[value_size] = '\0';
   SvCUR_set(sv, value_size);
@@ -637,7 +637,7 @@ result_store(void *arg, void *opaque, int key_index, void *meta)
   if (res)
     av_store(av, key_index, newSViv(res));
   else
-    av_store(av, key_index, newSVpvn("", 0));
+    av_store(av, key_index, newSVpvs(""));
 }
 
 
