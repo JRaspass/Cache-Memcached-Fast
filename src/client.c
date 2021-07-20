@@ -1366,7 +1366,7 @@ process_reply(struct command_state *state, struct server *s)
 
           state->phase = PHASE_PARSE;
 
-          /* Fall into below.  */
+          /* FALLTHROUGH */
 
         case PHASE_PARSE:
           res = parse_reply(state);
@@ -1376,7 +1376,7 @@ process_reply(struct command_state *state, struct server *s)
           if (state->phase != PHASE_DONE)
             continue;
 
-          /* Fall into below.  */
+          /* FALLTHROUGH */
 
         case PHASE_DONE:
           res = MEMCACHED_SUCCESS;
@@ -1398,14 +1398,14 @@ process_reply(struct command_state *state, struct server *s)
           if (! (state->client->close_on_error || state->noreply))
             break;
 
-          /* else fall into below.  */
+          /* FALLTHROUGH */
 
         case MEMCACHED_UNKNOWN:
         case MEMCACHED_CLOSED:
           deactivate(state);
           client_mark_failed(state->client, s);
 
-          /* Fall into below.  */
+          /* FALLTHROUGH */
 
         case MEMCACHED_EAGAIN:
           return res;

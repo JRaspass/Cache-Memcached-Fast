@@ -560,15 +560,12 @@ struct xs_value_result
 
 static
 void
-svalue_store(void *arg, void *opaque, int key_index, void *meta)
+svalue_store(void *arg, void *opaque, int PERL_UNUSED_DECL, void *meta)
 {
   dTHX;
   SV *value_sv = (SV *) opaque;
   struct xs_value_result *value_res = (struct xs_value_result *) arg;
   struct meta_object *m = (struct meta_object *) meta;
-
-  /* Suppress warning about unused key_index.  */
-  if (key_index) {}
 
   if (! decompress(aTHX_ value_res->memd, &value_sv, m->flags)
       || ! deserialize(aTHX_ value_res->memd, &value_sv, m->flags))
@@ -625,14 +622,11 @@ mvalue_store(void *arg, void *opaque, int key_index, void *meta)
 
 static
 void
-result_store(void *arg, void *opaque, int key_index, void *meta)
+result_store(void *arg, void *opaque, int key_index, void * PERL_UNUSED_DECL)
 {
   dTHX;
   AV *av = (AV *) arg;
   int res = (ptrdiff_t) opaque;
-
-  /* Suppress warning about unused meta.  */
-  if (meta) {}
 
   av_store(av, key_index, res ? newSViv(res) : newSVpvs(""));
 }
@@ -640,14 +634,11 @@ result_store(void *arg, void *opaque, int key_index, void *meta)
 
 static
 void
-embedded_store(void *arg, void *opaque, int key_index, void *meta)
+embedded_store(void *arg, void *opaque, int key_index, void * PERL_UNUSED_DECL)
 {
   dTHX;
   AV *av = (AV *) arg;
   SV *sv = (SV *) opaque;
-
-  /* Suppress warning about unused meta.  */
-  if (meta) {}
 
   av_store(av, key_index, sv);
 }
@@ -1217,6 +1208,7 @@ delete(memd, ...)
         const char *key;
         STRLEN key_len;
     PPCODE:
+        PERL_UNUSED_ARG(ix);
         object.arg = newAV();
         sv_2mortal((SV *) object.arg);
         noreply = (GIMME_V == G_VOID);
