@@ -11,9 +11,12 @@ my %args = (
     LICENSE       => 'perl_5',
     MYEXTLIB      => 'src/libclient$(LIB_EXT)',
     NAME          => 'Cache::Memcached::Fast',
-    PREREQ_PM     => { 'XSLoader' => '0' },
-    VERSION_FROM  => 'lib/Cache/Memcached/Fast.pm',
-    META_MERGE    => {
+    PREREQ_PM     => {
+        'Carp'     => '1.25',    # For trailing dot.
+        'XSLoader' => '0',
+    },
+    VERSION_FROM => 'lib/Cache/Memcached/Fast.pm',
+    META_MERGE   => {
         'meta-spec' => { version => 2 },
         'resources' => {
             repository => {

@@ -1,3 +1,4 @@
+requires 'Carp' => '1.25';    # For trailing dot.
 requires 'XSLoader';
 
 on test => sub {
