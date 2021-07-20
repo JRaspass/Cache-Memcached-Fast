@@ -41,7 +41,10 @@ our %known_params = (
 sub new {
     my ( $class, $conf ) = @_;
 
-    _check_args( \%known_params, $conf );
+    unless ( lc( $conf->{check_args} || '' ) eq 'skip' ) {
+        my @unknown = _check_args( \%known_params, $conf );
+        carp "Unknown parameter: @unknown" if @unknown;
+    }
 
     if (    not $conf->{compress_methods}
         and defined $conf->{compress_threshold}
@@ -71,25 +74,17 @@ sub new {
 }
 
 sub _check_args {
-    my ( $checker, $args, $level ) = @_;
-
-    $level = 0 unless defined $level;
+    my ( $checker, $args ) = @_;
 
     my @unknown;
 
     if ( ref($args) ne 'HASH' ) {
         if ( ref($args) eq 'ARRAY' and ref($checker) eq 'ARRAY' ) {
             foreach my $v (@$args) {
-                push @unknown, _check_args( $checker->[0], $v, $level + 1 );
+                push @unknown, _check_args( $checker->[0], $v );
             }
         }
         return @unknown;
-    }
-
-    if ( exists $args->{check_args}
-        and lc( $args->{check_args} ) eq 'skip' )
-    {
-        return;
     }
 
     while ( my ( $k, $v ) = each %$args ) {
@@ -98,7 +93,7 @@ sub _check_args {
                 $checker->{$k}->( $args, $k, $v );
             }
             elsif ( ref( $checker->{$k} ) ) {
-                push @unknown, _check_args( $checker->{$k}, $v, $level + 1 );
+                push @unknown, _check_args( $checker->{$k}, $v );
             }
         }
         else {
@@ -106,12 +101,7 @@ sub _check_args {
         }
     }
 
-    if ( $level > 0 ) {
-        return @unknown;
-    }
-    else {
-        carp "Unknown parameter: @unknown" if @unknown;
-    }
+    return @unknown;
 }
 
 sub CLONE {
