@@ -57,7 +57,6 @@ add_server(pTHX_ Cache_Memcached_Fast *memd, SV *addr_sv,
            double weight, int noreply)
 {
   struct client *c = memd->c;
-  static const int delim = ':';
   const char *host, *port;
   size_t host_len, port_len;
   STRLEN len;
@@ -72,11 +71,10 @@ add_server(pTHX_ Cache_Memcached_Fast *memd, SV *addr_sv,
   /*
     NOTE: here we relay on the fact that host is zero-terminated.
   */
-  port = strrchr(host, delim);
+  port = strrchr(host, ':');
   if (port)
     {
-      host_len = port - host;
-      ++port;
+      host_len = port++ - host;
       port_len = len - host_len - 1;
       res = client_add_server(c, host, host_len, port, port_len,
                               weight, noreply);
