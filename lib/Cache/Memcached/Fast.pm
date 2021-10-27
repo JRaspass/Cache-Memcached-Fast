@@ -122,7 +122,7 @@ sub DESTROY {
 
     delete $instance{$$memd};
 
-    Cache::Memcached::Fast::_destroy($memd);
+    _destroy($memd);
 }
 
 XSLoader::load;

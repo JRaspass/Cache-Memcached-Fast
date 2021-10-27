@@ -706,6 +706,14 @@ _destroy(memd)
 
 
 void
+_weaken(sv)
+        SV *sv
+    PROTOTYPE: $
+    CODE:
+        sv_rvweaken(sv);
+
+
+void
 enable_compress(memd, enable)
         Cache_Memcached_Fast *  memd
         bool                    enable
@@ -1559,11 +1567,3 @@ disconnect_all(memd)
     PROTOTYPE: $
     CODE:
         client_reinit(memd->c);
-
-
-void
-_weaken(sv)
-        SV *sv
-    PROTOTYPE: $
-    CODE:
-        sv_rvweaken(sv);
