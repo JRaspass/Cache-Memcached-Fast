@@ -12,7 +12,7 @@ our $VERSION = '0.27';
 
 my %instance;
 my %known_params = (
-    servers            => [ { address => 1, weight => 1, noreply => 1 } ],
+    servers            => { address => 1, weight => 1, noreply => 1 },
     namespace          => 1,
     nowait             => 1,
     hash_namespace     => 1,
@@ -74,8 +74,7 @@ sub new {
 sub _check_args {
     my ( $checker, $args ) = @_;
 
-    return map _check_args( $checker->[0], $_ ), @$args
-        if ref($args) eq 'ARRAY' && ref($checker) eq 'ARRAY';
+    return map _check_args( $checker, $_ ), @$args if ref($args) eq 'ARRAY';
 
     return if ref($args) ne 'HASH';
 
