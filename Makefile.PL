@@ -13,7 +13,7 @@ my %args = (
     NAME          => 'Cache::Memcached::Fast',
     PREREQ_PM     => {
         'Carp'     => '1.25',    # For trailing dot.
-        'XSLoader' => '0',
+        'XSLoader' => '0.14',    # For XSLoader::load with no arguments.
     },
     VERSION_FROM => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE   => {

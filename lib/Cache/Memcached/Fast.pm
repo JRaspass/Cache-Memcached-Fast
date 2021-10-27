@@ -6,11 +6,9 @@ use warnings;
 
 use Carp;
 use Storable;
+use XSLoader;
 
 our $VERSION = '0.27';
-
-require XSLoader;
-XSLoader::load( 'Cache::Memcached::Fast', $VERSION );
 
 our %instance;
 our %known_params = (
@@ -127,7 +125,7 @@ sub DESTROY {
     Cache::Memcached::Fast::_destroy($memd);
 }
 
-1;
+XSLoader::load;
 
 __END__
 
