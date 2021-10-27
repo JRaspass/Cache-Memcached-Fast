@@ -3,7 +3,7 @@ use lib 't';
 use Memd;
 use Test2::V0 -target => 'Cache::Memcached::Fast';
 
-use constant count => 1000;
+use constant count => 100;
 
 my $another_memd = CLASS->new( \%Memd::params );
 
