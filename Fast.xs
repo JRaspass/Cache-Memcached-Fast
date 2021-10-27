@@ -359,8 +359,8 @@ compress(pTHX_ Cache_Memcached_Fast *memd, SV *sv, flags_type *flags)
       csv = newSV(0);
 
       PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newRV_inc(sv)));
-      XPUSHs(sv_2mortal(newRV_noinc(csv)));
+      mXPUSHs(newRV_inc(sv));
+      mXPUSHs(newRV_noinc(csv));
       PUTBACK;
 
       count = call_sv(memd->compress_method, G_SCALAR);
@@ -399,8 +399,8 @@ decompress(pTHX_ Cache_Memcached_Fast *memd, SV **sv, flags_type flags)
       rsv = newSV(0);
 
       PUSHMARK(SP);
-      XPUSHs(sv_2mortal(newRV_inc(*sv)));
-      XPUSHs(sv_2mortal(newRV_inc(rsv)));
+      mXPUSHs(newRV_inc(*sv));
+      mXPUSHs(newRV_inc(rsv));
       PUTBACK;
 
       count = call_sv(memd->decompress_method, G_SCALAR);
@@ -892,7 +892,7 @@ set_multi(memd, ...)
                           SvREFCNT_dec(*val);
                       }
                   }
-                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                mPUSHs(newRV_noinc((SV *) hv));
                 XSRETURN(1);
               }
             else
@@ -933,7 +933,7 @@ get(memd, ...)
         client_execute(memd->c, 2);
         if (value_res.vals)
           {
-            PUSHs(sv_2mortal(value_res.vals));
+            mPUSHs(value_res.vals);
             XSRETURN(1);
           }
         XSRETURN_EMPTY;
@@ -980,7 +980,7 @@ get_multi(memd, ...)
                   SvREFCNT_dec(*val);
               }
           }
-        PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+        mPUSHs(newRV_noinc((SV *) hv));
         XSRETURN(1);
 
 
@@ -1012,7 +1012,7 @@ gat(memd, ...)
         client_execute(memd->c, 4);
         if (value_res.vals)
           {
-            PUSHs(sv_2mortal(value_res.vals));
+            mPUSHs(value_res.vals);
             XSRETURN(1);
           }
         XSRETURN_EMPTY;
@@ -1065,7 +1065,7 @@ gat_multi(memd, ...)
                   SvREFCNT_dec(*val);
               }
           }
-        PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+        mPUSHs(newRV_noinc((SV *) hv));
         XSRETURN(1);
 
 
@@ -1181,7 +1181,7 @@ incr_multi(memd, ...)
                           SvREFCNT_dec(*val);
                       }
                   }
-                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                mPUSHs(newRV_noinc((SV *) hv));
                 XSRETURN(1);
               }
             else
@@ -1315,7 +1315,7 @@ delete_multi(memd, ...)
                           SvREFCNT_dec(*val);
                       }
                   }
-                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                mPUSHs(newRV_noinc((SV *) hv));
                 XSRETURN(1);
               }
             else
@@ -1440,7 +1440,7 @@ touch_multi(memd, ...)
                           SvREFCNT_dec(*val);
                       }
                   }
-                PUSHs(sv_2mortal(newRV_noinc((SV *) hv)));
+                mPUSHs(newRV_noinc((SV *) hv));
                 XSRETURN(1);
               }
             else
