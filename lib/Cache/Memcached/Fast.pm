@@ -10,8 +10,8 @@ use XSLoader;
 
 our $VERSION = '0.27';
 
-our %instance;
-our %known_params = (
+my %instance;
+my %known_params = (
     servers            => [ { address => 1, weight => 1, noreply => 1 } ],
     namespace          => 1,
     nowait             => 1,
