@@ -1,5 +1,7 @@
 # Cache::Memcached::Fast
 
+[![Coverage Status](https://coveralls.io/repos/github/JRaspass/Cache-Memcached-Fast/badge.svg?branch=master)](https://coveralls.io/github/JRaspass/Cache-Memcached-Fast?branch=master)
+
 [Cache::Memcached::Fast] is a [Perl] client for [memcached], a memory cache
 daemon. Module core is implemented in C and tries hard to minimize the number
 of system calls and to avoid any key/value copying for speed. As a result, it
