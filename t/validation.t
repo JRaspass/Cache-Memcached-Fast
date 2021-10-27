@@ -19,17 +19,14 @@ like dies { CLASS->new( { servers => [ [ 'localhost:11211', -1 ] ] } ) },
     qr/^\QServer weight should be positive/, 'negative weight';
 
 # The warnings do have the correct caller so test with "is".
-is warning { CLASS->new( { compress_algo => 1 } ) },
-    'compress_algo has been removed in 0.08, use compress_methods instead'
-    . ( ' at ' . __FILE__ . ' line ' . ( __LINE__ - 2 ) . ".\n" ),
-    'compress_algo';
+my %args  = ( compress_algo => 1, foo => 1, bar => 1 );
+my $where = 'at ' . __FILE__ . ' line ' . ( __LINE__ + 1 ) . ".\n";
+is warnings { CLASS->new( \%args ) } => [
+    "compress_algo was removed in 0.08, use compress_methods instead $where",
+    "Unknown arguments: bar, foo $where",
+] => 'unknown params';
 
-is warning { CLASS->new( { unknown_param => 1 } ) },
-    'Unknown parameter: unknown_param'
-    . ( ' at ' . __FILE__ . ' line ' . ( __LINE__ - 2 ) . ".\n" ),
-    'unknown_param';
-
-ok no_warnings { CLASS->new( { check_args => 'SKIP', unknown_param => 1 } ) },
+ok no_warnings { CLASS->new( { %args, check_args => 'SKIP' } ) },
     'check_args: skip';
 
 done_testing;

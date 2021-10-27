@@ -11,37 +11,24 @@ use XSLoader;
 our $VERSION = '0.27';
 
 my %instance;
-my %known_params = (
-    servers            => { address => 1, weight => 1, noreply => 1 },
-    namespace          => 1,
-    nowait             => 1,
-    hash_namespace     => 1,
-    connect_timeout    => 1,
-    io_timeout         => 1,
-    select_timeout     => 1,
-    close_on_error     => 1,
-    compress_threshold => 1,
-    compress_ratio     => 1,
-    compress_methods   => 1,
-    compress_algo      => sub {
-        carp "compress_algo has been removed in 0.08,"
-            . " use compress_methods instead";
-    },
-    max_failures      => 1,
-    failure_timeout   => 1,
-    ketama_points     => 1,
-    serialize_methods => 1,
-    utf8              => 1,
-    max_size          => 1,
-    check_args        => 1,
+my %known_args = map { $_ => 1 } qw(
+    check_args close_on_error compress_algo compress_methods compress_ratio
+    compress_threshold connect_timeout failure_timeout hash_namespace
+    io_timeout ketama_points max_failures max_size namespace nowait
+    select_timeout serialize_methods servers utf8
 );
 
 sub new {
     my ( $class, $conf ) = @_;
 
     unless ( lc( $conf->{check_args} || '' ) eq 'skip' ) {
-        my @unknown = _check_args( \%known_params, $conf );
-        carp "Unknown parameter: @unknown" if @unknown;
+        carp 'compress_algo was removed in 0.08, use compress_methods instead'
+            if exists $conf->{compress_algo};
+
+        if ( my @unknown = grep !$known_args{$_}, sort keys %$conf ) {
+            local $" = ', ';
+            carp "Unknown arguments: @unknown";
+        }
     }
 
     if (    not $conf->{compress_methods}
@@ -69,32 +56,6 @@ sub new {
     $instance{$$memd} = $context;
 
     return $memd;
-}
-
-sub _check_args {
-    my ( $checker, $args ) = @_;
-
-    return map _check_args( $checker, $_ ), @$args if ref($args) eq 'ARRAY';
-
-    return if ref($args) ne 'HASH';
-
-    my @unknown;
-
-    while ( my ( $k, $v ) = each %$args ) {
-        if ( exists $checker->{$k} ) {
-            if ( ref( $checker->{$k} ) eq 'CODE' ) {
-                $checker->{$k}->( $args, $k, $v );
-            }
-            elsif ( ref( $checker->{$k} ) ) {
-                push @unknown, _check_args( $checker->{$k}, $v );
-            }
-        }
-        else {
-            push @unknown, $k;
-        }
-    }
-
-    return @unknown;
 }
 
 sub CLONE {
