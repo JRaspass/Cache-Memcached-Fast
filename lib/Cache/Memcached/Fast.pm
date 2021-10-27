@@ -109,7 +109,7 @@ sub CLONE {
 
         $instance{ $$memd = $$memd2 } = $context;
 
-        $$memd2 = 0; # Prevent destruction in DESTROY.
+        $$memd2 = 0;    # Prevent destruction in DESTROY.
     }
 }
 
