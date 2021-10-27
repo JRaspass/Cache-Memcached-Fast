@@ -36,7 +36,7 @@ my @res = $smaller_memd->set_multi(
     [ "$key-2", $big_value ],
     [ "$key-3", $small_value ]
 );
-is \@res, [1, undef, 1];
+is \@res, [ 1, undef, 1 ];
 ok $smaller_memd->delete_multi( "$key-1", "$key-3" );
 
 SKIP: {
@@ -59,8 +59,8 @@ SKIP: {
     ok $smaller_memd->set( $key, $value ),    'Store compressed value';
     ok $bigger_memd->set( $key, $big_value ), 'Store compressed value';
 
-    is $smaller_memd->get($key), $value,    'Fetch and uncompress';
-    is $bigger_memd->get($key), $big_value, 'Fetch and uncompress';
+    is $smaller_memd->get($key), $value,     'Fetch and uncompress';
+    is $bigger_memd->get($key),  $big_value, 'Fetch and uncompress';
 
     ok $smaller_memd->delete($key), 'Delete';
     ok $bigger_memd->delete($key),  'Delete';
