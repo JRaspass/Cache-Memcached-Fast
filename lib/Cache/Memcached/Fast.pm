@@ -1339,6 +1339,10 @@ implementation.
 S<Michael Monashev>, C<< <postmaster at softsearch.ru> >> - project
 management, design suggestions, testing.
 
+=head1 MAINTAINER
+
+S<James Raspass>, C<< <jraspass at gmail.com> >>.
+
 =head1 ACKNOWLEDGEMENTS
 
 Development of this module was sponsored by S<Monashev Co. Ltd.>
