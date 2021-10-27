@@ -7,7 +7,7 @@ use ExtUtils::MakeMaker;
 my %args = (
     ABSTRACT_FROM => 'lib/Cache/Memcached/Fast.pm',
     AUTHOR        => 'Tomash Brechko <tomash.brechko@gmail.com>',
-    DEFINE        => '-Wall -Werror -Wextra' x !!$ENV{AUTHOR_TESTING},
+    DEFINE        => '-Wall -Wextra',
     LICENSE       => 'perl_5',
     MYEXTLIB      => 'src/libclient$(LIB_EXT)',
     NAME          => 'Cache::Memcached::Fast',
