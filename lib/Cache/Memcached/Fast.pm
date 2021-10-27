@@ -105,13 +105,15 @@ sub _check_args {
 sub CLONE {
     my $class = shift;
 
-    my @contexts = values %instance;
-    %instance = ();
-    foreach my $context (@contexts) {
-        my $memd = $class->_new( $context->[1] );
-        ${ $context->[0] } = $$memd;
-        $instance{$$memd} = $context;
-        $$memd = 0;
+    # Empty %instance and loop over the values.
+    for my $context ( delete @instance{ keys %instance } ) {
+        my ( $memd, $conf ) = @$context;
+
+        my $memd2 = $class->_new($conf);
+
+        $instance{ $$memd = $$memd2 } = $context;
+
+        $$memd2 = 0; # Prevent destruction in DESTROY.
     }
 }
 
