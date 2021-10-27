@@ -74,16 +74,12 @@ sub new {
 sub _check_args {
     my ( $checker, $args ) = @_;
 
-    my @unknown;
+    return map _check_args( $checker->[0], $_ ), @$args
+        if ref($args) eq 'ARRAY' && ref($checker) eq 'ARRAY';
 
-    if ( ref($args) ne 'HASH' ) {
-        if ( ref($args) eq 'ARRAY' and ref($checker) eq 'ARRAY' ) {
-            foreach my $v (@$args) {
-                push @unknown, _check_args( $checker->[0], $v );
-            }
-        }
-        return @unknown;
-    }
+    return if ref($args) ne 'HASH';
+
+    my @unknown;
 
     while ( my ( $k, $v ) = each %$args ) {
         if ( exists $checker->{$k} ) {
