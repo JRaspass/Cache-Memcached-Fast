@@ -4,7 +4,7 @@ use v5.8.1;
 use strict;
 use warnings;
 
-use Carp;
+use Carp ();
 use Storable;
 use XSLoader;
 
@@ -22,12 +22,12 @@ sub new {
     my ( $class, $conf ) = @_;
 
     unless ( lc( $conf->{check_args} || '' ) eq 'skip' ) {
-        carp 'compress_algo was removed in 0.08, use compress_methods instead'
+        Carp::carp 'compress_algo was removed in 0.08, use compress_methods'
             if exists $conf->{compress_algo};
 
         if ( my @unknown = grep !$known_args{$_}, sort keys %$conf ) {
             local $" = ', ';
-            carp "Unknown arguments: @unknown";
+            Carp::carp "Unknown arguments: @unknown";
         }
     }
 

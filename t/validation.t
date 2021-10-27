@@ -22,7 +22,7 @@ like dies { CLASS->new( { servers => [ [ 'localhost:11211', -1 ] ] } ) },
 my %args  = ( compress_algo => 1, foo => 1, bar => 1 );
 my $where = 'at ' . __FILE__ . ' line ' . ( __LINE__ + 1 ) . ".\n";
 is warnings { CLASS->new( \%args ) } => [
-    "compress_algo was removed in 0.08, use compress_methods instead $where",
+    "compress_algo was removed in 0.08, use compress_methods $where",
     "Unknown arguments: bar, foo $where",
 ] => 'unknown params';
 
