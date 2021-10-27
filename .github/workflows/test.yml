@@ -31,19 +31,15 @@ jobs:
             os: windows-latest
             perl: '5.34'
 
-          - name: ' (ithread)'
-            ithread: true
-            os: ubuntu-latest
-            perl: '5.34'
-
           - name: ' (no memcached)'
             no-memcached: true
             os: ubuntu-latest
             perl: '5.34'
 
-          # This is effectively our normal one, with cover and xt.
-          - name: ' (xt)'
+          # This is effectively our normal one, ithreads with cover and xt.
+          - name: ' (ithread, xt)'
             cover: true
+            ithread: true
             os: ubuntu-latest
             perl: '5.34'
             xt: true
