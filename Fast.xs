@@ -119,8 +119,6 @@ parse_server(pTHX_ Cache_Memcached_Fast *memd, SV *sv)
               weight = SvNV(*ps);
             ps = hv_fetchs(hv, "noreply", 0);
             if (ps)
-              SvGETMAGIC(*ps);
-            if (ps && SvOK(*ps))
               noreply = SvTRUE(*ps);
             add_server(aTHX_ memd, *addr_sv, weight, noreply);
           }
@@ -164,8 +162,6 @@ parse_serialize(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
 
   ps = hv_fetchs(conf, "utf8", 0);
   if (ps)
-    SvGETMAGIC(*ps);
-  if (ps && SvOK(*ps))
     memd->utf8 = SvTRUE(*ps);
 
   ps = hv_fetchs(conf, "serialize_methods", 0);
@@ -247,8 +243,6 @@ parse_config(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
 
   ps = hv_fetchs(conf, "hash_namespace", 0);
   if (ps)
-    SvGETMAGIC(*ps);
-  if (ps && SvOK(*ps))
     client_set_hash_namespace(c, SvTRUE(*ps));
 
   ps = hv_fetchs(conf, "servers", 0);
@@ -319,14 +313,10 @@ parse_config(pTHX_ Cache_Memcached_Fast *memd, HV *conf)
 
   ps = hv_fetchs(conf, "close_on_error", 0);
   if (ps)
-    SvGETMAGIC(*ps);
-  if (ps && SvOK(*ps))
     client_set_close_on_error(c, SvTRUE(*ps));
 
   ps = hv_fetchs(conf, "nowait", 0);
   if (ps)
-    SvGETMAGIC(*ps);
-  if (ps && SvOK(*ps))
     client_set_nowait(c, SvTRUE(*ps));
 
   ps = hv_fetchs(conf, "max_size", 0);
