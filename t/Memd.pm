@@ -15,6 +15,7 @@ our %params = (
     connect_timeout    => 5,
     failure_timeout    => 2,
     io_timeout         => 5,
+    select_timeout     => 5,      # Cache:Memcached compat, io_timeout alias.
     ketama_points      => 150,
     max_failures       => 3,
     namespace          => "Cache::Memcached::Fast/$$/",
