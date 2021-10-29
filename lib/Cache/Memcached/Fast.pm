@@ -1,6 +1,5 @@
 package Cache::Memcached::Fast;
 
-use v5.8.1;
 use strict;
 use warnings;
 

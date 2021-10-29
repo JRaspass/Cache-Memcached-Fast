@@ -1,4 +1,3 @@
-use v5.8.1;
 use strict;
 use warnings;
 
@@ -14,6 +13,7 @@ my %args = (
     PREREQ_PM     => {
         'Carp'     => '1.25',    # For trailing dot.
         'XSLoader' => '0.14',    # For XSLoader::load with no arguments.
+        'perl'     => '5.008',
     },
     VERSION_FROM => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE   => {
