@@ -36,13 +36,12 @@ jobs:
             os: ubuntu-latest
             perl: '5.34'
 
-          # This is effectively our normal one, ithreads with cover and xt.
-          - name: ' (ithread, xt)'
-            cover: true
+          # This is effectively our normal one, author with ithreads.
+          - name: ' (author, ithread)'
+            author: true
             ithread: true
             os: ubuntu-latest
             perl: '5.34'
-            xt: true
 
     runs-on: ${{ matrix.os }}
 
@@ -63,20 +62,16 @@ jobs:
 
       - run: cpanm --installdeps -n .
 
-      - if: ${{ matrix.cover }}
-        run: cpanm -n Devel::Cover::Report::Coveralls
+      - if: ${{ matrix.author }}
+        run: cpanm -n Devel::Cover::Report::Coveralls Test::PerlTidy Test::Pod Test::Pod::Coverage
 
       - run: perl Makefile.PL
 
-      - if: ${{ !matrix.cover }}
+      - if: ${{ !matrix.author }}
         run: make test
 
-      - if: ${{ matrix.cover }}
+      - if: ${{ matrix.author }}
         env:
+          AUTHOR_TESTING: 1
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cover -ignore_re '\.h$' -report Coveralls -test
-
-      - if: ${{ matrix.xt }}
-        run: |
-          cpanm -n Test::PerlTidy Test::Pod Test::Pod::Coverage
-          prove -blv xt
