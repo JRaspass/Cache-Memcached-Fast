@@ -9,6 +9,7 @@ on test => sub {
 
 on develop => sub {
     requires 'Devel::Cover::Report::Coveralls';
+    requires 'Test::CPAN::Changes';
     requires 'Test::PerlTidy';
     requires 'Test::Pod';
     requires 'Test::Pod::Coverage';
