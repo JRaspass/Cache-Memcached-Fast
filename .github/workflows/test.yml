@@ -60,10 +60,11 @@ jobs:
 
       - run: perl -v
 
-      - run: cpanm --installdeps -n .
+      - if: ${{ !matrix.author }}
+        run: cpanm --installdeps --notest .
 
       - if: ${{ matrix.author }}
-        run: cpanm -n Devel::Cover::Report::Coveralls Test::PerlTidy Test::Pod Test::Pod::Coverage
+        run: cpanm --installdeps --notest --with-develop .
 
       - run: perl Makefile.PL
 
