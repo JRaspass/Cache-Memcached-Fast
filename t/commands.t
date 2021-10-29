@@ -12,7 +12,7 @@ my @keys = map "commands-$_", 1 .. count;
 ok $memd->add( $key => 'foo' ), 'add';
 
 # Delete/remove return whether they deleted anything.
-ok $memd->delete($key), 'delete';
+ok $memd->delete($key),  'delete';
 ok !$memd->remove($key), 'remove';
 
 ok $memd->add( $key, 'v1', undef ), 'Add';
@@ -25,33 +25,33 @@ ok $memd->replace( $key, 'v3' ), 'Replace';
 is $memd->get($key), 'v3', 'Fetch';
 
 ok $memd->replace( $key, 0 ), 'replace with numeric';
-ok $memd->incr($key), 'Incr';
-ok $memd->get($key) == 1, 'Fetch';
-ok $memd->incr( $key, 5 ), 'Incr';
+ok $memd->incr($key),         'Incr';
+ok $memd->get($key) == 1,     'Fetch';
+ok $memd->incr( $key, 5 ),    'Incr';
 
 ok !$memd->incr( 'no-such-key', 5 ), 'Incr no_such_key';
 ok defined $memd->incr( 'no-such-key', 5 ),
     'Incr no_such_key returns defined value';
 
-ok $memd->get($key) == 6, 'Fetch';
-ok $memd->decr($key), 'Decr';
-ok $memd->get($key) == 5, 'Fetch';
-ok $memd->decr( $key, 2 ), 'Decr';
-ok $memd->get($key) == 3, 'Fetch';
+ok $memd->get($key) == 6,         'Fetch';
+ok $memd->decr($key),             'Decr';
+ok $memd->get($key) == 5,         'Fetch';
+ok $memd->decr( $key, 2 ),        'Decr';
+ok $memd->get($key) == 3,         'Fetch';
 ok $memd->decr( $key, 100 ) == 0, 'Decr below zero';
-ok $memd->decr( $key, 100 ), 'Decr below zero returns true value';
-ok $memd->get($key) == 0, 'Fetch';
+ok $memd->decr( $key, 100 ),      'Decr below zero returns true value';
+ok $memd->get($key) == 0,         'Fetch';
 
 ok $memd->get_multi, 'get_multi() with empty list';
 
 is { $memd->set_multi }, {}, 'list set_multi()';
-is $memd->set_multi,     {}, 'scalar set_multi()';
+is $memd->set_multi, {}, 'scalar set_multi()';
 
 my @res = $memd->set_multi( map { [ $_, $_ ] } @keys );
-is @res, count;
+is @res,                    count;
 is grep( { not $_ } @res ), 0;
 my $res = $memd->set_multi( map { [ $_, $_ ] } @keys );
-is keys %$res, count;
+is keys %$res,                      count;
 is grep( { not $_ } values %$res ), 0;
 
 my @extra_keys = @keys;
@@ -266,9 +266,9 @@ ok $memd->replace_multi( map { [ $_, 0 ] } @keys ),
     'replace_multi to reset to numeric';
 $res = $memd->incr_multi( [ $keys[0], 2 ], [ $keys[1] ],
     @keys[ 2 .. $#keys ] );
-is values %$res, @keys;
+is values %$res,                     @keys;
 is grep( { $_ != 1 } values %$res ), 1;
-is $res->{ $keys[0] }, 2;
+is $res->{ $keys[0] },               2;
 
 $res = $memd->delete_multi($key);
 ok $res->{$key};
@@ -277,7 +277,7 @@ ok $res->{ $keys[0] } && $res->{ $keys[1] };
 
 ok $memd->remove( $keys[2] );
 @res = $memd->delete_multi(@keys);
-is @res, count;
+is @res,                    count;
 is grep( { not $_ } @res ), 3;
 
 done_testing;

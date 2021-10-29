@@ -305,8 +305,8 @@ my @methods = (
 
 print "Servers: @{[ keys %$version ]}\n";
 print "Iteration count: $count\n";
-print 'Keys per iteration: ', key_count, "\n";
-print 'Value size: ', length($value), " bytes\n";
+print 'Keys per iteration: ', key_count,      "\n";
+print 'Value size: ',         length($value), " bytes\n";
 
 srand(1);
 foreach my $args (@methods) {
