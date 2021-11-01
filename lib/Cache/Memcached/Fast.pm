@@ -1,13 +1,12 @@
-package Cache::Memcached::Fast;
+package Cache::Memcached::Fast 0.27;
 
-use strict;
+use v5.12;
 use warnings;
 
-use Carp ();
+use Carp           ();
+use Compress::Zlib ();
 use Storable;
 use XSLoader;
-
-our $VERSION = '0.27';
 
 my %instance;
 my %known_args = map { $_ => 1 } qw(
@@ -20,7 +19,7 @@ my %known_args = map { $_ => 1 } qw(
 sub new {
     my ( $class, $conf ) = @_;
 
-    unless ( lc( $conf->{check_args} || '' ) eq 'skip' ) {
+    unless ( lc( $conf->{check_args} // '' ) eq 'skip' ) {
         Carp::carp 'compress_algo was removed in 0.08, use compress_methods'
             if exists $conf->{compress_algo};
 
@@ -30,23 +29,16 @@ sub new {
         }
     }
 
-    if (    not $conf->{compress_methods}
-        and defined $conf->{compress_threshold}
-        and $conf->{compress_threshold} >= 0
-        and eval { require Compress::Zlib } )
-    {
-        # Note that the functions below can't return false when
-        # operation succeed.  This is because "" and "0" compress to a
-        # longer values (because of additional format data), and
-        # compress_ratio will force them to be stored uncompressed,
-        # thus decompression will never return them.
-        $conf->{compress_methods} = [
-            sub { ${ $_[1] } = Compress::Zlib::memGzip( ${ $_[0] } ) },
-            sub { ${ $_[1] } = Compress::Zlib::memGunzip( ${ $_[0] } ) }
-        ];
-    }
+    # Note that the functions below can't return false when operation succeed.
+    # This is because "" and "0" compress to a longer values (because of
+    # additional format data), and compress_ratio will force them to be stored
+    # uncompressed, thus decompression will never return them.
+    $conf->{compress_methods} //= [
+        sub { ${ $_[1] } = Compress::Zlib::memGzip( ${ $_[0] } ) },
+        sub { ${ $_[1] } = Compress::Zlib::memGunzip( ${ $_[0] } ) },
+    ];
 
-    $conf->{serialize_methods} ||= [ \&Storable::nfreeze, \&Storable::thaw ];
+    $conf->{serialize_methods} //= [ \&Storable::nfreeze, \&Storable::thaw ];
 
     my $memd = $class->_new($conf);
 

@@ -1,4 +1,4 @@
-use strict;
+use v5.12;
 use warnings;
 
 use ExtUtils::MakeMaker;
@@ -13,7 +13,6 @@ my %args = (
     PREREQ_PM     => {
         'Carp'     => '1.25',    # For trailing dot.
         'XSLoader' => '0.14',    # For XSLoader::load with no arguments.
-        'perl'     => '5.008',
     },
     VERSION_FROM => 'lib/Cache/Memcached/Fast.pm',
     META_MERGE   => {
@@ -28,7 +27,6 @@ my %args = (
     },
     TEST_REQUIRES => {
         'Test2::Suite' => '0.000072',    # For Test2::V0.
-        'version'      => '0.77',        # For version->parse.
     },
 );
 

@@ -7,12 +7,14 @@
 # or, at your option, any later version of Perl 5 you may have
 # available.
 #
+use v5.12;
 use warnings;
-use strict;
 
 # NOTE: this test uses INSTANCE_COUNT x 2 file descriptors.  This
 # means that normally spawning more than ~500 instances won't work.
 
+use Cache::Memcached::Fast;
+use Cache::Memcached;
 use FindBin;
 
 @ARGV >= 3
@@ -23,13 +25,9 @@ my ( $min_port, $instance_count, $key_count, $seed ) = @ARGV;
 $seed = time unless defined $seed;
 srand($seed);
 
-print "Instances: $instance_count, keys: $key_count, random seed: $seed\n";
+say "Instances: $instance_count, keys: $key_count, random seed: $seed";
 
-my $host = '127.3.5.7';
-
-use Cache::Memcached::Fast;
-use Cache::Memcached;
-
+my $host     = '127.3.5.7';
 my $max_port = $min_port + $instance_count - 1;
 my @children;
 

@@ -7,8 +7,8 @@
 # or, at your option, any later version of Perl 5 you may have
 # available.
 #
+use v5.12;
 use warnings;
-use strict;
 
 # NOTE: at least on Linux (kernel 2.6.18.2) there is a certain
 # artifact that affects wallclock time (but not CPU time) of some
@@ -28,6 +28,8 @@ use constant NOREPLY                 => 1;
 
 my $value = 'x' x 40;
 
+use Cache::Memcached::Fast;
+use Benchmark qw(:hireswallclock timethese cmpthese timeit timesum timestr);
 use FindBin;
 
 die <<HELP unless @ARGV;
@@ -40,17 +42,12 @@ COUNT         - number of iterations (default ${\default_iteration_count})
                 Cache::Memcached.
 HELP
 
-my $compare = ( $ARGV[$#ARGV] =~ /^compare$/ );
-pop @ARGV if $compare;
+pop @ARGV if my $compare = $ARGV[-1] eq 'compare';
 
-my $count
-    = ( $ARGV[$#ARGV] =~ /^\d+$/ ? pop @ARGV : default_iteration_count );
+my $count    = $ARGV[-1] =~ /^\d+$/ ? pop @ARGV : default_iteration_count;
 my $max_keys = $count * key_count / 2;
 
 my @addrs = @ARGV;
-
-use Cache::Memcached::Fast;
-use Benchmark qw(:hireswallclock timethese cmpthese timeit timesum timestr);
 
 my $old;
 my $old_method       = qr/^(?:add|set|replace|incr|decr|delete|get)$/;
@@ -133,7 +130,7 @@ sub merge_hash {
 sub bench_finalize {
     my ( $title, $code, $finalize ) = @_;
 
-    print "Benchmark: timing $count iterations of $title...\n";
+    say "Benchmark: timing $count iterations of $title...";
     my $b1 = timeit( $count, $code );
 
     # We call nowait_push here.  Otherwise the time of gathering
@@ -141,7 +138,7 @@ sub bench_finalize {
     my $b2 = timeit( 1, $finalize );
 
     my $res = timesum( $b1, $b2 );
-    print "$title: ", timestr( $res, 'auto' ), "\n";
+    say "$title: ", timestr( $res, 'auto' );
 
     return { $title => $res };
 }
@@ -303,10 +300,10 @@ my @methods = (
     [ delete  => \&run, 0 ],
 );
 
-print "Servers: @{[ keys %$version ]}\n";
-print "Iteration count: $count\n";
-print 'Keys per iteration: ', key_count,      "\n";
-print 'Value size: ',         length($value), " bytes\n";
+say "Servers: @{[ keys %$version ]}";
+say "Iteration count: $count";
+say 'Keys per iteration: ', key_count;
+say 'Value size: ', length($value), ' bytes';
 
 srand(1);
 foreach my $args (@methods) {

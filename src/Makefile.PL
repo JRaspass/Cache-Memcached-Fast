@@ -1,5 +1,6 @@
-use strict;
+use v5.12;
 use warnings;
+
 use ExtUtils::MakeMaker;
 
 my $includes = '/usr/include';

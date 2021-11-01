@@ -1,7 +1,6 @@
 package Memd;
 
-use strict;
-use version;
+use v5.12;
 use warnings;
 
 use Cache::Memcached::Fast;
@@ -26,9 +25,6 @@ our %params = (
         '127.0.0.1:11211',
     ],
 );
-
-# 5.8 doesn't ship with Compress::Zlib, avoid lots of warnings.
-delete $params{compress_threshold} unless eval { require Compress::Zlib };
 
 sub import {
     *main::memd = \Cache::Memcached::Fast->new( \%params );

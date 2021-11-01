@@ -8,8 +8,8 @@
 # or, at your option, any later version of Perl 5 you may have
 # available.
 #
+use v5.12;
 use warnings;
-use strict;
 
 =head1 NAME
 
@@ -39,6 +39,7 @@ times.  Default I<WEIGHT> is 1.
 
 use Getopt::Long qw(:config gnu_getopt);
 use Pod::Usage;
+use String::CRC32;
 
 my %options;
 if (   !GetOptions( \%options, qw(ketama_points|k=i server|s=s@) )
@@ -49,8 +50,6 @@ if (   !GetOptions( \%options, qw(ketama_points|k=i server|s=s@) )
 {
     pod2usage(1);
 }
-
-use String::CRC32;
 
 sub compute_old {
     my ( $server, $index, $prev ) = @_;
@@ -118,11 +117,11 @@ sub compute {
     return @continuum;
 }
 
-print "Old:\n";
+say 'Old:';
 compute( \&compute_old );
-print "\n";
-print "New:\n";
+say '';
+say 'New:';
 my $total_points = compute( \&compute_new );
-print "\n";
+say '';
 my $int_size = 4;
-print "Continuum array size = ", $total_points * $int_size * 2, " bytes\n";
+say 'Continuum array size = ', $total_points * $int_size * 2, ' bytes';
