@@ -663,7 +663,7 @@ _new(class, conf)
     PREINIT:
         Cache_Memcached_Fast *memd;
     CODE:
-        memd = (Cache_Memcached_Fast *) malloc(sizeof(Cache_Memcached_Fast));
+        Newx(memd, 1, Cache_Memcached_Fast);
         memd->c = client_init();
         if (! memd->c)
           croak("Not enough memory");
@@ -692,7 +692,7 @@ _destroy(memd)
             SvREFCNT_dec(memd->deserialize_method);
           }
         SvREFCNT_dec(memd->servers);
-        free(memd);
+        Safefree(memd);
 
 
 void
