@@ -78,6 +78,8 @@ XSLoader::load;
 
 __END__
 
+=encoding UTF-8
+
 =head1 NAME
 
 Cache::Memcached::Fast - Perl client for B<memcached>, in C language
@@ -1224,89 +1226,57 @@ I.e., the following won't work:
 
 This is a Perl limitation (see L<threads/"BUGS AND LIMITATIONS">).
 
-=head1 BUGS
-
-Please report any bugs or feature requests to
-C<bug-cache-memcached-fast at rt.cpan.org>, or through the web
-interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cache-Memcached-Fast>.
-I will be notified, and then you'll automatically be notified of
-progress on your bug as I make changes.
-
 =head1 SUPPORT
 
-You can find documentation for this module with the perldoc command.
+The code repository is available for public review and contribution at
+L<https://github.com/JRaspass/Cache-Memcached-Fast>.
 
-    perldoc Cache::Memcached::Fast
-
-
-You can also look for information at:
-
-=over 4
-
-=item * Project home
-
-L<https://github.com/kroki/Cache-Memcached-Fast>
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Cache-Memcached-Fast>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/Cache-Memcached-Fast>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/Cache-Memcached-Fast>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/Cache-Memcached-Fast>
-
-=back
+Please report any bugs or feature requests through the issue tracker at
+L<https://github.com/JRaspass/Cache-Memcached-Fast/issues>.
 
 =head1 SEE ALSO
 
-L<https://github.com/kroki/Cache-Memcached-Fast> - project home.  Latest
-development tree can be found there.
+=over
 
-L<http://openhack.ru/Cache-Memcached-Fast> - old project home.
+=item *
 
-L<Cache::Memcached|Cache::Memcached> - original pure Perl B<memcached>
-client.
+L<Cache::Memcached> - original pure Perl B<memcached> client.
 
-L<http://www.memcached.org/> - B<memcached> website.
+=item *
+
+L<https://memcached.org> - B<memcached> website.
+
+=back
 
 =head1 AUTHORS
 
-S<Tomash Brechko>, C<< <tomash.brechko at gmail.com> >> - design and
-implementation.
+=over
 
-S<Michael Monashev>, C<< <postmaster at softsearch.ru> >> - project
-management, design suggestions, testing.
+=item *
 
-=head1 MAINTAINER
+Tomash Brechko <tomash.brechko@gmail.com> - design and implementation.
 
-S<James Raspass>, C<< <jraspass at gmail.com> >>.
+=item *
+
+Michael Monashev <postmaster@softsearch.ru> - project management, design
+suggestions, testing.
+
+=item *
+
+James Raspass <jraspass@gmail.com> - recent additions and current maintenance.
+
+=back
 
 =head1 ACKNOWLEDGEMENTS
 
-Development of this module was sponsored by S<Monashev Co. Ltd.>
+Development of this module was sponsored by Monashev Co. Ltd.
 
-Thanks to S<Peter J. Holzer> for enlightening on UTF-8 support.
+Thanks to Peter J. Holzer for enlightening on UTF-8 support.
 
-Thanks to S<Yasuhiro Matsumoto> for initial Win32 patch.
-
-=head1 WARRANTY
-
-There's B<NONE>, neither explicit nor implied.  But you knew it already
-;).
+Thanks to Yasuhiro Matsumoto for the initial Win32 patch.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2007-2010 Tomash Brechko.  All rights reserved.
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.8 or,
-at your option, any later version of Perl 5 you may have available.
+Copyright © 2007-2010 Tomash Brechko. All rights reserved. This program is
+free software; you can redistribute it and/or modify it under the same terms
+as Perl itself.
