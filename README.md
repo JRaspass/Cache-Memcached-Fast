@@ -49,14 +49,6 @@ Or, after installing, with the perldoc command:
 
     perldoc Cache::Memcached::Fast
 
-## BUGS
-
-Please report any bugs or feature requests to bug-cache-memcached-fast at
-rt.cpan.org, or through the web interface at
-http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Cache-Memcached-Fast.
-I will be notified, and then you'll automatically be notified of progress on
-your bug as I make changes.
-
 ## COPYRIGHT AND LICENCE
 
 Copyright (C) 2007-2010 Tomash Brechko. All rights reserved.
