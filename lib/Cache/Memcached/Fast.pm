@@ -1,4 +1,4 @@
-package Cache::Memcached::Fast 0.27;
+package Cache::Memcached::Fast 0.28;
 
 use v5.12;
 use warnings;
@@ -83,10 +83,6 @@ __END__
 =head1 NAME
 
 Cache::Memcached::Fast - Perl client for B<memcached>, in C language
-
-=head1 VERSION
-
-Version 0.27.
 
 =head1 SYNOPSIS
 

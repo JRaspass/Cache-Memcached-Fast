@@ -1,5 +1,8 @@
-Revision history for Perl extension Cache::Memcached::Fast.
+0.28 2022-10-01
 
+    - Tidy & port the test suite to Test2::V0.
+    - Lots of internal simplifications and cleanups.
+    - Bump minimum Perl to 5.12.
 
 0.27  2021-05-22
         - fix panic in gat/gat_multi methods under newer Perls.
