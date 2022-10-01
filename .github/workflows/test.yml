@@ -29,7 +29,7 @@ jobs:
 
           - no-memcached: true
             os: windows-latest
-            perl: '5.36'
+            perl: '5.34'
 
           - name: ' (no memcached)'
             no-memcached: true
