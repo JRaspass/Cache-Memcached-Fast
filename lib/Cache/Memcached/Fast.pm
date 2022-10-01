@@ -24,8 +24,7 @@ sub new {
             if exists $conf->{compress_algo};
 
         if ( my @unknown = grep !$known_args{$_}, sort keys %$conf ) {
-            local $" = ', ';
-            Carp::carp "Unknown arguments: @unknown";
+            Carp::carp do { local $" = ', '; "Unknown arguments: @unknown" };
         }
     }
 
