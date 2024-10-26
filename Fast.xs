@@ -653,6 +653,20 @@ SvPV_stable_storage(pTHX_ SV *sv, STRLEN *lp)
 MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast
 
 
+TYPEMAP: <<TYPEMAP
+Cache_Memcached_Fast * T_CACHE_MEMCACHED_FAST
+
+INPUT
+T_CACHE_MEMCACHED_FAST
+  $var = INT2PTR($type, SvIVX(SvRV($arg)));
+
+OUTPUT
+T_CACHE_MEMCACHED_FAST
+  sv_setref_pv($arg, class, (void *) $var);
+
+TYPEMAP
+
+
 Cache_Memcached_Fast *
 _new(char *class, SV *conf)
     PROTOTYPE: $$

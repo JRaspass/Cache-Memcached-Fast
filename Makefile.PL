@@ -25,10 +25,17 @@ my %args = (
             },
         },
     },
+    BUILD_REQUIRES => {
+        'ExtUtils::ParseXS' => '3.12',   # For embedded typemaps.
+    },
     TEST_REQUIRES => {
         'Test2::Suite' => '0.000072',    # For Test2::V0.
     },
 );
+
+# Merge BUILD_REQUIRES into PREREQ_PM if EU::MM is too old to understand.
+$args{PREREQ_PM} = { %{ $args{PREREQ_PM} }, %{ delete $args{BUILD_REQUIRES} } }
+    unless eval { ExtUtils::MakeMaker->VERSION('6.55_03') };
 
 # Merge TEST_REQUIRES into PREREQ_PM if EU::MM is too old to understand.
 $args{PREREQ_PM} = { %{ $args{PREREQ_PM} }, %{ delete $args{TEST_REQUIRES} } }
