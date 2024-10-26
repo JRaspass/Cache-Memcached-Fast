@@ -656,9 +656,7 @@ MODULE = Cache::Memcached::Fast		PACKAGE = Cache::Memcached::Fast
 
 
 Cache_Memcached_Fast *
-_new(class, conf)
-        char *                  class
-        SV *                    conf
+_new(char *class, SV *conf)
     PROTOTYPE: $$
     PREINIT:
         Cache_Memcached_Fast *memd;
@@ -676,8 +674,7 @@ _new(class, conf)
 
 
 void
-_destroy(memd)
-        Cache_Memcached_Fast *  memd
+_destroy(Cache_Memcached_Fast *memd)
     PROTOTYPE: $
     CODE:
         client_destroy(memd->c);
@@ -696,17 +693,14 @@ _destroy(memd)
 
 
 void
-_weaken(sv)
-        SV *sv
+_weaken(SV *sv)
     PROTOTYPE: $
     CODE:
         sv_rvweaken(sv);
 
 
 void
-enable_compress(memd, enable)
-        Cache_Memcached_Fast *  memd
-        bool                    enable
+enable_compress(Cache_Memcached_Fast *memd, bool enable)
     PROTOTYPE: $$
     CODE:
         if (enable && ! memd->compress_method)
@@ -716,8 +710,7 @@ enable_compress(memd, enable)
 
 
 void
-set(memd, ...)
-        Cache_Memcached_Fast *  memd
+set(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         add      =  CMD_ADD
         replace  =  CMD_REPLACE
@@ -789,8 +782,7 @@ set(memd, ...)
 
 
 void
-set_multi(memd, ...)
-        Cache_Memcached_Fast *  memd
+set_multi(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         add_multi      =  CMD_ADD
         replace_multi  =  CMD_REPLACE
@@ -903,8 +895,7 @@ set_multi(memd, ...)
 
 
 void
-get(memd, ...)
-        Cache_Memcached_Fast *  memd
+get(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         gets        =  CMD_GETS
     PROTOTYPE: $@
@@ -930,8 +921,7 @@ get(memd, ...)
 
 
 void
-get_multi(memd, ...)
-        Cache_Memcached_Fast *  memd
+get_multi(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         gets_multi  =  CMD_GETS
     PROTOTYPE: $@
@@ -975,8 +965,7 @@ get_multi(memd, ...)
 
 
 void
-gat(memd, ...)
-        Cache_Memcached_Fast *  memd
+gat(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         gats = CMD_GATS
     PROTOTYPE: $@
@@ -1008,8 +997,7 @@ gat(memd, ...)
         XSRETURN_EMPTY;
 
 void
-gat_multi(memd, ...)
-        Cache_Memcached_Fast *  memd
+gat_multi(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         gats_multi = CMD_GATS
     PROTOTYPE: $@
@@ -1060,8 +1048,7 @@ gat_multi(memd, ...)
 
 
 void
-incr(memd, ...)
-        Cache_Memcached_Fast *  memd
+incr(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         decr  =  CMD_DECR
     PROTOTYPE: $@
@@ -1101,8 +1088,7 @@ incr(memd, ...)
 
 
 void
-incr_multi(memd, ...)
-        Cache_Memcached_Fast *  memd
+incr_multi(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         decr_multi  =  CMD_DECR
     PROTOTYPE: $@
@@ -1192,8 +1178,7 @@ incr_multi(memd, ...)
 
 
 void
-delete(memd, ...)
-        Cache_Memcached_Fast *  memd
+delete(Cache_Memcached_Fast *memd, ...)
     ALIAS:
         remove = CMD_REMOVE
     PROTOTYPE: $@
@@ -1235,8 +1220,7 @@ delete(memd, ...)
 
 
 void
-delete_multi(memd, ...)
-        Cache_Memcached_Fast *  memd
+delete_multi(Cache_Memcached_Fast *memd, ...)
     PROTOTYPE: $@
     PREINIT:
         struct result_object object =
@@ -1326,8 +1310,7 @@ delete_multi(memd, ...)
 
 
 void
-touch(memd, ...)
-        Cache_Memcached_Fast *  memd
+touch(Cache_Memcached_Fast *memd, ...)
     PROTOTYPE: $@
     PREINIT:
         struct result_object object =
@@ -1366,8 +1349,7 @@ touch(memd, ...)
 
 
 void
-touch_multi(memd, ...)
-        Cache_Memcached_Fast *  memd
+touch_multi(Cache_Memcached_Fast *memd, ...)
     PROTOTYPE: $@
     PREINIT:
         struct result_object object =
@@ -1451,8 +1433,7 @@ touch_multi(memd, ...)
 
 
 HV *
-flush_all(memd, ...)
-        Cache_Memcached_Fast *  memd
+flush_all(Cache_Memcached_Fast *memd, ...)
     PROTOTYPE: $;$
     PREINIT:
         delay_type delay = 0;
@@ -1494,16 +1475,14 @@ flush_all(memd, ...)
 
 
 void
-nowait_push(memd)
-        Cache_Memcached_Fast *  memd
+nowait_push(Cache_Memcached_Fast *memd)
     PROTOTYPE: $
     CODE:
         client_nowait_push(memd->c);
 
 
 HV *
-server_versions(memd)
-        Cache_Memcached_Fast *  memd
+server_versions(Cache_Memcached_Fast *memd)
     PROTOTYPE: $
     PREINIT:
         struct result_object object =
@@ -1532,8 +1511,7 @@ server_versions(memd)
 
 
 SV *
-namespace(memd, ...)
-        Cache_Memcached_Fast *  memd
+namespace(Cache_Memcached_Fast *memd, ...)
     PROTOTYPE: $;$
     PREINIT:
         const char *ns;
@@ -1552,8 +1530,7 @@ namespace(memd, ...)
 
 
 void
-disconnect_all(memd)
-        Cache_Memcached_Fast *  memd
+disconnect_all(Cache_Memcached_Fast *memd)
     PROTOTYPE: $
     CODE:
         client_reinit(memd->c);
