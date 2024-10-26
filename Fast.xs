@@ -24,7 +24,7 @@
 #define F_UTF8      0x4
 
 
-struct xs_state
+typedef struct
 {
   struct client *c;
   AV *servers;
@@ -36,9 +36,7 @@ struct xs_state
   SV *deserialize_method;
   int utf8;
   size_t max_size;
-};
-
-typedef struct xs_state Cache_Memcached_Fast;
+} Cache_Memcached_Fast;
 
 static inline
 SV**
