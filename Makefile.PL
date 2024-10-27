@@ -26,10 +26,10 @@ my %args = (
         },
     },
     BUILD_REQUIRES => {
-        'ExtUtils::ParseXS' => '3.12',   # For embedded typemaps.
+        'ExtUtils::ParseXS' => '3.12',    # For embedded typemaps.
     },
     TEST_REQUIRES => {
-        'Test2::Suite' => '0.000072',    # For Test2::V0.
+        'Test2::Suite' => '0.000072',     # For Test2::V0.
     },
 );
 
