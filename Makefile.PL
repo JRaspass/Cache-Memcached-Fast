@@ -33,13 +33,12 @@ my %args = (
     },
 );
 
-# Merge BUILD_REQUIRES into PREREQ_PM if EU::MM is too old to understand.
-$args{PREREQ_PM} = { %{ $args{PREREQ_PM} }, %{ delete $args{BUILD_REQUIRES} } }
-    unless eval { ExtUtils::MakeMaker->VERSION('6.55_03') };
-
-# Merge TEST_REQUIRES into PREREQ_PM if EU::MM is too old to understand.
-$args{PREREQ_PM} = { %{ $args{PREREQ_PM} }, %{ delete $args{TEST_REQUIRES} } }
-    unless eval { ExtUtils::MakeMaker->VERSION('6.64') };
+# Merge *_REQUIRES into PREREQ_PM if EU::MM is too old to understand.
+for ( [ BUILD_REQUIRES => '6.55_03' ], [ TEST_REQUIRES => '6.64' ] ) {
+    my ( $key, $ver ) = @$_;
+    $args{PREREQ_PM} = { %{ $args{PREREQ_PM} }, %{ delete $args{$key} } }
+        unless eval { ExtUtils::MakeMaker->VERSION($ver) };
+}
 
 WriteMakefile(%args);
 
