@@ -42,7 +42,7 @@ for ( [ BUILD_REQUIRES => '6.55_03' ], [ TEST_REQUIRES => '6.64' ] ) {
 
 WriteMakefile(%args);
 
-sub MY::postamble { <<'MAKE' }
+sub MY::postamble {<<'MAKE'}
 $(MYEXTLIB): src/Makefile
 	cd src && $(MAKE) $(PASTHRU)
 
