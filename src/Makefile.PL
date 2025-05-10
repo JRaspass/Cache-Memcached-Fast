@@ -58,6 +58,8 @@ libclient$(LIB_EXT): $(OBJECT)
 	$(AR) cr libclient$(LIB_EXT) $(OBJECT)
 	$(RANLIB) libclient$(LIB_EXT)
 
+$(OBJECT): compute_crc32.h parse_keyword.h
+
 parse_keyword.c parse_keyword.h :: genparser.pl reply.kw
 	$(PERL) genparser.pl reply.kw parse_keyword.c parse_keyword.h
 
