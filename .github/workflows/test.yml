@@ -28,7 +28,11 @@ jobs:
             perl: '5.40'
 
           - no-memcached: true
-            os: windows-2019 # FIXME windows-latest (aka 2022) fails.
+            os: windows-2022
+            perl: '5.40'
+
+          - no-memcached: true
+            os: windows-2025
             perl: '5.40'
 
           - name: ' (no memcached)'
@@ -42,6 +46,10 @@ jobs:
             ithread: true
             os: ubuntu-latest
             perl: '5.40'
+
+    # Windows 2025 isn't working yet, I think Perl 5.42 might fix things:
+    # library and perl binaries are mismatched (got first handshake key xxx, needed yyy)
+    continue-on-error: ${{ matrix.os == 'windows-2025' }}
 
     runs-on: ${{ matrix.os }}
 

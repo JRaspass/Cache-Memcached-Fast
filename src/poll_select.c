@@ -21,7 +21,6 @@
   Lesser General Public License for more details.
 */
 
-#include "poll_select.h"
 #ifndef WIN32
 #include "socket_posix.h"
 #else  /* WIN32 */
