@@ -47,10 +47,6 @@ jobs:
             os: ubuntu-latest
             perl: '5.44'
 
-    # Windows 2025 isn't working yet, I think Perl 5.42 might fix things:
-    # library and perl binaries are mismatched (got first handshake key xxx, needed yyy)
-    continue-on-error: ${{ matrix.os == 'windows-2025' }}
-
     runs-on: ${{ matrix.os }}
 
     name: v${{ matrix.perl }} on ${{ matrix.os }}${{ matrix.name }}
